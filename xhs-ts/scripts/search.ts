@@ -159,13 +159,12 @@ async function hoverNotesForTokens(page: Page, count: number): Promise<void> {
 }
 
 /**
- * Extract search results from page using batch extraction
- * More efficient than iterating through each note individually
+ * Extract search results from page using Locator API with parallel extraction
+ * Optimized: uses Promise.all for parallel attribute fetching
  */
 async function extractSearchResults(page: Page, limit: number): Promise<SearchResultNote[]> {
   debugLog('Extracting search results...');
 
-  // Find all note items using locator
   const noteLocator = page.locator(`${SEARCH_CONTAINER_SELECTOR} ${NOTE_ITEM_SELECTOR}`);
   const count = await noteLocator.count().catch(() => 0);
   const actualLimit = Math.min(count, limit);
@@ -176,137 +175,156 @@ async function extractSearchResults(page: Page, limit: number): Promise<SearchRe
     return [];
   }
 
-  // Use evaluate with a string function to avoid __name conflict
-  // This runs in the page context but uses a pure string function
-  const rawData = await page.evaluate(
-    ({ selector, maxResults }) => {
-      const items = Array.from(document.querySelectorAll(selector)).slice(0, maxResults);
+  // Extract all notes in parallel
+  const extractionPromises: Promise<SearchResultNote | null>[] = [];
 
-      return items.map((item, idx) => {
-        // Extract all links
-        const allLinks = Array.from(item.querySelectorAll('a'));
-        let noteId = '';
-        let xsecToken = '';
-        let noteUrl = '';
+  for (let i = 0; i < actualLimit; i++) {
+    extractionPromises.push(extractSingleNote(noteLocator.nth(i), i));
+  }
 
-        for (const link of allLinks) {
-          const href = link.getAttribute('href') || '';
+  const results = await Promise.all(extractionPromises);
+  const validResults = results.filter((note): note is SearchResultNote => note !== null);
 
-          // Extract from search_result URL with xsec_token
-          if (href.includes('xsec_token=') && href.includes('/search_result/')) {
-            const idMatch = href.match(/\/search_result\/([a-zA-Z0-9]+)/);
-            const tokenMatch = href.match(/xsec_token=([^&]+)/);
-
-            if (idMatch && idMatch[1] && idMatch[1].length >= 20) {
-              noteId = idMatch[1];
-              if (tokenMatch && tokenMatch[1]) {
-                xsecToken = decodeURIComponent(tokenMatch[1]);
-              }
-              break;
-            }
-          }
-
-          // Extract from explore URL with xsec_token
-          if (href.includes('xsec_token=') && href.includes('/explore/') && !noteId) {
-            const idMatch = href.match(/\/explore\/([a-zA-Z0-9]+)/);
-            const tokenMatch = href.match(/xsec_token=([^&]+)/);
-
-            if (idMatch && idMatch[1] && idMatch[1].length >= 20) {
-              noteId = idMatch[1];
-              if (tokenMatch && tokenMatch[1]) {
-                xsecToken = decodeURIComponent(tokenMatch[1]);
-              }
-              break;
-            }
-          }
-
-          // Extract from basic explore URL
-          if (href.includes('/explore/') && !noteId) {
-            const idMatch = href.match(/\/explore\/([a-zA-Z0-9]+)/);
-            if (idMatch && idMatch[1] && idMatch[1].length >= 20) {
-              noteId = idMatch[1];
-            }
-          }
-        }
-
-        // Build URL
-        if (noteId) {
-          if (xsecToken) {
-            noteUrl =
-              'https://www.xiaohongshu.com/explore/' +
-              noteId +
-              '?xsec_token=' +
-              encodeURIComponent(xsecToken) +
-              '&xsec_source=pc_search';
-          } else {
-            noteUrl = 'https://www.xiaohongshu.com/explore/' + noteId;
-          }
-        }
-
-        // Extract title
-        const titleEl = item.querySelector('[class*="title"], [class*="content"]');
-        const title =
-          (titleEl && titleEl.textContent && titleEl.textContent.trim()) || '笔记 ' + (idx + 1);
-
-        // Extract cover
-        const imgEl = item.querySelector('img');
-        const cover = (imgEl && imgEl.src) || '';
-
-        // Extract author
-        const authorNameEl = item.querySelector('[class*="author"], [class*="name"]');
-        const authorLinkEl = item.querySelector('a[href*="/user/profile/"]');
-        const authorHref = (authorLinkEl && authorLinkEl.getAttribute('href')) || '';
-        const authorIdMatch = authorHref.match(/\/user\/profile\/([a-zA-Z0-9]+)/);
-        const authorId = (authorIdMatch && authorIdMatch[1]) || '';
-
-        // Extract stats
-        const likesEl = item.querySelector('[class*="like"] .count, .like-wrapper .count');
-        const collectsEl = item.querySelector('[class*="collect"] .count, .collect-wrapper .count');
-        const commentsEl = item.querySelector('[class*="comment"] .count, .chat-wrapper .count');
-
-        const parseCount = (text: string | null): number => {
-          if (!text) {
-            return 0;
-          }
-          const trimmed = text.trim();
-          if (!trimmed || trimmed === '赞' || trimmed === '收藏' || trimmed === '评论') {
-            return 0;
-          }
-          if (trimmed.includes('万')) {
-            return Math.floor(parseFloat(trimmed) * 10000);
-          }
-          return parseInt(trimmed.replace(/[^\d]/g, '')) || 0;
-        };
-
-        return {
-          id: noteId,
-          title: title,
-          author: {
-            id: authorId,
-            name:
-              (authorNameEl && authorNameEl.textContent && authorNameEl.textContent.trim()) ||
-              '未知作者',
-            url: authorHref,
-          },
-          stats: {
-            likes: parseCount(likesEl && likesEl.textContent),
-            collects: parseCount(collectsEl && collectsEl.textContent),
-            comments: parseCount(commentsEl && commentsEl.textContent),
-          },
-          cover: cover,
-          url: noteUrl,
-          xsecToken: xsecToken,
-        };
-      });
-    },
-    { selector: `${SEARCH_CONTAINER_SELECTOR} ${NOTE_ITEM_SELECTOR}`, maxResults: actualLimit }
-  );
-
-  // Filter valid results
-  const validResults = rawData.filter((note) => note.id && note.url);
-  debugLog(`Extracted ${validResults.length} valid notes from ${rawData.length} items`);
-
+  debugLog(`Extracted ${validResults.length} valid notes`);
   return validResults;
+}
+
+/**
+ * Extract a single note's data with parallel attribute fetching
+ */
+async function extractSingleNote(
+  noteItem: import('playwright').Locator,
+  index: number
+): Promise<SearchResultNote | null> {
+  try {
+    // 优化1: 直接定位包含 xsec_token 的链接，而不是遍历所有链接
+    const tokenLink = noteItem.locator('a[href*="xsec_token"][href*="/search_result/"]').first();
+    const exploreTokenLink = noteItem.locator('a[href*="xsec_token"][href*="/explore/"]').first();
+    const basicExploreLink = noteItem.locator('a[href*="/explore/"]').first();
+
+    // 尝试获取带 token 的链接 (优先级: search_result > explore with token > basic explore)
+    let href = await tokenLink.getAttribute('href').catch(() => null);
+    let noteId = '';
+    let xsecToken = '';
+
+    if (href && href.includes('xsec_token')) {
+      const idMatch = href.match(/\/search_result\/([a-zA-Z0-9]+)/);
+      const tokenMatch = href.match(/xsec_token=([^&]+)/);
+      if (idMatch?.[1] && idMatch[1].length >= 20) {
+        noteId = idMatch[1];
+        if (tokenMatch?.[1]) xsecToken = decodeURIComponent(tokenMatch[1]);
+      }
+    }
+
+    // Fallback: explore link with token
+    if (!noteId) {
+      href = await exploreTokenLink.getAttribute('href').catch(() => null);
+      if (href && href.includes('xsec_token')) {
+        const idMatch = href.match(/\/explore\/([a-zA-Z0-9]+)/);
+        const tokenMatch = href.match(/xsec_token=([^&]+)/);
+        if (idMatch?.[1] && idMatch[1].length >= 20) {
+          noteId = idMatch[1];
+          if (tokenMatch?.[1]) xsecToken = decodeURIComponent(tokenMatch[1]);
+        }
+      }
+    }
+
+    // Fallback: basic explore link
+    if (!noteId) {
+      href = await basicExploreLink.getAttribute('href').catch(() => null);
+      if (href) {
+        const idMatch = href.match(/\/explore\/([a-zA-Z0-9]+)/);
+        if (idMatch?.[1] && idMatch[1].length >= 20) {
+          noteId = idMatch[1];
+        }
+      }
+    }
+
+    if (!noteId) {
+      return null;
+    }
+
+    const noteUrl = xsecToken
+      ? `https://www.xiaohongshu.com/explore/${noteId}?xsec_token=${encodeURIComponent(xsecToken)}&xsec_source=pc_search`
+      : `https://www.xiaohongshu.com/explore/${noteId}`;
+
+    // 优化2: 并行获取所有属性
+    const [title, cover, authorName, authorHref, likesText, collectsText, commentsText] =
+      await Promise.all([
+        noteItem
+          .locator('[class*="title"], [class*="content"]')
+          .first()
+          .textContent()
+          .catch(() => ''),
+        noteItem
+          .locator('img')
+          .first()
+          .getAttribute('src')
+          .catch(() => ''),
+        noteItem
+          .locator('[class*="author"], [class*="name"]')
+          .first()
+          .textContent()
+          .catch(() => ''),
+        noteItem
+          .locator('a[href*="/user/profile/"]')
+          .first()
+          .getAttribute('href')
+          .catch(() => ''),
+        noteItem
+          .locator('[class*="like"] .count, .like-wrapper .count')
+          .first()
+          .textContent()
+          .catch(() => '0'),
+        noteItem
+          .locator('[class*="collect"] .count, .collect-wrapper .count')
+          .first()
+          .textContent()
+          .catch(() => '0'),
+        noteItem
+          .locator('[class*="comment"] .count, .chat-wrapper .count')
+          .first()
+          .textContent()
+          .catch(() => '0'),
+      ]);
+
+    const authorIdMatch = authorHref?.match(/\/user\/profile\/([a-zA-Z0-9]+)/);
+
+    return {
+      id: noteId,
+      title: title?.trim() || `笔记 ${index + 1}`,
+      author: {
+        id: authorIdMatch?.[1] || '',
+        name: authorName?.trim() || '未知作者',
+        url: authorHref || '',
+      },
+      stats: {
+        likes: parseStatCount(likesText || '0'),
+        collects: parseStatCount(collectsText || '0'),
+        comments: parseStatCount(commentsText || '0'),
+      },
+      cover: cover || '',
+      url: noteUrl,
+      xsecToken,
+    };
+  } catch (error) {
+    debugLog(`Failed to extract note ${index + 1}`, error);
+    return null;
+  }
+}
+
+/**
+ * Parse stat count text to number
+ */
+function parseStatCount(text: string): number {
+  const trimmed = text.trim();
+  if (!trimmed || trimmed === '赞' || trimmed === '收藏' || trimmed === '评论') {
+    return 0;
+  }
+  if (trimmed.includes('万')) {
+    return Math.floor(parseFloat(trimmed) * 10000);
+  }
+  return parseInt(trimmed.replace(/[^\d]/g, '')) || 0;
 }
 
 /**
@@ -435,12 +453,25 @@ export async function executeSearch(options: SearchOptions): Promise<void> {
     // Verify login status
     debugLog('Verifying login status...');
     await instance.page.goto(XHS_URLS.home, { timeout: PAGE_LOAD_TIMEOUT });
-    await randomDelay(1000, 2000);
+    await delay(2000); // Wait for page to fully load
 
     const isLoggedIn = await checkLoginStatus(instance.page);
     debugLog(`Login status: ${isLoggedIn}`);
 
     if (!isLoggedIn) {
+      debugLog('Login check failed: checking for login modal...');
+
+      // Check specifically for login modal
+      const hasLoginModal = await instance.page
+        .locator('[class*="login"], [class*="qrcode"], [class*="QRCode"]')
+        .first()
+        .isVisible()
+        .catch(() => false);
+
+      if (hasLoginModal) {
+        debugLog('Login modal detected - user needs to login');
+      }
+
       throw new XhsError(
         'Not logged in or session expired. Please run "xhs login" first.',
         XhsErrorCode.NOT_LOGGED_IN

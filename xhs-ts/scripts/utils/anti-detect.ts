@@ -204,12 +204,67 @@ export async function checkLoginStatus(page: Page): Promise<boolean> {
   try {
     const currentUrl = page.url();
 
+    // Wait for page to stabilize
+    await page.waitForLoadState('domcontentloaded').catch(() => {});
+
     // If still on login page, definitely not logged in
     if (currentUrl.includes('/login')) {
       return false;
     }
 
-    // If redirected to home/explore, likely logged in
+    // Check for login modal/popup (strong indicator of not logged in)
+    const loginModalSelectors = [
+      '[class*="login"]',
+      '[class*="qrcode"]',
+      '[class*="QRCode"]',
+      '[data-testid="login"]',
+      '.login-modal',
+      '.red-login-modal',
+    ];
+
+    for (const selector of loginModalSelectors) {
+      const hasLoginModal = await page
+        .locator(selector)
+        .isVisible()
+        .catch(() => false);
+      if (hasLoginModal) {
+        return false; // Login popup visible = not logged in
+      }
+    }
+
+    // Check for login button in header (not on login page)
+    const loginButtons = ['登录', '立即登录', '登录/注册'];
+    for (const text of loginButtons) {
+      const hasLoginButton = await page
+        .locator(`button:has-text("${text}"), a:has-text("${text}")`)
+        .isVisible()
+        .catch(() => false);
+      if (hasLoginButton) {
+        return false; // Login button visible = not logged in
+      }
+    }
+
+    // Check for user-specific elements that only appear when logged in
+    const userAvatar = page.locator(
+      '.user-avatar, [class*="avatar"], .avatar-wrapper, [data-testid="user-avatar"]'
+    );
+    const hasAvatar = await userAvatar.isVisible().catch(() => false);
+
+    if (hasAvatar) {
+      return true;
+    }
+
+    // Check for publish button (only visible when logged in)
+    const publishButton = page.locator(
+      'button:has-text("发布"), [class*="publish"], [data-testid="publish"]'
+    );
+    const hasPublish = await publishButton.isVisible().catch(() => false);
+
+    if (hasPublish) {
+      return true;
+    }
+
+    // If on home/explore page without login modal, likely logged in
     if (
       currentUrl.includes('xiaohongshu.com') &&
       (currentUrl === 'https://www.xiaohongshu.com/' ||
@@ -219,27 +274,8 @@ export async function checkLoginStatus(page: Page): Promise<boolean> {
       return true;
     }
 
-    // Check for user-specific elements that only appear when logged in
-    // User avatar, publish button, etc.
-    const userAvatar = page.locator('.user-avatar, [class*="avatar"], .avatar-wrapper');
-    const hasAvatar = await userAvatar.isVisible().catch(() => false);
-
-    if (hasAvatar) {
-      return true;
-    }
-
-    // Check for login button in header (not login page)
-    // Only check if NOT on login page
-    if (!currentUrl.includes('/login')) {
-      const loginButton = page.locator('button:has-text("登录")');
-      const hasLoginButton = await loginButton.isVisible().catch(() => false);
-
-      // If login button visible on non-login page, not logged in
-      return !hasLoginButton;
-    }
-
     return false;
-  } catch {
+  } catch (error) {
     return false;
   }
 }
