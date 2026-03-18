@@ -11,7 +11,7 @@ import { XhsErrorCode } from './types';
 import { XhsError } from './types';
 import { createBrowserInstance, closeBrowserInstance, type BrowserInstance } from './browser';
 import { saveCookies, extractCookies } from './cookie';
-import { XHS_URLS, config, debugLog, delay, randomDelay } from './utils/helpers';
+import { XHS_URLS, debugLog, delay, randomDelay } from './utils/helpers';
 import { humanClick, checkCaptcha, checkLoginStatus } from './utils/anti-detect';
 import { outputSuccess, outputFromError, outputQrCode } from './utils/output';
 

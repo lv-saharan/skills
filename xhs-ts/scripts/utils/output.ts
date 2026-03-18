@@ -5,7 +5,13 @@
  * @description Standardized JSON output formatting for all CLI commands
  */
 
-import type { SuccessResponse, ErrorResponse, CliOutput, XhsErrorCodeType, QrCodeOutput } from '../types';
+import type {
+  SuccessResponse,
+  ErrorResponse,
+  CliOutput,
+  XhsErrorCodeType,
+  QrCodeOutput,
+} from '../types';
 
 /**
  * Output success response as JSON to stdout
@@ -22,7 +28,10 @@ export function outputSuccess<T>(data: T): void {
  * Output QR code for headless mode (consumed by OpenClaw)
  * Outputs to stdout as JSON for programmatic consumption
  */
-export function outputQrCode(dataUrl: string, message: string = '请使用小红书 App 扫描二维码登录'): void {
+export function outputQrCode(
+  dataUrl: string,
+  message: string = '请使用小红书 App 扫描二维码登录'
+): void {
   const response: QrCodeOutput = {
     type: 'qr_login',
     status: 'waiting_scan',

@@ -19,7 +19,9 @@ dotenv.config();
  * Parse login method from environment
  */
 function parseLoginMethod(value: string | undefined): 'qr' | 'sms' {
-  if (value === 'sms') return 'sms';
+  if (value === 'sms') {
+    return 'sms';
+  }
   return 'qr'; // default
 }
 

@@ -8,6 +8,7 @@
 
 import { Command } from 'commander';
 import { executeLogin } from './login';
+import { executeSearch } from './search';
 import { config, debugLog } from './utils/helpers';
 import { outputError } from './utils/output';
 import { XhsErrorCode } from './types';
@@ -33,7 +34,7 @@ program
   .option('--timeout <ms>', 'Login timeout in milliseconds')
   .action(async (options) => {
     // CLI args override .env defaults
-    const method = options.sms ? 'sms' : (options.qr ? 'qr' : config.loginMethod);
+    const method = options.sms ? 'sms' : options.qr ? 'qr' : config.loginMethod;
     const headless = options.headless !== undefined ? options.headless : config.headless;
     const timeout = options.timeout ? parseInt(options.timeout, 10) : config.loginTimeout;
 
@@ -47,7 +48,7 @@ program
   });
 
 // ============================================
-// Search Command (Placeholder)
+// Search Command
 // ============================================
 
 program
@@ -55,9 +56,20 @@ program
   .description('Search notes by keyword')
   .option('--limit <number>', 'Number of results', '20')
   .option('--sort <type>', 'Sort by: hot or time', 'hot')
-  .action(async (_keyword, _options) => {
-    outputError('Search command not implemented yet', XhsErrorCode.NOT_FOUND);
-    process.exit(1);
+  .option('--headless', 'Run in headless mode')
+  .action(async (keyword, options) => {
+    const limit = parseInt(options.limit, 10);
+    const sort = options.sort as 'hot' | 'time';
+    const headless = options.headless !== undefined ? options.headless : config.headless;
+
+    debugLog(`Search: keyword="${keyword}", limit=${limit}, sort=${sort}, headless=${headless}`);
+
+    await executeSearch({
+      keyword,
+      limit,
+      sort,
+      headless,
+    });
   });
 
 // ============================================

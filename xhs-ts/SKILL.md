@@ -24,7 +24,8 @@ metadata:
 
 | 任务 | 命令 | 说明 |
 |------|------|------|
-| 登录 | `npm run login` | 扫码/短信登录，保存 Cookie |
+| 登录（有头） | `npm run login` | 浏览器显示二维码扫码登录 |
+| 登录（无头） | `npm run login:headless` | 二维码 JSON 输出，供 OpenClaw 展示 |
 | 搜索 | `npm run search -- "<keyword>"` | 关键词搜索笔记 |
 | 发布 | `npm run publish -- [options]` | 发布图文/视频笔记 |
 | 点赞 | `npm run start -- like "<url>"` | 点赞笔记 |
@@ -89,6 +90,13 @@ HEADLESS=true
 
 # 浏览器路径（可选，默认使用 Playwright 内置浏览器）
 BROWSER_PATH=
+
+# 登录配置
+LOGIN_METHOD=qr        # 登录方式: qr 或 sms
+LOGIN_TIMEOUT=120000   # 登录超时（毫秒）
+
+# 调试模式
+DEBUG=false
 ```
 
 ### Cookie Storage
@@ -110,7 +118,8 @@ npm run <command> [options]
 
 | Command | Description |
 |---------|-------------|
-| `npm run login` | 扫码/短信登录 |
+| `npm run login` | 扫码/短信登录（有头模式） |
+| `npm run login:headless` | 扫码登录（无头模式，JSON 输出） |
 | `npm run search -- <keyword>` | 搜索笔记 |
 | `npm run publish` | 发布笔记 |
 | `npm run scrape -- <subcommand>` | 数据抓取 |
@@ -127,14 +136,92 @@ npm run <command> [options]
 首次使用需要登录：
 
 ```bash
+# 有头模式（默认）- 浏览器显示二维码
 npm run login
+
+# 无头模式 - 二维码输出为 JSON
+npm run login:headless
+# 或
+HEADLESS=true npm run login
 ```
 
 **支持的登录方式：**
-- 扫码登录（默认）：打开浏览器显示二维码
+- 扫码登录（默认）：显示二维码供用户扫描
 - 短信验证登录：`npm run login -- --sms`
 
-**手动导入 Cookie：**
+---
+
+#### 无头模式登录流程
+
+无头模式下，二维码以 JSON 格式输出到 stdout，供 OpenClaw 展示给用户：
+
+**1. 执行登录命令：**
+
+```bash
+npm run login:headless
+```
+
+**2. 输出二维码 JSON：**
+
+```json
+{
+  "type": "qr_login",
+  "status": "waiting_scan",
+  "qr": "data:image/png;base64,iVBORw0KGgoAAAANS...",
+  "message": "请使用小红书 App 扫描二维码登录"
+}
+```
+
+**3. OpenClaw 处理流程：**
+
+```
+1. 解析 JSON，识别 type === "qr_login"
+2. 从 qr 字段获取 Data URL（可直接用于 <img src="...">）
+3. 将二维码展示给用户
+4. 等待用户扫码
+5. 登录成功后输出：
+   {
+     "success": true,
+     "data": { "success": true, "message": "Login successful. Cookies saved.", "cookieSaved": true }
+   }
+```
+
+**4. 示例代码（OpenClaw 处理）：**
+
+```javascript
+// 解析输出
+const output = JSON.parse(stdout);
+
+if (output.type === 'qr_login') {
+  // 展示二维码给用户
+  await showQrCodeToUser(output.qr);
+  // 等待用户扫码...
+}
+
+// 登录成功
+if (output.success) {
+  console.log('登录成功');
+}
+```
+
+---
+
+#### 有头模式登录流程
+
+有头模式下，浏览器窗口自动打开并显示二维码：
+
+```
+1. 执行 npm run login
+2. 浏览器打开登录页面，显示二维码
+3. 用户用小红书 App 扫码
+4. 登录成功，Cookie 自动保存
+```
+
+**注意：** 用户关闭浏览器窗口会被检测为登录取消。
+
+---
+
+#### 手动导入 Cookie
 
 1. 浏览器登录小红书
 2. F12 → Application → Cookies → xiaohongshu.com
@@ -149,6 +236,25 @@ npm run login
   ]
 }
 ```
+
+---
+
+#### 登录配置
+
+在 `.env` 文件中配置默认值：
+
+```env
+# 登录方式: qr 或 sms
+LOGIN_METHOD=qr
+
+# 登录超时（毫秒）
+LOGIN_TIMEOUT=120000
+
+# 无头模式
+HEADLESS=true
+```
+
+**CLI 参数优先级高于 .env 配置。**
 
 ---
 

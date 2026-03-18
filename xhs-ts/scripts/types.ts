@@ -81,7 +81,7 @@ export interface LoginResult {
 export interface QrCodeOutput {
   type: 'qr_login';
   status: 'waiting_scan';
-  qr: string;  // data:image/png;base64,... 
+  qr: string; // data:image/png;base64,...
   message: string;
 }
 
@@ -116,6 +116,53 @@ export interface ErrorResponse {
 
 /** Union type for CLI output */
 export type CliOutput<T = unknown> = SuccessResponse<T> | ErrorResponse;
+
+// ============================================
+// Search Types
+// ============================================
+
+/** Sort type for search results */
+export type SearchSortType = 'hot' | 'time' | 'general';
+
+/** Search options */
+export interface SearchOptions {
+  keyword: string;
+  limit?: number;
+  sort?: SearchSortType;
+  headless?: boolean;
+}
+
+/** Author info in search result */
+export interface SearchResultAuthor {
+  id: string;
+  name: string;
+  url?: string;
+}
+
+/** Note stats */
+export interface NoteStats {
+  likes: number;
+  collects: number;
+  comments: number;
+}
+
+/** Single search result note */
+export interface SearchResultNote {
+  id: string;
+  title: string;
+  author: SearchResultAuthor;
+  stats: NoteStats;
+  cover?: string;
+  url: string;
+  xsecToken?: string;
+}
+
+/** Search result output */
+export interface SearchResult {
+  keyword: string;
+  total: number;
+  notes: SearchResultNote[];
+}
 
 // ============================================
 // Config Types
