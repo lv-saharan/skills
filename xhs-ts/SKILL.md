@@ -24,15 +24,15 @@ metadata:
 
 | 任务 | 命令 | 说明 |
 |------|------|------|
-| 登录 | `xhs login` | 扫码/短信登录，保存 Cookie |
-| 搜索 | `xhs search <keyword>` | 关键词搜索笔记 |
-| 发布 | `xhs publish` | 发布图文/视频笔记 |
-| 点赞 | `xhs like <url>` | 点赞笔记 |
-| 收藏 | `xhs collect <url>` | 收藏笔记 |
-| 评论 | `xhs comment <url> <text>` | 评论笔记 |
-| 关注 | `xhs follow <url>` | 关注用户 |
-| 抓取笔记 | `xhs scrape-note <url>` | 抓取笔记详情 |
-| 抓取用户 | `xhs scrape-user <url>` | 抓取用户主页数据 |
+| 登录 | `npm run login` | 扫码/短信登录，保存 Cookie |
+| 搜索 | `npm run search -- "<keyword>"` | 关键词搜索笔记 |
+| 发布 | `npm run publish -- [options]` | 发布图文/视频笔记 |
+| 点赞 | `npm run start -- like "<url>"` | 点赞笔记 |
+| 收藏 | `npm run start -- collect "<url>"` | 收藏笔记 |
+| 评论 | `npm run start -- comment "<url>" "<text>"` | 评论笔记 |
+| 关注 | `npm run start -- follow "<url>"` | 关注用户 |
+| 抓取笔记 | `npm run scrape -- note "<url>"` | 抓取笔记详情 |
+| 抓取用户 | `npm run scrape -- user "<url>"` | 抓取用户主页数据 |
 
 ---
 
@@ -53,24 +53,23 @@ npm install
 ### Step 2: Install Playwright Browser
 
 ```bash
-npx playwright install chromium
+npm run install:browser
 ```
 
 **国内用户可设置镜像加速：**
 
 ```bash
 # Windows
-set PLAYWRIGHT_DOWNLOAD_HOST=https://npmmirror.com/mirrors/playwright
-npx playwright install chromium
+set PLAYWRIGHT_DOWNLOAD_HOST=https://npmmirror.com/mirrors/playwright && npm run install:browser
 
 # macOS/Linux
-PLAYWRIGHT_DOWNLOAD_HOST=https://npmmirror.com/mirrors/playwright npx playwright install chromium
+PLAYWRIGHT_DOWNLOAD_HOST=https://npmmirror.com/mirrors/playwright npm run install:browser
 ```
 
 ### Step 3: Verify Installation
 
 ```bash
-npx tsx scripts/index.ts --help
+npm run start -- --help
 ```
 
 ---
@@ -104,14 +103,20 @@ BROWSER_PATH=
 ### Basic Command Format
 
 ```bash
-npx tsx {baseDir}/scripts/index.ts <command> [options]
+npm run <command> [options]
 ```
 
-或配置 npm script 后：
+**Available Commands:**
 
-```bash
-npm run xhs <command> [options]
-```
+| Command | Description |
+|---------|-------------|
+| `npm run login` | 扫码/短信登录 |
+| `npm run search -- <keyword>` | 搜索笔记 |
+| `npm run publish` | 发布笔记 |
+| `npm run scrape -- <subcommand>` | 数据抓取 |
+| `npm run start -- <command>` | 通用入口 |
+
+> **Note:** 使用 `--` 分隔 npm 和脚本参数，如 `npm run search -- "美食" --limit 10`
 
 ---
 
@@ -122,12 +127,12 @@ npm run xhs <command> [options]
 首次使用需要登录：
 
 ```bash
-xhs login
+npm run login
 ```
 
 **支持的登录方式：**
 - 扫码登录（默认）：打开浏览器显示二维码
-- 短信验证登录：`xhs login --sms`
+- 短信验证登录：`npm run login -- --sms`
 
 **手动导入 Cookie：**
 
@@ -150,7 +155,7 @@ xhs login
 ### Search Notes
 
 ```bash
-xhs search <keyword> [--limit 20] [--sort hot|time]
+npm run search -- "<keyword>" [--limit 20] [--sort hot|time]
 ```
 
 **Parameters:**
@@ -161,7 +166,7 @@ xhs search <keyword> [--limit 20] [--sort hot|time]
 **Example:**
 
 ```bash
-xhs search "美食探店" --limit 10 --sort hot
+npm run search -- "美食探店" --limit 10 --sort hot
 ```
 
 **Output:**
@@ -187,7 +192,7 @@ xhs search "美食探店" --limit 10 --sort hot
 ### Publish Note
 
 ```bash
-xhs publish --title "标题" --content "正文" --images "img1.jpg,img2.jpg"
+npm run publish -- --title "标题" --content "正文" --images "img1.jpg,img2.jpg"
 ```
 
 **Parameters:**
@@ -200,7 +205,7 @@ xhs publish --title "标题" --content "正文" --images "img1.jpg,img2.jpg"
 **Example:**
 
 ```bash
-xhs publish --title "今日探店" --content "这家店超好吃！" --images "./photos/1.jpg,./photos/2.jpg" --tags "美食,探店"
+npm run publish -- --title "今日探店" --content "这家店超好吃！" --images "./photos/1.jpg,./photos/2.jpg" --tags "美食,探店"
 ```
 
 ---
@@ -210,25 +215,25 @@ xhs publish --title "今日探店" --content "这家店超好吃！" --images ".
 #### Like Note
 
 ```bash
-xhs like <note-url>
+npm run start -- like "<note-url>"
 ```
 
 #### Collect Note
 
 ```bash
-xhs collect <note-url>
+npm run start -- collect "<note-url>"
 ```
 
 #### Comment on Note
 
 ```bash
-xhs comment <note-url> "评论内容"
+npm run start -- comment "<note-url>" "评论内容"
 ```
 
 #### Follow User
 
 ```bash
-xhs follow <user-url>
+npm run start -- follow "<user-url>"
 ```
 
 **Output:**
@@ -249,7 +254,7 @@ xhs follow <user-url>
 #### Scrape Note Details
 
 ```bash
-xhs scrape-note <note-url>
+npm run scrape -- note "<note-url>"
 ```
 
 **Output:**
@@ -278,7 +283,7 @@ xhs scrape-note <note-url>
 #### Scrape User Profile
 
 ```bash
-xhs scrape-user <user-url>
+npm run scrape -- user "<user-url>"
 ```
 
 **Output:**

@@ -10,11 +10,11 @@
 
 | 功能 | 命令 | 说明 |
 |------|------|------|
-| 🔐 登录 | `xhs login` | 扫码/短信登录，Cookie 管理 |
-| 🔍 搜索 | `xhs search <keyword>` | 关键词搜索，热门/时间排序 |
-| 📝 发布 | `xhs publish` | 图文/视频笔记发布 |
-| 💬 互动 | `xhs like/collect/comment/follow` | 点赞、收藏、评论、关注 |
-| 📊 抓取 | `xhs scrape-note/scrape-user` | 笔记详情、用户主页数据 |
+| 🔐 登录 | `npm run login` | 扫码/短信登录，Cookie 管理 |
+| 🔍 搜索 | `npm run search -- "<keyword>"` | 关键词搜索，热门/时间排序 |
+| 📝 发布 | `npm run publish -- [options]` | 图文/视频笔记发布 |
+| 💬 互动 | `npm run start -- like/collect/comment/follow` | 点赞、收藏、评论、关注 |
+| 📊 抓取 | `npm run scrape -- note/user` | 笔记详情、用户主页数据 |
 | 🛡️ 风控 | 内置 | 随机延迟、轨迹随机化、频率限制 |
 
 ---
@@ -34,14 +34,17 @@
 npm install
 
 # 2. 安装 Playwright 浏览器
-npx playwright install chromium
+npm run install:browser
 
 # 国内用户可设置镜像
-set PLAYWRIGHT_DOWNLOAD_HOST=https://npmmirror.com/mirrors/playwright
-npx playwright install chromium
+# Windows
+set PLAYWRIGHT_DOWNLOAD_HOST=https://npmmirror.com/mirrors/playwright && npm run install:browser
+
+# macOS/Linux
+PLAYWRIGHT_DOWNLOAD_HOST=https://npmmirror.com/mirrors/playwright npm run install:browser
 
 # 3. 验证安装
-npx tsx scripts/index.ts --help
+npm run start -- --help
 ```
 
 ### 配置环境变量
@@ -75,10 +78,10 @@ BROWSER_PATH=
 
 ```bash
 # 扫码登录（默认）
-xhs login
+npm run login
 
 # 短信验证登录
-xhs login --sms
+npm run login -- --sms
 ```
 
 **手动导入 Cookie：**
@@ -101,10 +104,10 @@ xhs login --sms
 
 ```bash
 # 基本搜索
-xhs search "美食探店"
+npm run search -- "美食探店"
 
 # 指定数量和排序
-xhs search "美食探店" --limit 10 --sort hot
+npm run search -- "美食探店" --limit 10 --sort hot
 ```
 
 **参数说明：**
@@ -133,7 +136,7 @@ xhs search "美食探店" --limit 10 --sort hot
 ### 发布笔记
 
 ```bash
-xhs publish --title "今日探店" --content "这家店超好吃！" --images "./photos/1.jpg,./photos/2.jpg" --tags "美食,探店"
+npm run publish -- --title "今日探店" --content "这家店超好吃！" --images "./photos/1.jpg,./photos/2.jpg" --tags "美食,探店"
 ```
 
 **参数说明：**
@@ -147,26 +150,26 @@ xhs publish --title "今日探店" --content "这家店超好吃！" --images ".
 
 ```bash
 # 点赞
-xhs like "https://www.xiaohongshu.com/explore/note-id"
+npm run start -- like "https://www.xiaohongshu.com/explore/note-id"
 
 # 收藏
-xhs collect "https://www.xiaohongshu.com/explore/note-id"
+npm run start -- collect "https://www.xiaohongshu.com/explore/note-id"
 
 # 评论
-xhs comment "https://www.xiaohongshu.com/explore/note-id" "太棒了！"
+npm run start -- comment "https://www.xiaohongshu.com/explore/note-id" "太棒了！"
 
 # 关注
-xhs follow "https://www.xiaohongshu.com/user/user-id"
+npm run start -- follow "https://www.xiaohongshu.com/user/user-id"
 ```
 
 ### 数据抓取
 
 ```bash
 # 抓取笔记详情
-xhs scrape-note "https://www.xiaohongshu.com/explore/note-id"
+npm run scrape -- note "https://www.xiaohongshu.com/explore/note-id"
 
 # 抓取用户主页
-xhs scrape-user "https://www.xiaohongshu.com/user/user-id"
+npm run scrape -- user "https://www.xiaohongshu.com/user/user-id"
 ```
 
 ---
