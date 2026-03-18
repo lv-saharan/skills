@@ -1,0 +1,39 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+
+
+# Cookies and secrets
+cookies.json
+*.cookie
+
+# Playwright
+playwright-report/
+test-results/
+.playwright/
+
+# TypeScript
+*.tsbuildinfo
+
+# Misc
+*.bak
+*.tmp
+.cache/

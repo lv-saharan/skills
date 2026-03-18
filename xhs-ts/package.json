@@ -1,0 +1,45 @@
+{
+  "name": "xhs-ts",
+  "version": "0.0.1",
+  "description": "小红书（Xiaohongshu）自动化操作技能，支持搜索、发布、互动、数据抓取",
+  "type": "module",
+  "bin": {
+    "xhs": "./scripts/index.ts"
+  },
+  "scripts": {
+    "start": "tsx scripts/index.ts",
+    "xhs": "tsx scripts/index.ts",
+    "login": "tsx scripts/index.ts login",
+    "search": "tsx scripts/index.ts search",
+    "publish": "tsx scripts/index.ts publish",
+    "scrape": "tsx scripts/index.ts",
+    "install:browser": "npx playwright install chromium",
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "commander": "^12.0.0",
+    "dotenv": "^16.6.1",
+    "playwright": "^1.40.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.0"
+  },
+  "keywords": [
+    "xiaohongshu",
+    "xhs",
+    "小红书",
+    "playwright",
+    "automation",
+    "openclaw",
+    "skill",
+    "scraper"
+  ],
+  "author": "",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
