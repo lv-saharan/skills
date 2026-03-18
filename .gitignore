@@ -37,3 +37,5 @@ test-results/
 *.bak
 *.tmp
 .cache/
+
+nul

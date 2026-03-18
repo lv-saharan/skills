@@ -6,6 +6,7 @@
  */
 
 import type { Page } from 'playwright';
+import * as cheerio from 'cheerio';
 import type { SearchOptions, SearchResult, SearchResultNote, SearchSortType } from './types';
 import { XhsError, XhsErrorCode } from './types';
 import type { BrowserInstance } from './browser';
@@ -159,8 +160,8 @@ async function hoverNotesForTokens(page: Page, count: number): Promise<void> {
 }
 
 /**
- * Extract search results from page using Locator API with parallel extraction
- * Optimized: uses Promise.all for parallel attribute fetching
+ * Extract search results from page using cheerio for local HTML parsing
+ * Optimized: single IPC call to get HTML, then parse locally with cheerio
  */
 async function extractSearchResults(page: Page, limit: number): Promise<SearchResultNote[]> {
   debugLog('Extracting search results...');
@@ -175,142 +176,119 @@ async function extractSearchResults(page: Page, limit: number): Promise<SearchRe
     return [];
   }
 
-  // Extract all notes in parallel
-  const extractionPromises: Promise<SearchResultNote | null>[] = [];
+  // 优化：一次性获取所有笔记的 HTML
+  const html = await page
+    .locator(SEARCH_CONTAINER_SELECTOR)
+    .evaluate((container) => container.innerHTML)
+    .catch(() => '');
 
-  for (let i = 0; i < actualLimit; i++) {
-    extractionPromises.push(extractSingleNote(noteLocator.nth(i), i));
+  if (!html) {
+    debugLog('Failed to get HTML from page');
+    return [];
   }
 
-  const results = await Promise.all(extractionPromises);
-  const validResults = results.filter((note): note is SearchResultNote => note !== null);
+  // 使用 cheerio 在本地解析 HTML
+  const $ = cheerio.load(html);
+  const notes: SearchResultNote[] = [];
 
-  debugLog(`Extracted ${validResults.length} valid notes`);
-  return validResults;
-}
+  $(`${NOTE_ITEM_SELECTOR}:lt(${actualLimit})`).each((index, element) => {
+    try {
+      const $el = $(element);
 
-/**
- * Extract a single note's data with parallel attribute fetching
- */
-async function extractSingleNote(
-  noteItem: import('playwright').Locator,
-  index: number
-): Promise<SearchResultNote | null> {
-  try {
-    // 优化1: 直接定位包含 xsec_token 的链接，而不是遍历所有链接
-    const tokenLink = noteItem.locator('a[href*="xsec_token"][href*="/search_result/"]').first();
-    const exploreTokenLink = noteItem.locator('a[href*="xsec_token"][href*="/explore/"]').first();
-    const basicExploreLink = noteItem.locator('a[href*="/explore/"]').first();
+      // 提取链接和 xsec_token (优先级：search_result > explore with token > basic)
+      let noteId = '';
+      let xsecToken = '';
 
-    // 尝试获取带 token 的链接 (优先级: search_result > explore with token > basic explore)
-    let href = await tokenLink.getAttribute('href').catch(() => null);
-    let noteId = '';
-    let xsecToken = '';
-
-    if (href && href.includes('xsec_token')) {
-      const idMatch = href.match(/\/search_result\/([a-zA-Z0-9]+)/);
-      const tokenMatch = href.match(/xsec_token=([^&]+)/);
-      if (idMatch?.[1] && idMatch[1].length >= 20) {
-        noteId = idMatch[1];
-        if (tokenMatch?.[1]) xsecToken = decodeURIComponent(tokenMatch[1]);
-      }
-    }
-
-    // Fallback: explore link with token
-    if (!noteId) {
-      href = await exploreTokenLink.getAttribute('href').catch(() => null);
-      if (href && href.includes('xsec_token')) {
-        const idMatch = href.match(/\/explore\/([a-zA-Z0-9]+)/);
+      // 优先查找带 token 的 search_result 链接
+      const tokenLink = $el.find('a[href*="xsec_token"][href*="/search_result/"]').first();
+      if (tokenLink.length) {
+        const href = tokenLink.attr('href') || '';
+        const idMatch = href.match(/\/search_result\/([a-zA-Z0-9]+)/);
         const tokenMatch = href.match(/xsec_token=([^&]+)/);
         if (idMatch?.[1] && idMatch[1].length >= 20) {
           noteId = idMatch[1];
           if (tokenMatch?.[1]) xsecToken = decodeURIComponent(tokenMatch[1]);
         }
       }
-    }
 
-    // Fallback: basic explore link
-    if (!noteId) {
-      href = await basicExploreLink.getAttribute('href').catch(() => null);
-      if (href) {
-        const idMatch = href.match(/\/explore\/([a-zA-Z0-9]+)/);
-        if (idMatch?.[1] && idMatch[1].length >= 20) {
-          noteId = idMatch[1];
+      // Fallback: explore link with token
+      if (!noteId) {
+        const exploreLink = $el.find('a[href*="xsec_token"][href*="/explore/"]').first();
+        if (exploreLink.length) {
+          const href = exploreLink.attr('href') || '';
+          const idMatch = href.match(/\/explore\/([a-zA-Z0-9]+)/);
+          const tokenMatch = href.match(/xsec_token=([^&]+)/);
+          if (idMatch?.[1] && idMatch[1].length >= 20) {
+            noteId = idMatch[1];
+            if (tokenMatch?.[1]) xsecToken = decodeURIComponent(tokenMatch[1]);
+          }
         }
       }
+
+      // Fallback: basic explore link
+      if (!noteId) {
+        const basicLink = $el.find('a[href*="/explore/"]').first();
+        if (basicLink.length) {
+          const href = basicLink.attr('href') || '';
+          const idMatch = href.match(/\/explore\/([a-zA-Z0-9]+)/);
+          if (idMatch?.[1] && idMatch[1].length >= 20) {
+            noteId = idMatch[1];
+          }
+        }
+      }
+
+      if (!noteId) {
+        return; // 跳过这个笔记
+      }
+
+      // 构建 URL
+      const noteUrl = xsecToken
+        ? `https://www.xiaohongshu.com/explore/${noteId}?xsec_token=${encodeURIComponent(xsecToken)}&xsec_source=pc_search`
+        : `https://www.xiaohongshu.com/explore/${noteId}`;
+
+      // 提取其他数据
+      const title =
+        $el.find('[class*="title"], [class*="content"]').first().text().trim() ||
+        `笔记 ${index + 1}`;
+      const cover = $el.find('img').first().attr('src') || '';
+      const authorName =
+        $el.find('[class*="author"], [class*="name"]').first().text().trim() || '未知作者';
+      const authorHref = $el.find('a[href*="/user/profile/"]').first().attr('href') || '';
+      const likesText =
+        $el.find('[class*="like"] .count, .like-wrapper .count').first().text() || '0';
+      const collectsText =
+        $el.find('[class*="collect"] .count, .collect-wrapper .count').first().text() || '0';
+      const commentsText =
+        $el.find('[class*="comment"] .count, .chat-wrapper .count').first().text() || '0';
+
+      const authorIdMatch = authorHref.match(/\/user\/profile\/([a-zA-Z0-9]+)/);
+
+      notes.push({
+        id: noteId,
+        title,
+        author: {
+          id: authorIdMatch?.[1] || '',
+          name: authorName,
+          url: authorHref,
+        },
+        stats: {
+          likes: parseStatCount(likesText),
+          collects: parseStatCount(collectsText),
+          comments: parseStatCount(commentsText),
+        },
+        cover,
+        url: noteUrl,
+        xsecToken,
+      });
+
+      debugLog(`Extracted note ${index + 1}: ${noteId}`);
+    } catch (error) {
+      debugLog(`Failed to extract note ${index + 1}`, error);
     }
+  });
 
-    if (!noteId) {
-      return null;
-    }
-
-    const noteUrl = xsecToken
-      ? `https://www.xiaohongshu.com/explore/${noteId}?xsec_token=${encodeURIComponent(xsecToken)}&xsec_source=pc_search`
-      : `https://www.xiaohongshu.com/explore/${noteId}`;
-
-    // 优化2: 并行获取所有属性
-    const [title, cover, authorName, authorHref, likesText, collectsText, commentsText] =
-      await Promise.all([
-        noteItem
-          .locator('[class*="title"], [class*="content"]')
-          .first()
-          .textContent()
-          .catch(() => ''),
-        noteItem
-          .locator('img')
-          .first()
-          .getAttribute('src')
-          .catch(() => ''),
-        noteItem
-          .locator('[class*="author"], [class*="name"]')
-          .first()
-          .textContent()
-          .catch(() => ''),
-        noteItem
-          .locator('a[href*="/user/profile/"]')
-          .first()
-          .getAttribute('href')
-          .catch(() => ''),
-        noteItem
-          .locator('[class*="like"] .count, .like-wrapper .count')
-          .first()
-          .textContent()
-          .catch(() => '0'),
-        noteItem
-          .locator('[class*="collect"] .count, .collect-wrapper .count')
-          .first()
-          .textContent()
-          .catch(() => '0'),
-        noteItem
-          .locator('[class*="comment"] .count, .chat-wrapper .count')
-          .first()
-          .textContent()
-          .catch(() => '0'),
-      ]);
-
-    const authorIdMatch = authorHref?.match(/\/user\/profile\/([a-zA-Z0-9]+)/);
-
-    return {
-      id: noteId,
-      title: title?.trim() || `笔记 ${index + 1}`,
-      author: {
-        id: authorIdMatch?.[1] || '',
-        name: authorName?.trim() || '未知作者',
-        url: authorHref || '',
-      },
-      stats: {
-        likes: parseStatCount(likesText || '0'),
-        collects: parseStatCount(collectsText || '0'),
-        comments: parseStatCount(commentsText || '0'),
-      },
-      cover: cover || '',
-      url: noteUrl,
-      xsecToken,
-    };
-  } catch (error) {
-    debugLog(`Failed to extract note ${index + 1}`, error);
-    return null;
-  }
+  debugLog(`Extracted ${notes.length} valid notes`);
+  return notes;
 }
 
 /**
