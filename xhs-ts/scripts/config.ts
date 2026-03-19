@@ -63,6 +63,7 @@ function parseHeadless(value: string | undefined): boolean {
 
 /**
  * Parse login method from environment
+ * Treats empty string as undefined (not set)
  */
 function parseLoginMethod(value: string | undefined): LoginMethod {
   if (value === 'sms') {
@@ -84,9 +85,10 @@ function parseBoolean(value: string | undefined, defaultValue: boolean = true): 
 
 /**
  * Parse integer from environment with default
+ * Treats empty string as undefined (not set)
  */
 function parseInteger(value: string | undefined, defaultValue: number): number {
-  if (value === undefined) {
+  if (value === undefined || value === '') {
     return defaultValue;
   }
   const parsed = parseInt(value, 10);
