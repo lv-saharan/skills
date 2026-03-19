@@ -14,6 +14,8 @@ import { saveCookies, extractCookies } from './cookie';
 import { XHS_URLS, debugLog, delay, randomDelay } from './utils/helpers';
 import { humanClick, checkCaptcha, checkLoginStatus } from './utils/anti-detect';
 import { outputSuccess, outputFromError, outputQrCode } from './utils/output';
+import { getTmpFilePath } from './config';
+import { writeFile } from 'fs/promises';
 
 // ============================================
 // Constants
@@ -90,14 +92,22 @@ async function waitForQrScan(
 }
 
 /**
- * Capture QR code as base64 data URL
+ * Capture QR code and save to file
+ * @returns Absolute path to the saved QR code image
  */
-async function captureQrCodeDataUrl(page: Page, qrSelector: string): Promise<string> {
+async function captureQrCodeToFile(page: Page, qrSelector: string): Promise<string> {
   try {
     const qrElement = page.locator(qrSelector).first();
     const buffer = await qrElement.screenshot({ type: 'png' });
-    const base64 = buffer.toString('base64');
-    return `data:image/png;base64,${base64}`;
+
+    // Generate file path with category 'qr_login' and timestamp
+    const filePath = getTmpFilePath('qr_login', 'png');
+
+    // Save to file
+    await writeFile(filePath, buffer);
+    debugLog(`QR code saved to: ${filePath}`);
+
+    return filePath;
   } catch (error) {
     debugLog('Failed to capture QR code:', error);
     throw new XhsError(
@@ -137,11 +147,11 @@ async function qrLogin(
     await delay(2000);
   }
 
-  // Handle headless mode: output QR code as JSON for OpenClaw
+  // Handle headless mode: capture QR code and save to file
   if (isHeadless) {
-    debugLog('Headless mode: capturing QR code for output');
-    const qrDataUrl = await captureQrCodeDataUrl(page, qrSelector);
-    outputQrCode(qrDataUrl, '请使用小红书 App 扫描二维码登录');
+    debugLog('Headless mode: capturing QR code to file');
+    const qrPath = await captureQrCodeToFile(page, qrSelector);
+    outputQrCode(qrPath, '请使用小红书 App 扫描二维码登录');
   } else {
     // Headed mode: print instruction for user
     console.error('Please scan the QR code with Xiaohongshu app to login.');

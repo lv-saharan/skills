@@ -81,7 +81,7 @@ export interface LoginResult {
 export interface QrCodeOutput {
   type: 'qr_login';
   status: 'waiting_scan';
-  qr: string; // data:image/png;base64,...
+  qrPath: string; // Absolute path to QR code image file
   message: string;
 }
 

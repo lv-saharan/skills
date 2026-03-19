@@ -27,15 +27,17 @@ export function outputSuccess<T>(data: T): void {
 /**
  * Output QR code for headless mode (consumed by OpenClaw)
  * Outputs to stdout as JSON for programmatic consumption
+ * @param qrPath - Absolute path to the QR code image file
+ * @param message - Instructions for the user
  */
 export function outputQrCode(
-  dataUrl: string,
+  qrPath: string,
   message: string = '请使用小红书 App 扫描二维码登录'
 ): void {
   const response: QrCodeOutput = {
     type: 'qr_login',
     status: 'waiting_scan',
-    qr: dataUrl,
+    qrPath,
     message,
   };
   console.log(JSON.stringify(response, null, 2));
