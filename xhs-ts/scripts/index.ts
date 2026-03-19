@@ -164,6 +164,16 @@ program
 program.exitOverride();
 
 process.on('uncaughtException', (error) => {
+  // Commander throws CommanderError for help/version display - these are normal, not errors
+  if (error instanceof Error && 'code' in error) {
+    const commanderError = error as Error & { code: string; exitCode?: number };
+    const normalCodes = ['commander.help', 'commander.version', 'commander.helpDisplayed'];
+    if (normalCodes.includes(commanderError.code)) {
+      // Normal help/version display - exit cleanly
+      process.exit(commanderError.exitCode ?? 0);
+    }
+  }
+
   debugLog('Uncaught exception:', error);
   outputError(
     error.message || 'Unknown error',

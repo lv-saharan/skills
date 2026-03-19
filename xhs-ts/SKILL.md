@@ -6,7 +6,7 @@ compatibility: opencode
 metadata:
   version: "0.0.1"
   openclaw:
-    emoji: "\U0001F4D5"
+    emoji: "📕"
     requires:
       bins: [node, npx]
     install:
@@ -24,14 +24,14 @@ metadata:
 
 | 任务 | 命令 | 说明 |
 |------|------|------|
-| 登录（有头） | `npm run login` | 浏览器显示二维码扫码登录 |
-| 登录（无头） | `npm run login:headless` | 二维码 JSON 输出，供 OpenClaw 展示 |
+| 帮助 | `npm run help` | 查看所有命令 |
+| 登录 | `npm run login` | 扫码/短信登录，自动检测图形界面 |
 | 搜索 | `npm run search -- "<keyword>"` | 关键词搜索笔记 |
 | 发布 | `npm run publish -- [options]` | 发布图文/视频笔记 |
-| 点赞 | `npm run start -- like "<url>"` | 点赞笔记 |
-| 收藏 | `npm run start -- collect "<url>"` | 收藏笔记 |
-| 评论 | `npm run start -- comment "<url>" "<text>"` | 评论笔记 |
-| 关注 | `npm run start -- follow "<url>"` | 关注用户 |
+| 点赞 | `npm run like -- "<url>"` | 点赞笔记 |
+| 收藏 | `npm run collect -- "<url>"` | 收藏笔记 |
+| 评论 | `npm run comment -- "<url>" "<text>"` | 评论笔记 |
+| 关注 | `npm run follow -- "<url>"` | 关注用户 |
 | 抓取笔记 | `npm run scrape -- note "<url>"` | 抓取笔记详情 |
 | 抓取用户 | `npm run scrape -- user "<url>"` | 抓取用户主页数据 |
 
@@ -85,8 +85,11 @@ npm run start -- --help
 # 代理设置（可选）
 PROXY=http://127.0.0.1:7890
 
-# 无头模式（默认 true）
-HEADLESS=true
+# 浏览器模式
+# - 空/未设置: 自动检测（有显示器显示窗口，无显示器 headless）
+# - true: 强制无头模式
+# - false: 强制有头模式
+HEADLESS=
 
 # 浏览器路径（可选，默认使用 Playwright 内置浏览器）
 BROWSER_PATH=
@@ -99,10 +102,22 @@ LOGIN_TIMEOUT=120000   # 登录超时（毫秒）
 DEBUG=false
 ```
 
+### Headless 自动检测
+
+| 环境 | HEADLESS 实际值 |
+|------|----------------|
+| Linux 服务器（无 DISPLAY） | **强制 true** |
+| Windows/macOS/有 GUI 的 Linux | 使用 .env 设置（默认 false） |
+
 ### Cookie Storage
 
 - Cookie 存储位置：`{baseDir}/cookies.json`
 - 支持手动导入 Cookie 文件
+
+### QR Code Storage
+
+- 无头模式下 QR 码保存位置：`{baseDir}/tmp/qr_login_YYYYMMDD_HHmmss.png`
+- 自动创建 `tmp/` 目录
 
 ---
 
@@ -118,12 +133,16 @@ npm run <command> [options]
 
 | Command | Description |
 |---------|-------------|
-| `npm run login` | 扫码/短信登录（有头模式） |
-| `npm run login:headless` | 扫码登录（无头模式，JSON 输出） |
+| `npm run help` | 查看帮助 |
+| `npm run login` | 扫码/短信登录 |
 | `npm run search -- <keyword>` | 搜索笔记 |
 | `npm run publish` | 发布笔记 |
+| `npm run like -- <url>` | 点赞笔记 |
+| `npm run collect -- <url>` | 收藏笔记 |
+| `npm run comment -- <url> <text>` | 评论笔记 |
+| `npm run follow -- <url>` | 关注用户 |
 | `npm run scrape -- <subcommand>` | 数据抓取 |
-| `npm run start -- <command>` | 通用入口 |
+| `npm run start -- <command>` | 通用入口（备用） |
 
 > **Note:** 使用 `--` 分隔 npm 和脚本参数，如 `npm run search -- "美食" --limit 10`
 
@@ -136,24 +155,23 @@ npm run <command> [options]
 首次使用需要登录：
 
 ```bash
-# 有头模式（默认）- 浏览器显示二维码
+# 自动检测模式（推荐）
 npm run login
 
-# 无头模式 - 二维码输出为 JSON
+# 强制无头模式
 npm run login:headless
 # 或
 HEADLESS=true npm run login
-```
 
-**支持的登录方式：**
-- 扫码登录（默认）：显示二维码供用户扫描
-- 短信验证登录：`npm run login -- --sms`
+# 短信验证登录
+npm run login -- --sms
+```
 
 ---
 
 #### 无头模式登录流程
 
-无头模式下，二维码以 JSON 格式输出到 stdout，供 OpenClaw 展示给用户：
+无头模式下，二维码保存为文件，输出 JSON 包含文件路径：
 
 **1. 执行登录命令：**
 
@@ -167,7 +185,7 @@ npm run login:headless
 {
   "type": "qr_login",
   "status": "waiting_scan",
-  "qr": "data:image/png;base64,iVBORw0KGgoAAAANS...",
+  "qrPath": "D:/dev/skills/xhs-ts/tmp/qr_login_20260319_093000.png",
   "message": "请使用小红书 App 扫描二维码登录"
 }
 ```
@@ -176,8 +194,8 @@ npm run login:headless
 
 ```
 1. 解析 JSON，识别 type === "qr_login"
-2. 从 qr 字段获取 Data URL（可直接用于 <img src="...">）
-3. 将二维码展示给用户
+2. 从 qrPath 字段获取二维码图片路径
+3. 读取图片并展示给用户
 4. 等待用户扫码
 5. 登录成功后输出：
    {
@@ -189,16 +207,15 @@ npm run login:headless
 **4. 示例代码（OpenClaw 处理）：**
 
 ```javascript
-// 解析输出
 const output = JSON.parse(stdout);
 
 if (output.type === 'qr_login') {
-  // 展示二维码给用户
-  await showQrCodeToUser(output.qr);
-  // 等待用户扫码...
+  // 读取二维码图片文件
+  const qrImage = await readFile(output.qrPath);
+  // 展示给用户
+  await showQrCodeToUser(qrImage);
 }
 
-// 登录成功
 if (output.success) {
   console.log('登录成功');
 }
@@ -236,25 +253,6 @@ if (output.success) {
   ]
 }
 ```
-
----
-
-#### 登录配置
-
-在 `.env` 文件中配置默认值：
-
-```env
-# 登录方式: qr 或 sms
-LOGIN_METHOD=qr
-
-# 登录超时（毫秒）
-LOGIN_TIMEOUT=120000
-
-# 无头模式
-HEADLESS=true
-```
-
-**CLI 参数优先级高于 .env 配置。**
 
 ---
 
@@ -323,25 +321,25 @@ npm run publish -- --title "今日探店" --content "这家店超好吃！" --im
 #### Like Note
 
 ```bash
-npm run start -- like "<note-url>"
+npm run like -- "<note-url>"
 ```
 
 #### Collect Note
 
 ```bash
-npm run start -- collect "<note-url>"
+npm run collect -- "<note-url>"
 ```
 
 #### Comment on Note
 
 ```bash
-npm run start -- comment "<note-url>" "评论内容"
+npm run comment -- "<note-url>" "评论内容"
 ```
 
 #### Follow User
 
 ```bash
-npm run start -- follow "<user-url>"
+npm run follow -- "<user-url>"
 ```
 
 **Output:**
@@ -447,7 +445,7 @@ npm run scrape -- user "<user-url>"
 
 | Code | 说明 | 解决方案 |
 |------|------|----------|
-| `NOT_LOGGED_IN` | 未登录或 Cookie 过期 | 执行 `xhs login` 重新登录 |
+| `NOT_LOGGED_IN` | 未登录或 Cookie 过期 | 执行 `npm run login` 重新登录 |
 | `RATE_LIMITED` | 触发频率限制 | 等待一段时间后重试 |
 | `NOT_FOUND` | 资源不存在 | 检查 URL 是否正确 |
 | `NETWORK_ERROR` | 网络错误 | 检查网络连接或代理设置 |
@@ -461,21 +459,26 @@ npm run scrape -- user "<user-url>"
 xhs-ts/
 ├── SKILL.md           # 技能定义文件
 ├── README.md          # 详细文档
+├── AGENTS.md          # 开发指南
 ├── package.json       # 依赖配置
 ├── tsconfig.json      # TypeScript 配置
-├── .env.example       # 环境变量示例
+├── .env               # 环境变量配置
 ├── scripts/
 │   ├── index.ts       # CLI 入口
+│   ├── config.ts      # 全局配置管理
 │   ├── browser.ts     # 浏览器管理
+│   ├── cookie.ts      # Cookie 管理
 │   ├── login.ts       # 登录功能
 │   ├── search.ts      # 搜索功能
-│   ├── publish.ts     # 发布功能
-│   ├── interact.ts    # 互动功能
-│   ├── scrape.ts      # 抓取功能
+│   ├── publish.ts     # 发布功能（规划中）
+│   ├── interact.ts    # 互动功能（规划中）
+│   ├── scrape.ts      # 抓取功能（规划中）
 │   ├── types.ts       # 类型定义
 │   └── utils/
 │       ├── anti-detect.ts  # 反检测工具
-│       └── helpers.ts      # 通用工具
+│       ├── helpers.ts      # 通用工具
+│       └── output.ts       # JSON 输出
+├── tmp/               # 临时文件（QR 码等）- 自动创建
 └── cookies.json       # Cookie 存储（运行时生成）
 ```
 
@@ -490,6 +493,7 @@ xhs-ts/
 3. **合规使用** - 遵守小红书用户协议
 4. **Cookie 有效期** - 定期检查登录状态
 5. **代理使用** - 高频操作建议使用代理 IP
+6. **Headless 检测** - 系统无图形界面时自动使用 headless 模式
 
 ---
 
@@ -514,6 +518,11 @@ npx playwright install chromium
 - 检查 Cookie 是否有效
 - 确认关键词是否正确
 - 检查网络连接
+
+### QR Code Not Found
+
+- 检查 `tmp/` 目录是否存在
+- 确认 `qrPath` 路径是否正确
 
 ### TypeScript Errors
 

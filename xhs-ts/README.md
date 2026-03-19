@@ -13,7 +13,7 @@
 | 🔐 登录 | `npm run login` | 扫码/短信登录，Cookie 管理 |
 | 🔍 搜索 | `npm run search -- "<keyword>"` | 关键词搜索，热门/时间排序 |
 | 📝 发布 | `npm run publish -- [options]` | 图文/视频笔记发布 |
-| 💬 互动 | `npm run start -- like/collect/comment/follow` | 点赞、收藏、评论、关注 |
+| 💬 互动 | `npm run like/collect/comment/follow` | 点赞、收藏、评论、关注 |
 | 📊 抓取 | `npm run scrape -- note/user` | 笔记详情、用户主页数据 |
 | 🛡️ 风控 | 内置 | 随机延迟、轨迹随机化、频率限制 |
 
@@ -152,16 +152,16 @@ npm run publish -- --title "今日探店" --content "这家店超好吃！" --im
 
 ```bash
 # 点赞
-npm run start -- like "https://www.xiaohongshu.com/explore/note-id"
+npm run like -- "https://www.xiaohongshu.com/explore/note-id"
 
 # 收藏
-npm run start -- collect "https://www.xiaohongshu.com/explore/note-id"
+npm run collect -- "https://www.xiaohongshu.com/explore/note-id"
 
 # 评论
-npm run start -- comment "https://www.xiaohongshu.com/explore/note-id" "太棒了！"
+npm run comment -- "https://www.xiaohongshu.com/explore/note-id" "太棒了！"
 
 # 关注
-npm run start -- follow "https://www.xiaohongshu.com/user/user-id"
+npm run follow -- "https://www.xiaohongshu.com/user/user-id"
 ```
 
 ### 数据抓取
