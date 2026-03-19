@@ -285,9 +285,11 @@ npm run search -- "美食探店" --limit 10 --sort hot
     {
       "id": "note-id",
       "title": "笔记标题",
-      "author": { "id": "user-id", "name": "作者名" },
+      "author": { "id": "user-id", "name": "作者名", "url": "/user/profile/..." },
       "stats": { "likes": 1000, "collects": 500, "comments": 100 },
-      "url": "https://www.xiaohongshu.com/explore/note-id"
+      "cover": "https://sns-webpic-qc.xhscdn.com/...",
+      "url": "https://www.xiaohongshu.com/explore/note-id?xsec_token=...",
+      "xsecToken": "ABssN-ZxEtg2nmmN..."
     }
   ]
 }

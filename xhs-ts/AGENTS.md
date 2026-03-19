@@ -37,18 +37,21 @@ npm test -- path/to/test.test.ts  # Run single test
 ```
 scripts/
 ├── index.ts          # CLI entry (commander)
+├── config.ts         # Global configuration management (env vars, paths)
 ├── browser.ts        # Playwright browser management
 ├── cookie.ts         # Cookie load/save/validate
 ├── login.ts          # Login handlers (QR/SMS)
-├── search.ts         # Search notes (planned)
+├── search.ts         # Search notes with xsec_token extraction
 ├── publish.ts        # Publish notes (planned)
 ├── interact.ts       # Like/collect/comment/follow (planned)
 ├── scrape.ts         # Data scraping (planned)
 ├── types.ts          # Shared TypeScript types & error codes
 └── utils/
     ├── anti-detect.ts    # Anti-detection utilities
-    ├── helpers.ts        # General utilities (config, delay, etc.)
+    ├── helpers.ts        # General utilities (delay, debug, etc.)
     └── output.ts         # JSON output formatting
+
+tmp/                      # Temporary files (QR codes, etc.) - auto-created
 ```
 
 ---
@@ -143,6 +146,14 @@ All CLI commands output JSON:
 
 // Error
 { "error": true, "message": "...", "code": "ERROR_CODE" }
+
+// QR Code (headless login)
+{
+  "type": "qr_login",
+  "status": "waiting_scan",
+  "qrPath": "/absolute/path/to/tmp/qr_login_20260319_093000.png",
+  "message": "请使用小红书 App 扫描二维码登录"
+}
 ```
 
 ---
@@ -172,7 +183,10 @@ All CLI commands output JSON:
 
 1. **Rate Limiting**: Always use `randomDelay()` between actions
 2. **Cookie Storage**: `cookies.json` at project root (git-ignored)
-3. **Debug Mode**: Set `HEADLESS=false` in `.env`
-4. **Proxy**: Configure `PROXY` in `.env` for high-frequency operations
+3. **Debug Mode**: Set `DEBUG=true` in `.env`
+4. **Headless Mode**: Auto-detected - forced `true` if no display support (CI, Linux server), otherwise uses `.env` setting (default: `false`)
+5. **Proxy**: Configure `PROXY` in `.env` for high-frequency operations
 5. **Pure TypeScript**: No compilation, executed via `tsx`. Imports use NO extensions
 6. **Type Safety**: Run `npm run typecheck` before committing
+7. **QR Code Storage**: QR codes saved to `tmp/` directory with timestamp naming (`qr_login_YYYYMMDD_HHmmss.png`)
+8. **Configuration**: All env vars managed via `config.ts` - import from `./config` not `./utils/helpers`
