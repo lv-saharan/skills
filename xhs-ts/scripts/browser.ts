@@ -9,7 +9,8 @@ import type { Browser, BrowserContext, Page } from 'playwright';
 import { chromium } from 'playwright';
 import type { BrowserLaunchOptions } from './types';
 import { XhsError, XhsErrorCode } from './types';
-import { config, debugLog } from './utils/helpers';
+import { config } from './config';
+import { debugLog } from './utils/helpers';
 
 // ============================================
 // Types

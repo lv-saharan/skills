@@ -5,37 +5,10 @@
  * @description Common utility functions used across modules
  */
 
-import type { AppConfig } from '../types';
-import dotenv from 'dotenv';
+import { config } from '../config';
 
-// ============================================
-// Configuration
-// ============================================
-
-// Load environment variables
-dotenv.config();
-
-/**
- * Parse login method from environment
- */
-function parseLoginMethod(value: string | undefined): 'qr' | 'sms' {
-  if (value === 'sms') {
-    return 'sms';
-  }
-  return 'qr'; // default
-}
-
-/**
- * Application configuration loaded from environment
- */
-export const config: AppConfig = {
-  proxy: process.env.PROXY || undefined,
-  headless: process.env.HEADLESS !== 'false',
-  browserPath: process.env.BROWSER_PATH || undefined,
-  debug: process.env.DEBUG === 'true',
-  loginTimeout: parseInt(process.env.LOGIN_TIMEOUT || '120000', 10),
-  loginMethod: parseLoginMethod(process.env.LOGIN_METHOD),
-};
+// Re-export config for backward compatibility
+export { config };
 
 // ============================================
 // Timing Utilities
@@ -129,7 +102,7 @@ export async function retry<T>(
     maxAttempts = 3,
     initialDelay = 1000,
     maxDelay = 10000,
-    shouldRetry = () => true,
+    shouldRetry = (): boolean => true,
   } = options;
 
   let lastError: unknown;
