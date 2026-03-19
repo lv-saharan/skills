@@ -23,7 +23,6 @@
     "format:check": "prettier --check scripts/**/*.ts"
   },
   "dependencies": {
-    "cheerio": "^1.2.0",
     "commander": "^12.0.0",
     "dotenv": "^16.6.1",
     "playwright": "^1.40.0"
