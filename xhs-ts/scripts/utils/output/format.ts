@@ -1,44 +1,35 @@
 /**
- * JSON output utilities for CLI
+ * Output formatting utilities
  *
- * @module output
+ * @module utils/output/format
  * @description Standardized JSON output formatting for all CLI commands
  */
 
-import type {
-  SuccessResponse,
-  ErrorResponse,
-  CliOutput,
-  XhsErrorCodeType,
-  QrCodeOutput,
-} from '../types';
+import type { XhsErrorCodeType } from '../../shared';
+import type { SuccessResponse, ErrorResponse, CliOutput, QrCodeOutput } from './types';
 
 /**
  * Output success response as JSON to stdout
  */
-export function outputSuccess<T>(data: T): void {
+export function outputSuccess<T>(data: T, toAgent?: string): void {
   const response: SuccessResponse<T> = {
     success: true,
     data,
+    toAgent,
   };
   console.log(JSON.stringify(response, null, 2));
 }
 
 /**
  * Output QR code for headless mode (consumed by OpenClaw)
- * Outputs to stdout as JSON for programmatic consumption
- * @param qrPath - Absolute path to the QR code image file
- * @param message - Instructions for the user
  */
-export function outputQrCode(
-  qrPath: string,
-  message: string = '请使用小红书 App 扫描二维码登录'
-): void {
+export function outputQrCode(qrPath: string): void {
   const response: QrCodeOutput = {
     type: 'qr_login',
     status: 'waiting_scan',
     qrPath,
-    message,
+    toAgent: 'DISPLAY_IMAGE:qrPath:WAIT:扫码',
+    message: '请使用小红书 App 扫描二维码登录',
   };
   console.log(JSON.stringify(response, null, 2));
 }
@@ -58,8 +49,6 @@ export function outputError(message: string, code: XhsErrorCodeType, details?: u
 
 /**
  * Output CLI response to appropriate stream
- * - Success: stdout
- * - Error: stderr
  */
 export function output<T>(result: CliOutput<T>): void {
   if ('success' in result) {

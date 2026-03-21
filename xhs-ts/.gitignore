@@ -4,6 +4,12 @@ node_modules/
 # Environment
 cookies.json
 
+# Browser profile (persistent context)
+browser-profile/
+
+# Temp files
+tmp/
+
 # Build
 dist/
 

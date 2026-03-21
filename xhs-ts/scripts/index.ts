@@ -7,11 +7,13 @@
  */
 
 import { Command } from 'commander';
+import type { CliLoginOptions, CliSearchOptions, CliPublishOptions } from './cli/types';
 import { executeLogin } from './login';
 import { executeSearch } from './search';
+import { executePublish } from './publish';
 import { config, debugLog } from './utils/helpers';
 import { outputError } from './utils/output';
-import { XhsErrorCode } from './types';
+import { XhsErrorCode } from './shared';
 
 // ============================================
 // CLI Setup
@@ -32,7 +34,7 @@ program
   .option('--sms', 'Use SMS login')
   .option('--headless', 'Run in headless mode (output QR as JSON)')
   .option('--timeout <ms>', 'Login timeout in milliseconds')
-  .action(async (options) => {
+  .action(async (options: CliLoginOptions) => {
     // CLI args override .env defaults
     const method = options.sms ? 'sms' : options.qr ? 'qr' : config.loginMethod;
     const headless = options.headless !== undefined ? options.headless : config.headless;
@@ -57,7 +59,7 @@ program
   .option('--limit <number>', 'Number of results', '20')
   .option('--sort <type>', 'Sort by: hot or time', 'hot')
   .option('--headless', 'Run in headless mode')
-  .action(async (keyword, options) => {
+  .action(async (keyword: string, options: CliSearchOptions) => {
     const limit = parseInt(options.limit, 10);
     const sort = options.sort as 'hot' | 'time';
     const headless = options.headless !== undefined ? options.headless : config.headless;
@@ -73,20 +75,44 @@ program
   });
 
 // ============================================
-// Publish Command (Placeholder)
+// Publish Command
 // ============================================
 
 program
   .command('publish')
-  .description('Publish a new note')
-  .option('--title <title>', 'Note title')
-  .option('--content <content>', 'Note content')
-  .option('--images <paths>', 'Image paths (comma separated)')
-  .option('--video <path>', 'Video path')
-  .option('--tags <tags>', 'Tags (comma separated)')
-  .action(async (_options) => {
-    outputError('Publish command not implemented yet', XhsErrorCode.NOT_FOUND);
-    process.exit(1);
+  .description('Publish a new note (image or video)')
+  .requiredOption('--title <title>', 'Note title (max 20 chars)')
+  .requiredOption('--content <content>', 'Note content (max 1000 chars)')
+  .requiredOption('--images <paths>', 'Image paths, comma separated (1-9 images)')
+  .option('--video <path>', 'Video path (alternative to images, max 500MB)')
+  .option('--tags <tags>', 'Tags, comma separated (max 10 tags)')
+  .option('--headless', 'Run in headless mode')
+  .action(async (options: CliPublishOptions) => {
+    // Parse media paths
+    let mediaPaths: string[] = [];
+
+    if (options.video) {
+      mediaPaths = [options.video];
+    } else if (options.images) {
+      mediaPaths = options.images.split(',').map((p: string) => p.trim());
+    }
+
+    // Parse tags
+    const tags = options.tags ? options.tags.split(',').map((t: string) => t.trim()) : undefined;
+
+    const headless = options.headless !== undefined ? options.headless : config.headless;
+
+    debugLog(
+      `Publish: title="${options.title}", media=${mediaPaths.length}, tags=${tags?.length || 0}, headless=${headless}`
+    );
+
+    await executePublish({
+      title: options.title,
+      content: options.content,
+      mediaPaths,
+      tags,
+      headless,
+    });
   });
 
 // ============================================

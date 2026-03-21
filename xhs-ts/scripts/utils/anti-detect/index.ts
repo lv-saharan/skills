@@ -1,12 +1,12 @@
 /**
  * Anti-detection utilities for browser automation
  *
- * @module anti-detect
+ * @module utils/anti-detect
  * @description Tools to make automated browser behavior appear more human-like
  */
 
 import type { Page, Locator } from 'playwright';
-import { delay, randomDelay, debugLog } from './helpers';
+import { delay, randomDelay, debugLog } from '../helpers';
 
 // ============================================
 // Mouse Movement
@@ -275,7 +275,7 @@ export async function checkLoginStatus(page: Page): Promise<boolean> {
     }
 
     return false;
-  } catch (error) {
+  } catch {
     return false;
   }
 }

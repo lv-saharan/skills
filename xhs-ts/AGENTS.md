@@ -4,141 +4,147 @@
 
 ---
 
-## Build/Lint/Test Commands
+## Build/Lint/Test
 
 ```bash
-# Install
-npm install
-npm run install:browser
-
-# Development (Pure TypeScript - no compilation)
-npm run start -- <command>    # Run CLI via tsx
-npm run typecheck             # Type check only
-npm run lint                  # ESLint check
-npm run format                # Prettier format
-
-# Specific commands
-npm run login
-npm run search -- "keyword" --limit 10
-npm run publish -- --title "Title" --content "Content"
-npm run scrape -- note "https://..."
-
-# Testing (planned)
-npm test                      # Run all tests
-npm test -- path/to/test.test.ts  # Run single test
+npm install && npm run install:browser  # Install
+npm run start -- <command>              # Run CLI
+npm run typecheck                       # Type check
+npm run lint                            # ESLint check
+npm run lint:fix                        # Auto-fix lint issues
 ```
 
-> **Note**: This is a **pure TypeScript project**. Source files are executed directly via `tsx` without compilation. No `dist/` output.
+> **Pure TypeScript project** - executed via `tsx`, no `dist/` output.
 
 ---
 
-## Project Architecture
+## Project Structure
 
 ```
 scripts/
-├── index.ts          # CLI entry (commander)
-├── config.ts         # Global configuration management (env vars, paths)
-├── browser.ts        # Playwright browser management
-├── cookie.ts         # Cookie load/save/validate
-├── login.ts          # Login handlers (QR/SMS)
-├── search.ts         # Search notes with xsec_token extraction
-├── publish.ts        # Publish notes (planned)
-├── interact.ts       # Like/collect/comment/follow (planned)
-├── scrape.ts         # Data scraping (planned)
-├── types.ts          # Shared TypeScript types & error codes
-└── utils/
-    ├── anti-detect.ts    # Anti-detection utilities
-    ├── helpers.ts        # General utilities (delay, debug, etc.)
-    └── output.ts         # JSON output formatting
-
-tmp/                      # Temporary files (QR codes, etc.) - auto-created
+├── index.ts              # CLI 入口
+├── cli/types.ts          # CLI 类型定义
+├── config/               # 配置模块 (index.ts, config.ts, types.ts)
+├── browser/              # 浏览器管理 (index.ts, instance.ts, launch.ts, stealth.ts, types.ts)
+├── cookie/               # Cookie 管理 (index.ts, storage.ts, validation.ts, types.ts)
+├── login/                # 登录模块
+│   ├── index.ts          # 入口：导出 API
+│   ├── execute.ts        # 主编排 (<100 行)
+│   ├── qr.ts             # QR 登录
+│   ├── sms.ts            # SMS 登录
+│   ├── verify.ts         # Cookie 验证
+│   └── types.ts          # 类型定义
+├── search/               # 搜索模块 (index.ts, execute.ts, types.ts)
+├── publish/              # 发布模块
+│   ├── index.ts, execute.ts, validation.ts, editor.ts, submitter.ts
+│   ├── constants.ts, types.ts, auth-check.ts
+│   └── uploader/         # 上传子模块
+├── shared/               # 共享模块 (types.ts, constants.ts, errors.ts)
+└── utils/                # 工具函数
+    ├── helpers/          # delay, randomDelay, waitForCondition, retry
+    ├── anti-detect/      # humanClick, checkLoginStatus, checkCaptcha
+    ├── output/           # outputSuccess, outputError
+    └── auth-wait.ts      # waitForCreatorLogin, saveContextCookies
 ```
 
 ---
 
-## Code Style Guidelines
+## 核心规范
 
-### TypeScript Configuration
+### 1. 模块设计
 
-- **Target**: ES2022, **Module**: ESNext (ESM), **Strict**: enabled
-- **Pure TypeScript**: No compilation, executed via `tsx`
-- **Imports**: NO file extensions for local imports (tsx resolves automatically)
-- Use `import type` for type-only imports
+| 规则 | 要求 |
+|------|------|
+| 目录结构 | 每个功能独立目录，`index.ts` 为入口 |
+| 文件大小 | 单文件 ≤ 500 行，超出按职责拆分 |
+| 函数长度 | 单函数 ≤ 50 行 |
+| 导入数量 | 单文件 ≤ 15 个导入 |
 
-### Imports Order
-
-1. Node.js built-ins
-2. External packages
-3. Internal modules (no `.js`/`.ts` extension)
+### 2. Import 模式
 
 ```typescript
-import { readFile } from 'fs/promises';
-import { chromium, Page } from 'playwright';
-import { Command } from 'commander';
-import { delay } from './utils/helpers';
-import type { Note } from './types';
+// 类型 → 从 types.ts 导入
+import type { BrowserInstance } from '../browser/types';
+
+// 函数 → 从 index.ts 导入
+import { createBrowserInstance } from '../browser';
+
+// 常量 → 从 constants.ts 导入
+import { PAGE_LOAD_TIMEOUT } from './constants';
 ```
 
-### Naming Conventions
+### 3. 代码复用
 
-| Element | Convention | Example |
-|---------|------------|---------|
+| 工具函数 | 用途 |
+|----------|------|
+| `waitForCondition(condition, options)` | **替代所有 while 循环** |
+| `waitForCreatorLogin(page, timeout)` | 创作者中心登录等待 |
+| `saveContextCookies(context)` | Cookie 保存 |
+| `resolveHeadless(override, config)` | headless 解析 |
+
+**禁止手写 while 循环等待：**
+```typescript
+// ✅ CORRECT
+await waitForCondition(async () => page.isVisible('#btn'), { timeout: 10000 });
+
+// ❌ WRONG
+while (Date.now() - startTime < timeout) { ... }
+```
+
+### 4. 类型组织
+
+| 类型 | 位置 |
+|------|------|
+| 模块私有类型 | `<module>/types.ts` |
+| 模块公共类型 | `<module>/types.ts` + 通过 index.ts 导出 |
+| 全局共享类型 | `shared/types.ts` |
+
+---
+
+## Anti-Detection
+
+| 技术 | 实现 |
+|------|------|
+| Minimal Browser Args | 仅 `--start-maximized` |
+| Stealth Script | `context.addInitScript()` |
+| Homepage Entry | 从主页点击进入创作者中心 |
+| Random Delays | `randomDelay(1000, 3000)` |
+
+**关键：禁止直接导航到创作者中心**
+```typescript
+// ❌ WRONG - triggers detection
+await page.goto('https://creator.xiaohongshu.com/publish');
+
+// ✅ CORRECT - simulate real user
+await page.goto('https://www.xiaohongshu.com');
+await page.click('a[href*="creator.xiaohongshu.com"]');
+```
+
+---
+
+## Code Style
+
+| 元素 | 规范 | 示例 |
+|------|------|------|
 | Files | kebab-case | `anti-detect.ts` |
-| Interfaces/Types | PascalCase | `NoteDetails`, `SearchResult` |
-| Functions | camelCase, verb-first | `searchNotes()`, `delay()` |
-| Constants | SCREAMING_SNAKE_CASE | `DEFAULT_TIMEOUT` |
-| Variables | camelCase | `browser`, `noteList` |
-| Env vars | SCREAMING_SNAKE_CASE | `PROXY`, `HEADLESS` |
+| Interfaces | PascalCase | `LoginOptions` |
+| Functions | camelCase | `executeLogin()` |
+| Constants | SCREAMING_SNAKE_CASE | `PAGE_LOAD_TIMEOUT` |
 
-### Error Handling
-
-Use custom `XhsError` with error codes:
-
+**Error Handling:**
 ```typescript
-export class XhsError extends Error {
-  constructor(message: string, public code: string, public details?: unknown) {
-    super(message);
-    this.name = 'XhsError';
-  }
-}
-
-// Error codes: NOT_LOGGED_IN, RATE_LIMITED, NOT_FOUND, NETWORK_ERROR, CAPTCHA_REQUIRED
+throw new XhsError(message, XhsErrorCode.NOT_LOGGED_IN);
 ```
 
-CLI output format (JSON):
-
-```json
-{ "error": true, "message": "...", "code": "ERROR_CODE" }
-```
-
-### Async Patterns
-
-- Prefer `async/await` over `.then()`
-- Always close resources in `finally` block
-
+**Async Pattern:**
 ```typescript
-async function scrape(url: string): Promise<void> {
-  const page = await browser.newPage();
-  try {
-    await page.goto(url);
-    // scraping logic
-  } finally {
-    await page.close();
-  }
-}
+const page = await browser.newPage();
+try { /* logic */ } finally { await page.close(); }
 ```
-
-### Anti-Detection
-
-- Use `randomDelay(min, max)` between actions (default: 1000-3000ms)
-- Randomize mouse movement with `humanClick(page, selector)`
-- Never use direct `page.click()` for user-simulated actions
 
 ---
 
 ## Output Format
-
-All CLI commands output JSON:
 
 ```json
 // Success
@@ -147,46 +153,30 @@ All CLI commands output JSON:
 // Error
 { "error": true, "message": "...", "code": "ERROR_CODE" }
 
-// QR Code (headless login)
-{
-  "type": "qr_login",
-  "status": "waiting_scan",
-  "qrPath": "/absolute/path/to/tmp/qr_login_20260319_093000.png",
-  "message": "请使用小红书 App 扫描二维码登录"
-}
+// QR Code
+{ "type": "qr_login", "qrPath": "/abs/path/to/qr.png" }
 ```
 
 ---
 
-## Documentation Sync Rule
+## Verification
 
-**When making changes, MUST update related documentation:**
-
-| Change Type | Files to Update |
-|-------------|-----------------|
-| New module/file | `AGENTS.md` → Project Architecture section |
-| Function signature change | `AGENTS.md` → Code Style Guidelines section |
-| New CLI command | `SKILL.md`, `README.md` → Commands section |
-| Architecture change | `AGENTS.md` → Project Architecture section |
-| New error code | `AGENTS.md` → Error Handling section, `SKILL.md` → Error Codes |
-| New env variable | `AGENTS.md` → Important Notes, `.env` file |
-| New type/interface | `types.ts` header comments |
-
-**Before completing any task:**
-1. Check if any doc needs updating
-2. Update `AGENTS.md` first (single source of truth)
-3. Sync changes to `SKILL.md` and `README.md` if user-facing
+**每次修改后必须执行：**
+```bash
+npm run lint && npm run typecheck
+```
 
 ---
 
 ## Important Notes
 
-1. **Rate Limiting**: Always use `randomDelay()` between actions
-2. **Cookie Storage**: `cookies.json` at project root (git-ignored)
-3. **Debug Mode**: Set `DEBUG=true` in `.env`
-4. **Headless Mode**: Auto-detected - forced `true` if no display support (CI, Linux server), otherwise uses `.env` setting (default: `false`)
-5. **Proxy**: Configure `PROXY` in `.env` for high-frequency operations
-5. **Pure TypeScript**: No compilation, executed via `tsx`. Imports use NO extensions
-6. **Type Safety**: Run `npm run typecheck` before committing
-7. **QR Code Storage**: QR codes saved to `tmp/` directory with timestamp naming (`qr_login_YYYYMMDD_HHmmss.png`)
-8. **Configuration**: All env vars managed via `config.ts` - import from `./config` not `./utils/helpers`
+1. **Rate Limiting**: 使用 `randomDelay()` 
+2. **Cookie Storage**: `cookies.json` (git-ignored)
+3. **Debug Mode**: `DEBUG=true` in `.env`
+4. **Headless Mode**: 无显示时强制 true
+5. **Pure TypeScript**: 无编译，tsx 直接执行
+6. **No CI/CD**: 个人项目保持简洁
+7. **Wait Helpers**: 使用 `waitForCondition()`，禁止手写 while
+8. **Login Module**: 保持结构完整 (execute.ts, qr.ts, sms.ts, verify.ts)
+9. **Temp Files**: 使用 `getTmpFilePath()` 管理临时文件路径
+10. **Anti-Detection**: 最小化浏览器参数 + stealth 脚本

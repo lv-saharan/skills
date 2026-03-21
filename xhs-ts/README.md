@@ -82,7 +82,15 @@ npm run login
 
 # 短信验证登录
 npm run login -- --sms
+
+# 登录创作服务平台（发布笔记需要）
+npm run login -- --creator
+
+# 同时登录主站和创作平台
+npm run login && npm run login -- --creator
 ```
+
+> **重要提示**：发布笔记功能需要登录创作服务平台 (`--creator`)。主站登录和创作平台登录是独立的，需要分别进行。
 
 **手动导入 Cookie：**
 
@@ -137,16 +145,32 @@ npm run search -- "美食探店" --limit 10 --sort hot
 
 ### 发布笔记
 
+发布图文或视频笔记到小红书。
+
 ```bash
-npm run publish -- --title "今日探店" --content "这家店超好吃！" --images "./photos/1.jpg,./photos/2.jpg" --tags "美食,探店"
+# 发布图文笔记
+npm run publish -- --title "今日探店" --content "这家店超好吃！" --images "./photos/1.jpg,./photos/2.jpg"
+
+# 发布视频笔记
+npm run publish -- --title "我的Vlog" --content "周末日常" --video "./video.mp4"
+
+# 带标签发布
+npm run publish -- --title "今日探店" --content "这家店超好吃！" --images "./photos/1.jpg" --tags "美食,探店"
 ```
 
 **参数说明：**
-- `--title`: 笔记标题（必需）
-- `--content`: 笔记正文
-- `--images`: 图片路径，多个用逗号分隔
-- `--video`: 视频路径（与 images 二选一）
-- `--tags`: 标签，多个用逗号分隔
+
+| 参数 | 必需 | 说明 |
+|------|------|------|
+| `--title` | 是 | 笔记标题（最多 20 字） |
+| `--content` | 是 | 笔记正文（最多 1000 字） |
+| `--images` | 二选一 | 图片路径，多个用逗号分隔（1-9 张） |
+| `--video` | 二选一 | 视频路径（单个文件，最大 500MB） |
+| `--tags` | 否 | 标签，多个用逗号分隔（最多 10 个） |
+
+**支持格式：**
+- 图片：`.jpg`, `.jpeg`, `.png`, `.gif`, `.webp`
+- 视频：`.mp4`, `.mov`, `.avi`, `.mkv`
 
 ### 互动操作
 

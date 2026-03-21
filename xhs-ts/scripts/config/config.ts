@@ -1,14 +1,15 @@
 /**
  * Global configuration management
  *
- * @module config
- * @description Centralized configuration loaded from environment variables
+ * @module config/config
+ * @description Configuration loading and parsing from environment variables
  */
 
 import dotenv from 'dotenv';
 import path from 'path';
 import { existsSync, mkdirSync } from 'fs';
-import type { AppConfig, LoginMethod } from './types';
+import type { AppConfig } from './types';
+import type { LoginMethod } from '../shared';
 
 // ============================================
 // Environment Loading
@@ -23,10 +24,6 @@ dotenv.config();
 
 /**
  * Check if the current environment supports a graphical display
- *
- * Detection logic:
- * - Linux without DISPLAY or WAYLAND_DISPLAY → no GUI
- * - Windows/macOS → usually has GUI
  */
 function hasDisplaySupport(): boolean {
   const platform = process.platform;
@@ -42,19 +39,12 @@ function hasDisplaySupport(): boolean {
 
 /**
  * Parse headless mode with display support check
- *
- * Logic:
- * - No display support → force headless=true (ignore user setting)
- * - Has display support → use user setting (default: false, show browser)
  */
 function parseHeadless(value: string | undefined): boolean {
-  // If system doesn't support display, force headless mode
   if (!hasDisplaySupport()) {
     return true;
   }
 
-  // Has display support, use user setting (default: false to show browser)
-  // Treat empty string as undefined (not set)
   if (value === undefined || value === '') {
     return false;
   }
@@ -63,18 +53,16 @@ function parseHeadless(value: string | undefined): boolean {
 
 /**
  * Parse login method from environment
- * Treats empty string as undefined (not set)
  */
 function parseLoginMethod(value: string | undefined): LoginMethod {
   if (value === 'sms') {
     return 'sms';
   }
-  return 'qr'; // default
+  return 'qr';
 }
 
 /**
  * Parse boolean from environment
- * Treats empty string as undefined (not set)
  */
 function parseBoolean(value: string | undefined, defaultValue: boolean = true): boolean {
   if (value === undefined || value === '') {
@@ -85,7 +73,6 @@ function parseBoolean(value: string | undefined, defaultValue: boolean = true): 
 
 /**
  * Parse integer from environment with default
- * Treats empty string as undefined (not set)
  */
 function parseInteger(value: string | undefined, defaultValue: number): number {
   if (value === undefined || value === '') {
@@ -119,7 +106,6 @@ export function getTmpDir(): string {
 
 /**
  * Generate timestamp string for file naming
- * Format: YYYYMMDD_HHmmss
  */
 export function generateTimestamp(): string {
   const now = new Date();
@@ -134,7 +120,6 @@ export function generateTimestamp(): string {
 
 /**
  * Generate file name with category and timestamp
- * Format: {category}_{timestamp}.{ext}
  */
 export function generateFileName(category: string, ext: string): string {
   return `${category}_${generateTimestamp()}.${ext}`;
@@ -153,31 +138,13 @@ export function getTmpFilePath(category: string, ext: string): string {
 
 /**
  * Application configuration loaded from environment
- *
- * Environment variables:
- * - PROXY: Proxy URL (optional)
- * - HEADLESS: Headless browser mode (ignored if no display support)
- * - BROWSER_PATH: Custom browser executable path (optional)
- * - DEBUG: Enable debug logging (default: false)
- * - LOGIN_TIMEOUT: Login timeout in milliseconds (default: 120000)
- * - LOGIN_METHOD: Login method 'qr' or 'sms' (default: 'qr')
- *
- * Headless behavior:
- * - No display support (CI, Linux server without GUI) → forced headless=true
- * - Has display support → user setting (default: false, show browser)
  */
 export const config: AppConfig = {
-  // Network
   proxy: process.env.PROXY || undefined,
-
-  // Browser
   headless: parseHeadless(process.env.HEADLESS),
   browserPath: process.env.BROWSER_PATH || undefined,
-
-  // Debug
+  browserChannel: process.env.BROWSER_CHANNEL || undefined,
   debug: parseBoolean(process.env.DEBUG, false),
-
-  // Login
   loginTimeout: parseInteger(process.env.LOGIN_TIMEOUT, 120000),
   loginMethod: parseLoginMethod(process.env.LOGIN_METHOD),
 };
