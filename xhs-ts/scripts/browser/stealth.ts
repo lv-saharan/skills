@@ -10,6 +10,14 @@
  * This script is injected before any page loads
  */
 export const STEALTH_INJECTION_SCRIPT = `
+// 0. __name polyfill - fixes tsx/esbuild injection conflicting with XHS page's __name
+// tsx compiler injects __name() helper for function name preservation
+// This conflicts with XHS page's own __name definition
+// Adding this no-op polyfill allows page.evaluate() to work without errors
+if (typeof window.__name === 'undefined') {
+  window.__name = (fn, _name) => fn;
+}
+
 // 1. Hide webdriver property
 Object.defineProperty(navigator, 'webdriver', {
   get: () => undefined,
