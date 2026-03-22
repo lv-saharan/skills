@@ -12,7 +12,7 @@ import { XhsError, XhsErrorCode } from '../shared';
 import { TIMEOUTS } from '../shared';
 import { XHS_URLS, config, debugLog, delay, randomDelay } from '../utils/helpers';
 import { checkLoginStatus } from '../utils/anti-detect';
-import { outputSuccess, outputFromError } from '../utils/output';
+import { outputSuccess, outputError, outputFromError } from '../utils/output';
 import type { PublishOptions } from './types';
 import { validateMedia, validateContent } from './validation';
 import { uploadMedia } from './uploader';
@@ -62,7 +62,6 @@ export async function executePublish(options: PublishOptions): Promise<void> {
     debugLog('Loading and validating cookies...');
     const cookies = await loadCookies();
     validateCookies(cookies);
-    debugLog(`Loaded ${cookies.length} cookies`);
 
     // Create browser instance
     const isHeadless = headless ?? config.headless;
@@ -137,7 +136,11 @@ export async function executePublish(options: PublishOptions): Promise<void> {
     const result = await submitAndVerify(publishPage);
 
     debugLog('Publish complete, outputting result...');
-    outputSuccess(result, 'RELAY:发布成功');
+    if (result.success) {
+      outputSuccess(result, 'RELAY:发布成功');
+    } else {
+      outputError(result.message, XhsErrorCode.PUBLISH_FAILED);
+    }
     debugLog('Result output complete');
   } catch (error) {
     debugLog('Publish error:', error);

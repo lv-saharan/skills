@@ -165,8 +165,8 @@ export async function waitForImageUpload(page: Page, imageCount: number): Promis
       .isVisible()
       .catch(() => false);
 
-    // Log status every 5 seconds
-    if (elapsed % 5 === 0) {
+    // Log status every 5 seconds (skip first iteration at 0s)
+    if (elapsed % 5 === 0 && elapsed > 0) {
       debugLog(
         `[${elapsed}s] uploadStarted=${uploadStarted}, hasProgress=${hasProgress}, titleVisible=${titleVisible}, anyTextarea=${anyTextarea}, hasImagePreview=${hasImagePreview}, hasUploadSuccess=${hasUploadSuccess}, publishBtnVisible=${publishBtnVisible}`
       );
