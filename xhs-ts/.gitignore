@@ -3,6 +3,7 @@ node_modules/
 
 # Environment
 cookies.json
+test-cookies.json
 
 # Browser profile (persistent context)
 browser-profile/
@@ -26,3 +27,8 @@ Thumbs.db
 .idea/
 *.swp
 *.swo
+
+# Test
+test-results/
+playwright-report/
+blob-report/

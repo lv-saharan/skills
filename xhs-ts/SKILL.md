@@ -7,7 +7,7 @@ description: |
 license: MIT
 compatibility: opencode
 metadata:
-  version: "0.0.1"
+  version: "0.0.3"
   openclaw:
     emoji: "📕"
     requires:
@@ -42,6 +42,8 @@ metadata:
 2. **Headless auto-detection** — Linux servers (no DISPLAY) automatically force headless mode
 3. **QR code file path** — In headless mode, QR code saved to `{baseDir}/tmp/qr_login_*.png`
 4. **Rate limiting** — Keep 2-5 second intervals between operations to avoid detection
+5. **Search `--scope following`** — Requires login to access followed users' notes
+6. **Search filters** — Filters are applied via URL params; some may require UI interaction on page load
 
 ---
 
@@ -122,50 +124,97 @@ ACTION[:TARGET][:HINT]
 ### Login
 
 ```bash
-npm run login                      # QR code login (default)
-npm run login -- --sms             # SMS login
-npm run login -- --headless        # Headless mode (QR saved to file)
-npm run login -- --creator         # Login to creator center (required for publish)
+# 二维码登录（默认）
+npm run login
+
+# 短信登录
+npm run login -- --sms
+
+# 无头模式（二维码保存到文件）
+npm run login -- --headless
+
+# 登录创作者中心（发布笔记必需）
+npm run login -- --creator
 ```
 
-**Options:** `--qr`, `--sms`, `--headless`, `--timeout <ms>`, `--creator`
+**参数说明：**
+
+| 参数 | 说明 | 默认值 |
+|------|------|--------|
+| `--qr` | 二维码登录 | ✅ 默认方式 |
+| `--sms` | 短信登录 | — |
+| `--headless` | 无头模式运行 | `false` |
+| `--timeout` | 登录超时时间（毫秒） | `120000` |
+| `--creator` | 登录创作者中心 | — |
 
 ### Search
 
 ```bash
+# 基本搜索
+npm run search -- "美食探店"
+
+# 指定结果数量和排序方式
 npm run search -- "美食探店" --limit 10 --sort hot
+
+# 筛选图文笔记，发布时间在一周内
+npm run search -- "美食探店" --note-type image --time-range week
+
+# 只搜索我关注的用户
+npm run search -- "美食探店" --scope following
+
+# 按位置筛选：附近
+npm run search -- "美食探店" --location nearby
+
+# 组合筛选：视频笔记 + 一月内发布 + 热度排序 + 同城
+npm run search -- "旅游攻略" --limit 20 --sort hot --note-type video --time-range month --location city
 ```
 
-**Parameters:**
-- `<keyword>` (required) — Search keyword
-- `--limit <n>` — Number of results (default: 20)
-- `--sort <type>` — `hot` or `time` (default: hot)
-- `--headless` — Run in headless mode
+**参数说明：**
+
+| 参数 | 说明 | 可选值 | 默认值 |
+|------|------|--------|--------|
+| `<keyword>` | 搜索关键词（必填） | — | — |
+| `--limit` | 返回结果数量 | 任意正整数 | `20` |
+| `--sort` | 排序方式 | `general`（综合排序）、`time_descending`（最新发布）、`hot`（最热） | `general` |
+| `--note-type` | 笔记类型 | `all`（全部）、`image`（图文）、`video`（视频） | `all` |
+| `--time-range` | 发布时间 | `all`（不限）、`day`（一天内）、`week`（一周内）、`month`（一月内） | `all` |
+| `--scope` | 搜索范围 | `all`（全部）、`following`（我关注的） | `all` |
+| `--location` | 位置距离 | `all`（不限）、`nearby`（附近）、`city`（同城） | `all` |
+| `--headless` | 无头模式运行 | — | `false` |
+
+**注意事项：**
+- `--scope following` 需要先登录
+- 所有筛选参数可自由组合
 
 ### Publish
 
 ```bash
-# Image note
+# 发布图文笔记
 npm run publish -- --title "标题" --content "正文" --images "img1.jpg,img2.jpg"
 
-# Video note
+# 发布视频笔记
 npm run publish -- --title "标题" --content "正文" --video "video.mp4"
 
-# With tags
+# 带标签发布
 npm run publish -- --title "标题" --content "正文" --images "img1.jpg" --tags "美食,探店"
 ```
 
-**Parameters:**
-- `--title <text>` (required) — Title (max 20 chars)
-- `--content <text>` (required) — Content (max 1000 chars)
-- `--images <paths>` — Image paths, comma-separated (1-9 images)
-- `--video <path>` — Video path (max 500MB) — mutually exclusive with `--images`
-- `--tags <tags>` — Tags, comma-separated (max 10)
-- `--headless` — Run in headless mode
+**参数说明：**
 
-**Supported formats:**
-- Images: `.jpg`, `.jpeg`, `.png`, `.gif`, `.webp`
-- Videos: `.mp4`, `.mov`, `.avi`, `.mkv`
+| 参数 | 说明 | 必填 | 默认值 |
+|------|------|------|--------|
+| `--title` | 笔记标题（最多20字） | ✅ | — |
+| `--content` | 笔记正文（最多1000字） | ✅ | — |
+| `--images` | 图片路径，逗号分隔（1-9张） | * | — |
+| `--video` | 视频路径（最大500MB） | * | — |
+| `--tags` | 标签，逗号分隔（最多10个） | ❌ | — |
+| `--headless` | 无头模式运行 | ❌ | `false` |
+
+> `--images` 与 `--video` 二选一，不可同时使用
+
+**支持格式：**
+- 图片：`.jpg`, `.jpeg`, `.png`, `.gif`, `.webp`
+- 视频：`.mp4`, `.mov`, `.avi`, `.mkv`
 
 ---
 

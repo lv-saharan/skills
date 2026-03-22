@@ -27,8 +27,16 @@ export interface CliLoginOptions {
 export interface CliSearchOptions {
   /** Number of results to return (string from CLI) */
   limit: string;
-  /** Sort by: hot or time */
-  sort: 'hot' | 'time';
+  /** Sort by: general, time_descending, or hot */
+  sort: 'general' | 'time_descending' | 'hot';
+  /** Note type filter: all, image, or video */
+  noteType?: 'all' | 'image' | 'video';
+  /** Time range filter: all, day, week, or month */
+  timeRange?: 'all' | 'day' | 'week' | 'month';
+  /** Search scope filter: all or following */
+  scope?: 'all' | 'following';
+  /** Location filter: all, nearby, or city */
+  location?: 'all' | 'nearby' | 'city';
   /** Run in headless mode */
   headless?: boolean;
 }

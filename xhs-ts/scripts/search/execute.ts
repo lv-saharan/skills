@@ -2,12 +2,20 @@
  * Search command implementation
  *
  * @module search/execute
- * @description Search notes by keyword with sorting options
+ * @description Search notes by keyword with filtering options
  */
 
 import type { Page } from 'playwright';
-import type { SearchOptions, SearchResult, SearchSortType } from './types';
-import { buildSearchUrl } from './url-builder';
+import type {
+  SearchOptions,
+  SearchResult,
+  SearchSortType,
+  SearchNoteType,
+  SearchTimeRange,
+  SearchScope,
+  SearchLocation,
+} from './types';
+import { buildSearchUrl, getFilterSelectors } from './url-builder';
 import { extractSearchResults } from './result-extractor';
 import { XhsError, XhsErrorCode } from '../shared';
 import { TIMEOUTS } from '../shared';
@@ -41,14 +49,38 @@ const SELECTOR_TIMEOUT = 15000;
 // URL builder imported from ./url-builder
 
 // ============================================
+// Filter Options Interface
+// ============================================
+
+/** Internal filter options for search */
+interface SearchFilters {
+  sort: SearchSortType;
+  noteType: SearchNoteType;
+  timeRange: SearchTimeRange;
+  scope: SearchScope;
+  location: SearchLocation;
+}
+
+// ============================================
 // Search Page Navigation
 // ============================================
 
 /**
  * Navigate to search page and wait for results
  */
-async function navigateToSearch(page: Page, keyword: string, sort: SearchSortType): Promise<void> {
-  const searchUrl = buildSearchUrl(keyword, sort);
+async function navigateToSearch(
+  page: Page,
+  keyword: string,
+  filters: SearchFilters
+): Promise<void> {
+  const searchUrl = buildSearchUrl({
+    keyword,
+    sort: filters.sort,
+    noteType: filters.noteType,
+    timeRange: filters.timeRange,
+    scope: filters.scope,
+    location: filters.location,
+  });
   debugLog(`Navigating to search URL: ${searchUrl}`);
 
   await page.goto(searchUrl, {
@@ -65,45 +97,74 @@ async function navigateToSearch(page: Page, keyword: string, sort: SearchSortTyp
     await delay(3000);
   }
 
-  // Handle sorting if needed
-  if (sort !== 'general') {
-    await applySort(page, sort);
+  // Apply filters via UI if needed (some filters may require UI interaction)
+  await applyFiltersViaUI(page, filters);
+}
+
+/**
+ * Apply filters via UI interaction
+ * Some filters may not work via URL params and need UI clicks
+ */
+async function applyFiltersViaUI(page: Page, filters: SearchFilters): Promise<void> {
+  const selectors = getFilterSelectors();
+
+  // Apply sort filter
+  if (filters.sort !== 'general') {
+    const sortSelector = selectors.sort[filters.sort];
+    if (sortSelector) {
+      await clickFilterButton(page, sortSelector, 'sort');
+    }
+  }
+
+  // Apply note type filter
+  if (filters.noteType !== 'all') {
+    const noteTypeSelector = selectors.noteType[filters.noteType];
+    if (noteTypeSelector) {
+      await clickFilterButton(page, noteTypeSelector, 'noteType');
+    }
+  }
+
+  // Apply time range filter
+  if (filters.timeRange !== 'all') {
+    const timeRangeSelector = selectors.timeRange[filters.timeRange];
+    if (timeRangeSelector) {
+      await clickFilterButton(page, timeRangeSelector, 'timeRange');
+    }
+  }
+
+  // Apply scope filter
+  if (filters.scope !== 'all') {
+    const scopeSelector = selectors.scope[filters.scope];
+    if (scopeSelector) {
+      await clickFilterButton(page, scopeSelector, 'scope');
+    }
+  }
+
+  // Apply location filter
+  if (filters.location !== 'all') {
+    const locationSelector = selectors.location[filters.location];
+    if (locationSelector) {
+      await clickFilterButton(page, locationSelector, 'location');
+    }
   }
 }
 
 /**
- * Apply sort type to search results
+ * Click a filter button safely
  */
-async function applySort(page: Page, sort: SearchSortType): Promise<void> {
-  const sortMap: Record<string, string> = {
-    hot: '最热',
-    time: '最新',
-  };
-
-  const sortText = sortMap[sort];
-  if (!sortText) {
-    return;
-  }
-
-  debugLog(`Applying sort: ${sortText}`);
-
+async function clickFilterButton(page: Page, selector: string, filterName: string): Promise<void> {
   try {
-    // Find and click sort button
-    const sortButton = page.locator(
-      `button:has-text("${sortText}"), div[role="button"]:has-text("${sortText}")`
-    );
-    const isVisible = await sortButton.isVisible().catch(() => false);
+    const button = page.locator(selector).first();
+    const isVisible = await button.isVisible({ timeout: 3000 }).catch(() => false);
 
     if (isVisible) {
-      await humanClick(
-        page,
-        `button:has-text("${sortText}"), div[role="button"]:has-text("${sortText}")`
-      );
-      await randomDelay(1500, 2500);
-      debugLog(`Sort applied: ${sortText}`);
+      debugLog(`Applying ${filterName} filter...`);
+      await humanClick(page, selector);
+      await randomDelay(1000, 2000);
+      debugLog(`${filterName} filter applied`);
     }
   } catch (error) {
-    debugLog('Failed to apply sort, using default ordering', error);
+    debugLog(`Failed to apply ${filterName} filter`, error);
   }
 }
 
@@ -186,12 +247,12 @@ async function performSearch(
   page: Page,
   keyword: string,
   limit: number,
-  sort: SearchSortType
+  filters: SearchFilters
 ): Promise<SearchResult> {
   debugLog('Starting performSearch...');
 
   // Navigate to search page
-  await navigateToSearch(page, keyword, sort);
+  await navigateToSearch(page, keyword, filters);
 
   // Wait for page to stabilize
   debugLog('Waiting for page to stabilize...');
@@ -248,9 +309,28 @@ async function performSearch(
  * Execute search command
  */
 export async function executeSearch(options: SearchOptions): Promise<void> {
-  const { keyword, limit = DEFAULT_SEARCH_LIMIT, sort = 'hot', headless } = options;
+  const {
+    keyword,
+    limit = DEFAULT_SEARCH_LIMIT,
+    sort = 'general',
+    noteType = 'all',
+    timeRange = 'all',
+    scope = 'all',
+    location = 'all',
+    headless,
+  } = options;
 
-  debugLog(`Search command: keyword="${keyword}", limit=${limit}, sort=${sort}`);
+  const filters: SearchFilters = {
+    sort,
+    noteType,
+    timeRange,
+    scope,
+    location,
+  };
+
+  debugLog(
+    `Search command: keyword="${keyword}", limit=${limit}, filters=${JSON.stringify(filters)}`
+  );
   debugLog(`Headless mode: ${headless ?? config.headless}`);
 
   let instance: BrowserInstance | null = null;
@@ -260,7 +340,6 @@ export async function executeSearch(options: SearchOptions): Promise<void> {
     debugLog('Loading and validating cookies...');
     const cookies = await loadCookies();
     validateCookies(cookies);
-    debugLog(`Loaded ${cookies.length} cookies`);
 
     // Create browser instance
     const isHeadless = headless ?? config.headless;
@@ -302,7 +381,7 @@ export async function executeSearch(options: SearchOptions): Promise<void> {
 
     // Perform search
     debugLog('Starting search...');
-    const result = await performSearch(instance.page, keyword, limit, sort);
+    const result = await performSearch(instance.page, keyword, limit, filters);
 
     debugLog('Search complete, outputting result...');
     outputSuccess(result, 'PARSE:notes');
@@ -313,6 +392,5 @@ export async function executeSearch(options: SearchOptions): Promise<void> {
   } finally {
     debugLog('Closing browser...');
     await closeBrowserInstance(instance);
-    debugLog('Browser closed');
   }
 }

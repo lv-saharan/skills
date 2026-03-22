@@ -57,19 +57,26 @@ program
   .command('search <keyword>')
   .description('Search notes by keyword')
   .option('--limit <number>', 'Number of results', '20')
-  .option('--sort <type>', 'Sort by: hot or time', 'hot')
+  .option('--sort <type>', 'Sort by: general, time_descending, or hot', 'general')
+  .option('--note-type <type>', 'Note type: all, image, or video', 'all')
+  .option('--time-range <range>', 'Time range: all, day, week, or month', 'all')
+  .option('--scope <scope>', 'Search scope: all or following', 'all')
+  .option('--location <location>', 'Location: all, nearby, or city', 'all')
   .option('--headless', 'Run in headless mode')
   .action(async (keyword: string, options: CliSearchOptions) => {
     const limit = parseInt(options.limit, 10);
-    const sort = options.sort as 'hot' | 'time';
     const headless = options.headless !== undefined ? options.headless : config.headless;
 
-    debugLog(`Search: keyword="${keyword}", limit=${limit}, sort=${sort}, headless=${headless}`);
+    debugLog(`Search: keyword="${keyword}", limit=${limit}, options=${JSON.stringify(options)}`);
 
     await executeSearch({
       keyword,
       limit,
-      sort,
+      sort: options.sort,
+      noteType: options.noteType,
+      timeRange: options.timeRange,
+      scope: options.scope,
+      location: options.location,
       headless,
     });
   });
