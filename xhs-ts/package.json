@@ -1,6 +1,6 @@
 {
   "name": "xhs-ts",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "小红书（Xiaohongshu）自动化操作技能，支持搜索、发布、互动、数据抓取",
   "type": "module",
   "bin": {

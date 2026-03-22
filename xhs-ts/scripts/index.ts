@@ -21,7 +21,7 @@ import { XhsErrorCode } from './shared';
 
 const program = new Command();
 
-program.name('xhs').description('Xiaohongshu automation CLI').version('0.0.1');
+program.name('xhs').description('Xiaohongshu automation CLI').version('0.0.2');
 
 // ============================================
 // Login Command
