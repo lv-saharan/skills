@@ -7,7 +7,7 @@ description: |
 license: MIT
 compatibility: opencode
 metadata:
-  version: "0.0.2"
+  version: "0.0.3"
   openclaw:
     emoji: "📕"
     requires:
@@ -49,7 +49,7 @@ metadata:
 
 ## Output Format
 
-All commands output JSON to stdout. The `toAgent` field provides **actionable instructions** for the agent.
+All commands output JSON to stdout. The `toAgent` field provides **actionable instructions**.
 
 ### toAgent Format
 
@@ -57,50 +57,34 @@ All commands output JSON to stdout. The `toAgent` field provides **actionable in
 ACTION[:TARGET][:HINT]
 ```
 
-| Action | Meaning | Example |
-|--------|---------|---------|
-| `DISPLAY_IMAGE` | Show image to user | `DISPLAY_IMAGE:qrPath` |
-| `RELAY` | Relay message to user | `RELAY:发布成功` |
-| `WAIT` | Wait for user action | `WAIT:扫码` |
-| `PARSE` | Parse and present data | `PARSE:notes` |
+| Action | Agent 行为 |
+|--------|-----------|
+| `DISPLAY_IMAGE` | 使用 `look_at` 读取图片，根据 Channel 类型发送 |
+| `RELAY` | 直接转发消息给用户 |
+| `WAIT` | 等待用户操作，提示 HINT 文本 |
+| `PARSE` | 格式化 `data` 内容并展示 |
 
-### Success Response
+**字段引用：** `TARGET` 若匹配同层 JSON 字段名，则取该字段值（如 `DISPLAY_IMAGE:qrPath` 读取 `qrPath` 字段）。
 
-```json
-{
-  "success": true,
-  "data": { ... },
-  "toAgent": "RELAY:操作成功"
-}
-```
+**Channel 适配：** Agent 应根据接入的 Channel（飞书/企业微信/CLI）选择合适的消息格式发送。详见 [Channel Integration Guide](references/channel-integration.md)。
 
-### Error Response
+### Response Examples
 
 ```json
-{
-  "error": true,
-  "message": "Error description",
-  "code": "ERROR_CODE"
-}
-```
-
-### QR Code (Headless Login)
-
-```json
+// QR 码登录
 {
   "type": "qr_login",
-  "status": "waiting_scan",
-  "qrPath": "/absolute/path/to/tmp/qr_login_YYYYMMDD_HHmmss.png",
-  "message": "请使用小红书 App 扫描二维码登录",
+  "qrPath": "/absolute/path/to/qr.png",
   "toAgent": "DISPLAY_IMAGE:qrPath:WAIT:扫码"
 }
-```
 
-**Agent handling:**
-1. Parse `toAgent`: `DISPLAY_IMAGE:qrPath:WAIT:扫码`
-2. Use `look_at` tool to read the image at `qrPath`
-3. Display to user
-4. Wait for scan
+// 搜索结果
+{
+  "success": true,
+  "data": { "notes": [...] },
+  "toAgent": "PARSE:notes"
+}
+```
 
 ---
 
@@ -269,4 +253,5 @@ Built-in protection:
 - [Installation Guide](references/installation.md)
 - [Configuration](references/configuration.md)
 - [Command Reference](references/commands.md)
+- [Channel Integration](references/channel-integration.md) — toAgent 处理与消息格式适配
 - [Troubleshooting](references/troubleshooting.md)

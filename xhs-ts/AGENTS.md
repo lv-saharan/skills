@@ -280,3 +280,84 @@ npm run lint && npm run typecheck
 8. **Login Module**: 保持结构完整 (execute.ts, qr.ts, sms.ts, verify.ts)
 9. **Temp Files**: 使用 `getTmpFilePath()` 管理临时文件路径
 10. **Anti-Detection**: 最小化浏览器参数 + stealth 脚本
+
+---
+
+## Browser Resource Management (TypeScript 5.2+)
+
+### Modern Pattern with `await using`
+
+The project uses TypeScript 5.2+ `AsyncDisposable` pattern for automatic browser resource cleanup.
+
+**Recommended usage:**
+```typescript
+import { withSession } from './browser';
+
+// Pattern 1: Using withSession helper
+const result = await withSession(async (session) => {
+  await session.page.goto('https://example.com');
+  return await session.page.title();
+}, { headless: true });
+
+// Pattern 2: Direct await using (when you need more control)
+await using session = await BrowserSession.create({ headless: true });
+await session.page.goto('https://example.com');
+// Automatic cleanup when scope exits
+```
+
+### Multi-Page Management
+
+For scenarios that open new tabs (e.g., publish flow):
+
+```typescript
+await withSession(async (session) => {
+  // Open new tab
+  const [newPage] = await Promise.all([
+    session.context.waitForEvent('page'),
+    session.page.click('a[href*="creator.xiaohongshu.com"]'),
+  ]);
+  
+  // Track for automatic cleanup
+  const trackedPage = session.trackPage(newPage, 'publish');
+  
+  // Use trackedPage.page for operations
+  await trackedPage.page.goto('...');
+  
+  // Optional: close early if needed
+  await session.closePage('publish');
+}, { headless: true });
+// All tracked pages + context + browser are cleaned up automatically
+```
+
+### Key Features
+
+| Feature | Description |
+|---------|-------------|
+| **Automatic cleanup** | `await using` ensures disposal even on error |
+| **Rollback on failure** | Partial initialization is cleaned up |
+| **Explicit close order** | pages → context → browser (LIFO) |
+| **Multi-page tracking** | `trackPage()` for dynamically opened tabs |
+| **Error aggregation** | Cleanup errors don't mask original errors |
+
+### Legacy API (Backward Compatible)
+
+The old `createBrowserInstance`/`closeBrowserInstance` pattern still works but is deprecated:
+
+```typescript
+// Legacy pattern (still supported)
+let instance = await createBrowserInstance({ headless });
+try {
+  // ...
+} finally {
+  await closeBrowserInstance(instance);
+}
+
+// New pattern (recommended)
+await using session = await BrowserSession.create({ headless });
+// Automatic cleanup
+```
+
+### Requirements
+
+- **Node.js**: >= 22.16.0 (required for `using` syntax)
+- **TypeScript**: >= 5.2 (for `AsyncDisposable` support)

@@ -19,8 +19,7 @@ import { buildSearchUrl, getFilterSelectors } from './url-builder';
 import { extractSearchResults } from './result-extractor';
 import { XhsError, XhsErrorCode } from '../shared';
 import { TIMEOUTS } from '../shared';
-import type { BrowserInstance } from '../browser';
-import { createBrowserInstance, closeBrowserInstance } from '../browser';
+import { withSession } from '../browser';
 import { loadCookies, validateCookies } from '../cookie';
 import { XHS_URLS, config, debugLog, delay, randomDelay } from '../utils/helpers';
 import { humanClick, humanScroll, checkCaptcha, checkLoginStatus } from '../utils/anti-detect';
@@ -333,64 +332,56 @@ export async function executeSearch(options: SearchOptions): Promise<void> {
   );
   debugLog(`Headless mode: ${headless ?? config.headless}`);
 
-  let instance: BrowserInstance | null = null;
+  await withSession(
+    async (session) => {
+      // Validate cookies
+      debugLog('Loading and validating cookies...');
+      const cookies = await loadCookies();
+      validateCookies(cookies);
 
-  try {
-    // Validate cookies
-    debugLog('Loading and validating cookies...');
-    const cookies = await loadCookies();
-    validateCookies(cookies);
+      // Add cookies to context
+      debugLog('Adding cookies to context...');
+      await session.context.addCookies(cookies);
 
-    // Create browser instance
-    const isHeadless = headless ?? config.headless;
-    debugLog('Creating browser instance...');
-    instance = await createBrowserInstance({ headless: isHeadless });
-    debugLog('Browser instance created');
+      // Verify login status
+      debugLog('Verifying login status...');
+      await session.page.goto(XHS_URLS.home, { timeout: TIMEOUTS.PAGE_LOAD });
+      await delay(2000); // Wait for page to fully load
 
-    // Add cookies to context
-    debugLog('Adding cookies to context...');
-    await instance.context.addCookies(cookies);
+      const isLoggedIn = await checkLoginStatus(session.page);
+      debugLog(`Login status: ${isLoggedIn}`);
 
-    // Verify login status
-    debugLog('Verifying login status...');
-    await instance.page.goto(XHS_URLS.home, { timeout: TIMEOUTS.PAGE_LOAD });
-    await delay(2000); // Wait for page to fully load
+      if (!isLoggedIn) {
+        debugLog('Login check failed: checking for login modal...');
 
-    const isLoggedIn = await checkLoginStatus(instance.page);
-    debugLog(`Login status: ${isLoggedIn}`);
+        // Check specifically for login modal
+        const hasLoginModal = await session.page
+          .locator('[class*="login"], [class*="qrcode"], [class*="QRCode"]')
+          .first()
+          .isVisible()
+          .catch(() => false);
 
-    if (!isLoggedIn) {
-      debugLog('Login check failed: checking for login modal...');
+        if (hasLoginModal) {
+          debugLog('Login modal detected - user needs to login');
+        }
 
-      // Check specifically for login modal
-      const hasLoginModal = await instance.page
-        .locator('[class*="login"], [class*="qrcode"], [class*="QRCode"]')
-        .first()
-        .isVisible()
-        .catch(() => false);
-
-      if (hasLoginModal) {
-        debugLog('Login modal detected - user needs to login');
+        throw new XhsError(
+          'Not logged in or session expired. Please run "xhs login" first.',
+          XhsErrorCode.NOT_LOGGED_IN
+        );
       }
 
-      throw new XhsError(
-        'Not logged in or session expired. Please run "xhs login" first.',
-        XhsErrorCode.NOT_LOGGED_IN
-      );
-    }
+      // Perform search
+      debugLog('Starting search...');
+      const result = await performSearch(session.page, keyword, limit, filters);
 
-    // Perform search
-    debugLog('Starting search...');
-    const result = await performSearch(instance.page, keyword, limit, filters);
-
-    debugLog('Search complete, outputting result...');
-    outputSuccess(result, 'PARSE:notes');
-    debugLog('Result output complete');
-  } catch (error) {
+      debugLog('Search complete, outputting result...');
+      outputSuccess(result, 'PARSE:notes');
+      debugLog('Result output complete');
+    },
+    { headless: headless ?? config.headless }
+  ).catch((error) => {
     debugLog('Search error:', error);
     outputFromError(error);
-  } finally {
-    debugLog('Closing browser...');
-    await closeBrowserInstance(instance);
-  }
+  });
 }

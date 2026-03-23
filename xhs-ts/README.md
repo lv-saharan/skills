@@ -1,6 +1,6 @@
 # 小红书自动化 Skill (xhs-ts)
 
-[![Version](https://img.shields.io/badge/version-0.0.2-blue.svg)](https://github.com/openclaw/xhs-ts)
+[![Version](https://img.shields.io/badge/version-0.0.3-blue.svg)](https://github.com/openclaw/xhs-ts)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Node](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen.svg)](https://nodejs.org/)
 
@@ -261,50 +261,36 @@ npm run publish -- --title "今日探店" --content "这家店超好吃！" --im
 ACTION[:TARGET][:HINT]
 ```
 
-| Action | 含义 | 示例 |
-|--------|------|------|
-| `DISPLAY_IMAGE` | 显示图片给用户 | `DISPLAY_IMAGE:qrPath` |
-| `RELAY` | 转发消息给用户 | `RELAY:发布成功` |
-| `WAIT` | 等待用户操作 | `WAIT:扫码` |
-| `PARSE` | 解析并展示数据 | `PARSE:notes` |
+| Action | Agent 行为 |
+|--------|-----------|
+| `DISPLAY_IMAGE` | 使用 `look_at` 读取图片，根据 Channel 类型发送 |
+| `RELAY` | 直接转发消息给用户 |
+| `WAIT` | 等待用户操作，提示 HINT 文本 |
+| `PARSE` | 格式化 `data` 内容并展示 |
 
-### 成功响应
+**字段引用：** `TARGET` 若匹配同层 JSON 字段名，则取该字段值。
 
-```json
-{
-  "success": true,
-  "data": { ... },
-  "toAgent": "RELAY:操作成功"
-}
-```
+**Channel 适配：** Agent 应根据接入的 Channel（飞书/企业微信/微信个人号/CLI）选择合适的消息格式发送。
 
-### 错误响应
+> **🚀 势不可挡** — 2026年3月，腾讯发布官方微信个人号插件 `@tencent-weixin/openclaw-weixin`，扫码授权即可接入 OpenClaw。至此，飞书、企业微信、微信个人号全线打通，Agent 能力覆盖主流通讯平台。详情见 [Channel Integration Guide](references/channel-integration.md)。
+
+### 响应示例
 
 ```json
-{
-  "error": true,
-  "message": "错误描述",
-  "code": "ERROR_CODE"
-}
-```
-
-### 二维码（无头模式登录）
-
-```json
+// QR 码登录
 {
   "type": "qr_login",
-  "status": "waiting_scan",
-  "qrPath": "/absolute/path/to/tmp/qr_login_20260322_093000.png",
-  "message": "请使用小红书 App 扫描二维码登录",
+  "qrPath": "/absolute/path/to/qr.png",
   "toAgent": "DISPLAY_IMAGE:qrPath:WAIT:扫码"
 }
-```
 
-**Agent 处理流程：**
-1. 解析 `toAgent`：`DISPLAY_IMAGE:qrPath:WAIT:扫码`
-2. 使用 `look_at` 工具读取 `qrPath` 图片
-3. 展示给用户
-4. 等待扫码
+// 搜索结果
+{
+  "success": true,
+  "data": { "notes": [...] },
+  "toAgent": "PARSE:notes"
+}
+```
 
 ---
 
