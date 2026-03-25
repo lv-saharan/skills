@@ -82,6 +82,7 @@ program
   .option('--sms', 'Use SMS login')
   .option('--headless', 'Run in headless mode (output QR as JSON)')
   .option('--timeout <ms>', 'Login timeout in milliseconds')
+  .option('--user <name>', 'User name for multi-user support')
   .action(async (options: CliLoginOptions) => {
     // CLI args override .env defaults
     const method = options.sms ? 'sms' : options.qr ? 'qr' : config.loginMethod;
@@ -89,7 +90,7 @@ program
     const user = resolveUser(options.user);
     const timeout = options.timeout ? parseInt(options.timeout, 10) : config.loginTimeout;
 
-    debugLog(`Login command: method=${method}, headless=${headless}, timeout=${timeout}`);
+    debugLog(`Login command: method=${method}, headless=${headless}, timeout=${timeout}, user=${user}`);
 
     await executeLogin({
       method,
