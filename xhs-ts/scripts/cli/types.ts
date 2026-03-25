@@ -19,14 +19,18 @@ export interface CliLoginOptions {
   headless?: boolean;
   /** Login timeout in milliseconds (string from CLI) */
   timeout?: string;
+  /** User name for multi-user support */
+  user?: string;
 }
 
 /**
  * Search command options (CLI-specific, raw string inputs)
  */
 export interface CliSearchOptions {
-  /** Number of results to return (string from CLI) */
+  /** Number of results to return (string from CLI, default: 10, max: 100) */
   limit: string;
+  /** Number of results to skip (string from CLI, default: 0) */
+  skip?: string;
   /** Sort by: general, time_descending, or hot */
   sort: 'general' | 'time_descending' | 'hot';
   /** Note type filter: all, image, or video */
@@ -39,6 +43,8 @@ export interface CliSearchOptions {
   location?: 'all' | 'nearby' | 'city';
   /** Run in headless mode */
   headless?: boolean;
+  /** User name for multi-user support */
+  user?: string;
 }
 
 /**
@@ -57,6 +63,8 @@ export interface CliPublishOptions {
   tags?: string;
   /** Run in headless mode */
   headless?: boolean;
+  /** User name for multi-user support */
+  user?: string;
 }
 
 /**
@@ -65,4 +73,16 @@ export interface CliPublishOptions {
 export interface InteractOptions {
   /** Run in headless mode */
   headless?: boolean;
+  /** User name for multi-user support */
+  user?: string;
+}
+
+/**
+ * User command options
+ */
+export interface CliUserOptions {
+  /** Set current user */
+  setCurrent?: string;
+  /** Set to default user */
+  setDefault?: boolean;
 }

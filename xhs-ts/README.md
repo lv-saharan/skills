@@ -1,6 +1,6 @@
 # 小红书自动化 Skill (xhs-ts)
 
-[![Version](https://img.shields.io/badge/version-0.0.3-blue.svg)](https://github.com/openclaw/xhs-ts)
+[![Version](https://img.shields.io/badge/version-4-blue.svg)](https://github.com/lv-saharan/skills/tree/main/xhs-ts)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Node](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen.svg)](https://nodejs.org/)
 
@@ -13,6 +13,7 @@
 | 🔐 登录 | `npm run login` | ✅ 已实现 | 扫码/短信登录，Cookie 管理 |
 | 🔍 搜索 | `npm run search -- "<keyword>"` | ✅ 已实现 | 关键词搜索，多维度筛选 |
 | 📝 发布 | `npm run publish -- [options]` | ✅ 已实现 | 图文/视频笔记发布 |
+| 👤 多用户 | `npm run user` | ✅ 已实现 | 多账号管理 |
 | 💬 点赞 | `npm run like -- "<url>"` | ❌ 未实现 | 点赞笔记 |
 | 📌 收藏 | `npm run collect -- "<url>"` | ❌ 未实现 | 收藏笔记 |
 | 💭 评论 | `npm run comment -- "<url>" "text"` | ❌ 未实现 | 评论笔记 |
@@ -97,17 +98,12 @@ DEBUG=false
 # 扫码登录（默认）
 npm run login
 
+# 无头模式登录（二维码保存到文件）
+npm run login:headless
+
 # 短信验证登录
 npm run login -- --sms
-
-# 登录创作服务平台（发布笔记需要）
-npm run login -- --creator
-
-# 同时登录主站和创作平台
-npm run login && npm run login -- --creator
 ```
-
-> **重要提示**：发布笔记功能需要登录创作服务平台 (`--creator`)。主站登录和创作平台登录是独立的，需要分别进行。
 
 **登录参数：**
 
@@ -117,7 +113,7 @@ npm run login && npm run login -- --creator
 | `--sms` | 短信登录 | — |
 | `--headless` | 无头模式运行 | `false` |
 | `--timeout` | 登录超时时间（毫秒） | `120000` |
-| `--creator` | 登录创作者中心 | — |
+| `--user` | 指定用户 | 当前用户 |
 
 **手动导入 Cookie：**
 
@@ -135,6 +131,67 @@ npm run login && npm run login -- --creator
 }
 ```
 
+### 多用户管理
+
+xhs-ts 支持多账号管理，每个用户拥有独立的 Cookie 和临时文件。
+
+**目录结构：**
+
+```
+xhs-ts/
+├── users/                    # 多用户目录
+│   ├── users.json            # 用户元数据
+│   ├── default/              # 默认用户
+│   │   ├── cookies.json
+│   │   └── tmp/
+│   └── 小号/                 # 用户"小号"
+│       ├── cookies.json
+│       └── tmp/
+├── cookies.json              # 旧版（首次运行自动迁移）
+└── tmp/                      # 旧版（首次运行自动迁移）
+```
+
+**用户选择优先级：**
+
+```
+--user <name>  >  users.json current  >  default
+```
+
+**命令示例：**
+
+```bash
+# 查看用户列表
+npm run user
+
+# 输出示例：
+# | Name      | Has Cookie |
+# |-----------|------------|
+# | default   | ✅         |
+# | 小号      | ✅         |
+
+# 设置当前用户（方式一：使用快捷命令）
+npm run user:use -- "小号"
+
+# 设置当前用户（方式二：使用完整命令）
+npm run user -- --set-current "小号"
+
+# 重置为默认用户
+npm run user -- --set-default
+
+# 登录指定用户
+npm run login -- --user "小号"
+
+# 使用指定用户搜索
+npm run search -- "美食" --user "小号"
+
+# 使用指定用户发布
+npm run publish -- --title "标题" --content "内容" --images "1.jpg" --user "主号"
+```
+
+**自动迁移：**
+
+首次运行时，现有的 `cookies.json` 和 `tmp/` 会自动迁移到 `users/default/`，原文件会被删除。
+
 ### 搜索笔记
 
 ```bash
@@ -142,7 +199,7 @@ npm run login && npm run login -- --creator
 npm run search -- "美食探店"
 
 # 指定数量和排序
-npm run search -- "美食探店" --limit 10 --sort hot
+npm run search -- "美食探店" --limit 20 --sort hot
 
 # 筛选图文笔记，发布时间在一周内
 npm run search -- "美食探店" --note-type image --time-range week
@@ -155,6 +212,12 @@ npm run search -- "美食探店" --location nearby
 
 # 组合筛选：视频笔记 + 一月内发布 + 热度排序 + 同城
 npm run search -- "旅游攻略" --limit 20 --sort hot --note-type video --time-range month --location city
+
+# 分页示例：获取第 2 页（每页 10 条）
+npm run search -- "美食探店" --limit 10 --skip 10
+
+# 分页示例：获取第 3 页（每页 20 条）
+npm run search -- "美食探店" --limit 20 --skip 40
 ```
 
 **参数说明：**
@@ -162,13 +225,15 @@ npm run search -- "旅游攻略" --limit 20 --sort hot --note-type video --time-
 | 参数 | 说明 | 可选值 | 默认值 |
 |------|------|--------|--------|
 | `<keyword>` | 搜索关键词（必填） | — | — |
-| `--limit` | 返回结果数量 | 任意正整数 | `20` |
+| `--limit` | 返回结果数量 | 1-100 | `10` (最大 100) |
+| `--skip` | 跳过结果数量 | 非负整数 | `0` |
 | `--sort` | 排序方式 | `general`（综合）、`time_descending`（最新）、`hot`（最热） | `general` |
 | `--note-type` | 笔记类型 | `all`（全部）、`image`（图文）、`video`（视频） | `all` |
 | `--time-range` | 发布时间 | `all`（不限）、`day`（一天内）、`week`（一周内）、`month`（一月内） | `all` |
 | `--scope` | 搜索范围 | `all`（全部）、`following`（我关注的） | `all` |
 | `--location` | 位置距离 | `all`（不限）、`nearby`（附近）、`city`（同城） | `all` |
 | `--headless` | 无头模式运行 | — | `false` |
+| `--user` | 指定用户 | 用户名 | 当前用户 |
 
 **注意事项：**
 - `--scope following` 需要先登录
@@ -226,6 +291,7 @@ npm run publish -- --title "今日探店" --content "这家店超好吃！" --im
 | `--images` | 二选一 | 图片路径，多个用逗号分隔（1-9 张） |
 | `--video` | 二选一 | 视频路径（单个文件，最大 500MB） |
 | `--tags` | 否 | 标签，多个用逗号分隔（最多 10 个） |
+| `--user` | 否 | 指定用户（默认当前用户） |
 
 **支持格式：**
 - 图片：`.jpg`, `.jpeg`, `.png`, `.gif`, `.webp`
@@ -386,6 +452,7 @@ xhs-ts/
 │   ├── config/           # 配置模块
 │   ├── browser/          # 浏览器管理（启动、上下文、Stealth）
 │   ├── cookie/           # Cookie 管理（存储、验证）
+│   ├── user/             # 多用户管理（目录操作、迁移）
 │   ├── login/            # 登录模块（QR、SMS、验证）
 │   ├── search/           # 搜索模块（URL构建、结果提取）
 │   ├── publish/          # 发布模块（上传、编辑、提交）
@@ -396,8 +463,13 @@ xhs-ts/
 │       ├── helpers/      # delay, randomDelay, waitForCondition
 │       ├── anti-detect/  # humanClick, checkLoginStatus
 │       └── output/       # outputSuccess, outputError
-├── cookies.json          # Cookie 存储（运行时生成，git-ignored）
-└── tmp/                  # 临时文件（QR 图片等，运行时生成）
+├── users/                # 多用户目录（运行时生成，git-ignored）
+│   ├── users.json        # 用户元数据
+│   └── {用户名}/          # 每用户独立目录
+│       ├── cookies.json  # Cookie 存储
+│       └── tmp/          # 临时文件
+├── cookies.json          # 旧版 Cookie（自动迁移后删除）
+└── tmp/                  # 旧版临时文件（自动迁移后删除）
 ```
 
 ---
@@ -406,12 +478,12 @@ xhs-ts/
 
 ### Gotchas
 
-1. **发布需要创作者登录** — 必须单独运行 `npm run login -- --creator`
-2. **无头模式自动检测** — Linux 服务器（无 DISPLAY）自动强制无头模式
-3. **二维码文件路径** — 无头模式下，二维码保存到 `{baseDir}/tmp/qr_login_*.png`
-4. **频率限制** — 操作间保持 2-5 秒间隔以避免触发风控
-5. **`--scope following`** — 需要先登录才能搜索关注用户的笔记
-6. **筛选器应用** — 部分筛选通过 URL 参数应用，部分可能需要页面交互
+1. **无头模式自动检测** — Linux 服务器（无 DISPLAY）自动强制无头模式
+2. **二维码文件路径** — 无头模式下，二维码保存到 `users/{user}/tmp/qr_login_*.png`
+3. **频率限制** — 操作间保持 2-5 秒间隔以避免触发风控
+4. **`--scope following`** — 需要先登录才能搜索关注用户的笔记
+5. **筛选器应用** — 部分筛选通过 URL 参数应用，部分可能需要页面交互
+6. **多用户支持** — 使用 `--user <name>` 切换不同账号
 
 ---
 
@@ -461,6 +533,7 @@ npm install
 4. **Cookie 有效期** - 定期检查登录状态
 5. **代理使用** - 高频操作建议使用代理 IP
 6. **纯 TypeScript** - 无编译步骤，tsx 直接执行
+7. **缺少测试警告** - ⚠️ 测试不太充分。欢迎共同修正完善。
 
 ---
 

@@ -6,6 +6,7 @@
  */
 
 import type { LoginMethod } from '../shared';
+import type { UserName } from '../user';
 
 // Re-export LoginMethod for convenience
 export type { LoginMethod } from '../shared';
@@ -24,6 +25,8 @@ export interface LoginOptions {
   timeout?: number;
   /** Login to creator center instead of main site */
   creator?: boolean;
+  /** User name for multi-user support */
+  user?: UserName;
 }
 
 // ============================================
@@ -35,4 +38,6 @@ export interface LoginResult {
   success: boolean;
   message: string;
   cookieSaved?: boolean;
+  /** User name that was logged in */
+  user?: UserName;
 }

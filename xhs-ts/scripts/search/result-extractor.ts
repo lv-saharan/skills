@@ -27,24 +27,34 @@ type ExtractResult = {
  * Requires __name polyfill in stealth injection (added to browser/stealth.ts)
  * to handle tsx/esbuild __name injection that conflicts with XHS page's __name
  */
-export async function extractSearchResults(page: Page, limit: number): Promise<SearchResultNote[]> {
+export async function extractSearchResults(
+  page: Page,
+  limit: number,
+  skip: number = 0
+): Promise<SearchResultNote[]> {
   debugLog('Extracting search results...');
 
   const noteLocator = page.locator(`${SEARCH_CONTAINER_SELECTOR} ${NOTE_ITEM_SELECTOR}`);
   const count = await noteLocator.count().catch(() => 0);
-  const actualLimit = Math.min(count, limit);
+  // Calculate extraction range
+  const startIndex = skip;
+  const endIndex = Math.min(count, skip + limit);
+  const actualLimit = endIndex - startIndex;
 
-  debugLog(`Found ${count} note items, extracting ${actualLimit}`);
-
-  if (actualLimit === 0) {
+  if (actualLimit <= 0) {
+    debugLog(`No notes to extract (skip=${skip}, limit=${limit}, available=${count})`);
     return [];
   }
+
+  debugLog(
+    `Found ${count} note items, extracting from index ${skip} to ${endIndex} (total ${actualLimit})`
+  );
 
   try {
     // Direct page.evaluate with arrow function
     // __name polyfill is injected via stealth.ts to handle tsx/esbuild injection
     const rawData = (await page.evaluate(
-      ({ containerSel, noteSel, max }) => {
+      ({ containerSel, noteSel, skip, max }) => {
         const container = document.querySelector(containerSel);
         if (!container) {
           return { error: 'container_not_found', selector: containerSel, count: 0, results: [] };
@@ -110,7 +120,7 @@ export async function extractSearchResults(page: Page, limit: number): Promise<S
           return { noteId, xsecToken };
         };
 
-        for (let idx = 0; idx < items.length && idx < max; idx++) {
+        for (let idx = skip; idx < items.length && idx < max; idx++) {
           const item = items[idx];
           const info = extractInfo(item);
 
@@ -128,7 +138,7 @@ export async function extractSearchResults(page: Page, limit: number): Promise<S
 
           const titleEl =
             item.querySelector("[class*='title']") || item.querySelector("[class*='content']");
-          const title = titleEl?.textContent?.trim() || '笔记 ' + (idx + 1);
+          const title = titleEl?.textContent?.trim() || '笔记 ' + (idx - skip + 1);
 
           const imgEl = item.querySelector('img');
           const cover = imgEl?.src || '';
@@ -166,7 +176,12 @@ export async function extractSearchResults(page: Page, limit: number): Promise<S
 
         return { error: null, count: items.length, results };
       },
-      { containerSel: SEARCH_CONTAINER_SELECTOR, noteSel: NOTE_ITEM_SELECTOR, max: actualLimit }
+      {
+        containerSel: SEARCH_CONTAINER_SELECTOR,
+        noteSel: NOTE_ITEM_SELECTOR,
+        skip: startIndex,
+        max: endIndex,
+      }
     )) as ExtractResult;
 
     if (rawData && typeof rawData === 'object' && rawData.error) {

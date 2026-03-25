@@ -33,9 +33,9 @@ import { submitAndVerify, clickPublishButtonOnHomepage } from './submitter';
  * Execute publish command
  */
 export async function executePublish(options: PublishOptions): Promise<void> {
-  const { title, content, mediaPaths, tags, headless } = options;
+  const { title, content, mediaPaths, tags, headless, user } = options;
 
-  debugLog(`Publish command: title="${title}", media=${mediaPaths.length} files`);
+  debugLog(`Publish command: title="${title}", media=${mediaPaths.length} files, user=${user}`);
   debugLog(`Headless mode: ${headless ?? config.headless}`);
 
   await withSession(
@@ -57,8 +57,8 @@ export async function executePublish(options: PublishOptions): Promise<void> {
       debugLog(`Media validation passed: type=${mediaValidation.type}`);
 
       // Load and validate cookies
-      debugLog('Loading and validating cookies...');
-      const cookies = await loadCookies();
+      debugLog(`Loading and validating cookies for user: ${user || 'default'}...`);
+      const cookies = await loadCookies(user);
       validateCookies(cookies);
 
       // Add cookies to context
@@ -129,6 +129,7 @@ export async function executePublish(options: PublishOptions): Promise<void> {
       // Submit and verify
       debugLog('Submitting note...');
       const result = await submitAndVerify(publishPage);
+      result.user = user;
 
       debugLog('Publish complete, outputting result...');
       if (result.success) {

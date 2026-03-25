@@ -5,6 +5,8 @@
  * @description Type definitions for search functionality
  */
 
+import type { UserName } from '../user';
+
 // ============================================
 // Search Sort Type
 // ============================================
@@ -48,8 +50,10 @@ export type SearchLocation = 'all' | 'nearby' | 'city';
 export interface SearchOptions {
   /** Search keyword */
   keyword: string;
-  /** Number of results to return (default: 20) */
+  /** Number of results to return (default: 10, max: 100) */
   limit?: number;
+  /** Number of results to skip (default: 0) */
+  skip?: number;
   /** Sort type (default: general) */
   sort?: SearchSortType;
   /** Note type filter (default: all) */
@@ -62,6 +66,8 @@ export interface SearchOptions {
   location?: SearchLocation;
   /** Headless mode override */
   headless?: boolean;
+  /** User name for multi-user support */
+  user?: UserName;
 }
 
 // ============================================
@@ -98,6 +104,8 @@ export interface SearchResult {
   keyword: string;
   total: number;
   notes: SearchResultNote[];
+  /** User name that performed the search */
+  user?: UserName;
   /** Applied filters for reference */
   filters?: {
     sort?: SearchSortType;

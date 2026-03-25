@@ -8,9 +8,10 @@
 import type { Page } from 'playwright';
 import { XhsError, XhsErrorCode } from '../shared';
 import type { BrowserSession } from '../browser';
-import { saveCookies, extractCookies } from '../cookie';
+import type { UserName } from '../user';
+import { saveCookies, extractCookies, hasRequiredCookies } from '../cookie';
 import { XHS_URLS, debugLog, delay, randomDelay, waitForCondition } from '../utils/helpers';
-import { humanClick, checkCaptcha, checkLoginStatus } from '../utils/anti-detect';
+import { humanClick, checkCaptcha } from '../utils/anti-detect';
 import { outputQrCode } from '../utils/output';
 import { getTmpFilePath } from '../config';
 import { writeFile } from 'fs/promises';
@@ -20,8 +21,27 @@ import type { LoginResult } from './types';
 // Constants
 // ============================================
 
-const QR_SELECTOR = '.qrcode-img, .login-qrcode img, canvas';
-const QR_EXPIRED_PATTERNS = /二维码.*过期|已失效|请刷新/;
+/** QR code selectors */
+const QR_SELECTORS = [
+  '.qrcode-img',
+  '.login-qrcode img',
+  '.login-qrcode',
+  '[class*="qrcode"]',
+  'canvas[class*="qr"]',
+];
+
+/** Login modal/container selectors */
+const LOGIN_MODAL_SELECTORS = [
+  '.login-modal',
+  '.login-container',
+  '.login-content',
+  '[class*="loginModal"]',
+  '.qrcode-login',
+  '.login-wrapper',
+];
+
+/** QR code expired patterns */
+const QR_EXPIRED_PATTERNS = /二维码.*过期|已失效|请刷新|二维码已失效/;
 
 // ============================================
 // QR Code Utilities
@@ -30,14 +50,19 @@ const QR_EXPIRED_PATTERNS = /二维码.*过期|已失效|请刷新/;
 /**
  * Capture QR code and save to file (for headless mode)
  */
-export async function captureQrCodeToFile(page: Page): Promise<string> {
+export async function captureQrCodeToFile(page: Page, user?: UserName): Promise<string> {
   try {
-    const qrElement = page.locator(QR_SELECTOR).first();
-    const buffer = await qrElement.screenshot({ type: 'png' });
-    const filePath = getTmpFilePath('qr_login', 'png');
-    await writeFile(filePath, buffer);
-    debugLog(`QR code saved to: ${filePath}`);
-    return filePath;
+    for (const selector of QR_SELECTORS) {
+      const qrElement = page.locator(selector).first();
+      if (await qrElement.isVisible().catch(() => false)) {
+        const buffer = await qrElement.screenshot({ type: 'png' });
+        const filePath = getTmpFilePath('qr_login', 'png', user);
+        await writeFile(filePath, buffer);
+        debugLog('QR code saved to: ' + filePath);
+        return filePath;
+      }
+    }
+    throw new Error('QR code element not found');
   } catch (error) {
     debugLog('Failed to capture QR code:', error);
     throw new XhsError(
@@ -49,7 +74,44 @@ export async function captureQrCodeToFile(page: Page): Promise<string> {
 }
 
 /**
+ * Check if any element from selector list is visible
+ */
+async function isAnyVisible(page: Page, selectors: string[]): Promise<boolean> {
+  for (const selector of selectors) {
+    const isVisible = await page
+      .locator(selector)
+      .first()
+      .isVisible()
+      .catch(() => false);
+    if (isVisible) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Check for QR code expired message
+ */
+async function isQrCodeExpired(page: Page): Promise<boolean> {
+  return await page
+    .locator('text=' + QR_EXPIRED_PATTERNS.source)
+    .isVisible()
+    .catch(() => false);
+}
+
+/**
  * Wait for QR code scan and login completion
+ *
+ * DETECTION STRATEGY (simple and reliable):
+ * Login success = QR code disappeared AND (URL changed OR login modal disappeared)
+ *
+ * When user scans QR code:
+ * 1. QR code disappears from the page
+ * 2. Page redirects away from /login
+ * 3. Login modal/container disappears
+ *
+ * Any combination of these indicates successful login.
  */
 export async function waitForQrScan(
   page: Page,
@@ -57,9 +119,17 @@ export async function waitForQrScan(
   browserClosedRef?: { closed: boolean }
 ): Promise<void> {
   debugLog('Waiting for QR code scan...');
+  debugLog('Detection: QR disappeared + (URL changed OR modal disappeared)');
+
+  const startTime = Date.now();
+  let loggedQrGone = false;
+  let loggedModalGone = false;
+  let loggedUrlChanged = false;
 
   await waitForCondition(
     async () => {
+      const elapsed = Math.floor((Date.now() - startTime) / 1000);
+
       // Check if browser was closed
       if (browserClosedRef?.closed) {
         throw new XhsError(
@@ -78,27 +148,48 @@ export async function waitForQrScan(
       }
 
       // Check for expired QR code
-      const qrExpired = await page
-        .locator(`text=${QR_EXPIRED_PATTERNS.source}`)
-        .isVisible()
-        .catch(() => false);
-      if (qrExpired) {
+      if (await isQrCodeExpired(page)) {
         throw new XhsError(
           'QR code expired. Please refresh and try again.',
           XhsErrorCode.LOGIN_FAILED
         );
       }
 
-      // Check if redirected from login page
       const currentUrl = page.url();
-      if (!currentUrl.includes('/login') && currentUrl.includes('xiaohongshu.com')) {
-        debugLog('Redirected from login page, checking login status...');
-        await delay(2000);
-        const isLoggedIn = await checkLoginStatus(page);
-        if (isLoggedIn) {
-          debugLog('Login successful via QR code');
-          return true;
-        }
+      const qrVisible = await isAnyVisible(page, QR_SELECTORS);
+      const modalVisible = await isAnyVisible(page, LOGIN_MODAL_SELECTORS);
+
+      // Log state changes (only once)
+      if (!qrVisible && !loggedQrGone) {
+        debugLog('[' + elapsed + 's] QR code disappeared');
+        loggedQrGone = true;
+      }
+      if (!modalVisible && !loggedModalGone) {
+        debugLog('[' + elapsed + 's] Login modal disappeared');
+        loggedModalGone = true;
+      }
+      if (!currentUrl.includes('/login') && !loggedUrlChanged) {
+        debugLog('[' + elapsed + 's] URL changed to: ' + currentUrl);
+        loggedUrlChanged = true;
+      }
+
+      // SUCCESS CONDITIONS:
+      // QR code must be gone, and either URL changed or modal disappeared
+      const qrGone = !qrVisible;
+      const urlChanged = !currentUrl.includes('/login');
+      const modalGone = !modalVisible;
+
+      if (qrGone && (urlChanged || modalGone)) {
+        debugLog('[' + elapsed + 's] Login detected!');
+        debugLog('  - QR gone: ' + qrGone);
+        debugLog('  - URL changed: ' + urlChanged);
+        debugLog('  - Modal gone: ' + modalGone);
+
+        // Wait a moment for page to stabilize
+        await delay(1500);
+
+        debugLog('Login successful!');
+        return true;
       }
 
       return false;
@@ -107,7 +198,11 @@ export async function waitForQrScan(
       timeout,
       interval: 1000,
       timeoutMessage: 'QR code scan timeout. Please try again.',
-      onProgress: (elapsed) => debugLog(`[${elapsed}s] Waiting for QR scan...`),
+      onProgress: (elapsed) => {
+        if (elapsed % 10 === 0) {
+          debugLog('[' + elapsed + 's] Waiting for QR scan...');
+        }
+      },
     }
   );
 }
@@ -123,44 +218,78 @@ export async function qrLogin(
   instance: BrowserSession,
   timeout: number,
   browserClosedRef: { closed: boolean },
-  isHeadless: boolean
+  isHeadless: boolean,
+  user?: UserName
 ): Promise<LoginResult> {
   const { page } = instance;
 
+  // Navigate to login page
   await page.goto(XHS_URLS.login);
   await randomDelay(1000, 2000);
 
   // Try to find QR code
-  try {
-    await page.waitForSelector(QR_SELECTOR, { timeout: 10000 });
-    debugLog('QR code displayed');
-  } catch {
-    const qrTabClicked = await humanClick(page, 'text=扫码登录, [class*="qrcode"], [class*="qr-"]');
-    if (!qrTabClicked) {
-      throw new XhsError('Cannot find QR code on login page', XhsErrorCode.LOGIN_FAILED);
+  let qrFound = false;
+  for (const selector of QR_SELECTORS) {
+    try {
+      await page.waitForSelector(selector, { timeout: 5000 });
+      debugLog('QR code found with selector: ' + selector);
+      qrFound = true;
+      break;
+    } catch {
+      // Try next selector
     }
-    await delay(2000);
   }
 
-  // Handle headless mode
+  if (!qrFound) {
+    // Try clicking QR tab
+    const qrTabClicked = await humanClick(page, 'text=扫码登录, [class*="qrcode"], [class*="qr-"]');
+    if (qrTabClicked) {
+      debugLog('Clicked QR tab');
+      await delay(2000);
+    }
+  }
+
+  // Handle headless mode - save QR to file
   if (isHeadless) {
     debugLog('Headless mode: capturing QR code to file');
-    const qrPath = await captureQrCodeToFile(page);
+    const qrPath = await captureQrCodeToFile(page, user);
     outputQrCode(qrPath);
   } else {
     console.error('Please scan the QR code with Xiaohongshu app to login.');
   }
 
-  // Wait for scan
+  // Wait for scan and login
   await waitForQrScan(page, timeout, browserClosedRef);
 
-  // Save cookies
+  // Navigate to home page to ensure session is established
+  debugLog('Navigating to home page to finalize login...');
+  await page.goto(XHS_URLS.home, { waitUntil: 'networkidle', timeout: 30000 }).catch(() => {
+    debugLog('Navigation to home page timed out, continuing...');
+  });
+
+  await delay(1000);
+
+  // Extract and save cookies
   const cookies = await extractCookies(instance.context);
-  await saveCookies(cookies);
+  debugLog('Extracted ' + cookies.length + ' cookies from context');
+
+  if (cookies.length === 0) {
+    throw new XhsError(
+      'Login appeared successful but no cookies were extracted. Please try again.',
+      XhsErrorCode.LOGIN_FAILED
+    );
+  }
+
+  if (!hasRequiredCookies(cookies)) {
+    debugLog('Warning: Required cookies (a1, web_session) not found in extracted cookies');
+  }
+
+  await saveCookies(cookies, user);
 
   return {
     success: true,
     message: 'Login successful. Cookies saved.',
     cookieSaved: true,
+    user,
   };
 }

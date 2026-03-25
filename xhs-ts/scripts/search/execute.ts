@@ -36,7 +36,10 @@ const SEARCH_CONTAINER_SELECTOR = '.feeds-container';
 const NOTE_ITEM_SELECTOR = '.note-item';
 
 /** Default search limit */
-const DEFAULT_SEARCH_LIMIT = 20;
+const DEFAULT_SEARCH_LIMIT = 10;
+
+/** Maximum search limit */
+const MAX_SEARCH_LIMIT = 100;
 
 /** Maximum notes to extract per scroll */
 const NOTES_PER_SCROLL = 20;
@@ -175,7 +178,7 @@ async function clickFilterButton(page: Page, selector: string, filterName: strin
  * Extract note links by hovering on note items
  * This triggers the generation of xsec_token in URLs
  */
-async function hoverNotesForTokens(page: Page, count: number): Promise<void> {
+async function hoverNotesForTokens(page: Page, count: number, skip: number = 0): Promise<void> {
   const noteLocator = page.locator(`${SEARCH_CONTAINER_SELECTOR} ${NOTE_ITEM_SELECTOR}`);
   const elementCount = await noteLocator.count();
 
@@ -186,10 +189,20 @@ async function hoverNotesForTokens(page: Page, count: number): Promise<void> {
 
   debugLog(`Found ${elementCount} note elements`);
 
-  const hoverCount = Math.min(elementCount, count);
-  debugLog(`Hovering on ${hoverCount} notes to extract URLs`);
+  // Need to hover from skip to skip + count
+  const startIndex = skip;
+  const endIndex = Math.min(elementCount, skip + count);
+  const hoverCount = endIndex - startIndex;
 
-  for (let i = 0; i < hoverCount; i++) {
+  if (hoverCount <= 0) {
+    debugLog(`No notes to hover (skip=${skip}, count=${count}, available=${elementCount})`);
+    return;
+  }
+  debugLog(
+    `Hovering on notes ${startIndex + 1} to ${endIndex} (total ${hoverCount}) to extract URLs`
+  );
+
+  for (let i = startIndex; i < endIndex; i++) {
     try {
       await noteLocator.nth(i).hover({ timeout: 5000 });
       await randomDelay(100, 300);
@@ -246,6 +259,7 @@ async function performSearch(
   page: Page,
   keyword: string,
   limit: number,
+  skip: number,
   filters: SearchFilters
 ): Promise<SearchResult> {
   debugLog('Starting performSearch...');
@@ -279,21 +293,24 @@ async function performSearch(
     debugLog(`Alternative selector count: ${altCount}`);
   }
 
+  // Calculate total results needed (skip + limit)
+  const totalNeeded = skip + limit;
+
   // Load more results if needed
-  if (limit > NOTES_PER_SCROLL) {
-    await loadMoreResults(page, limit);
+  if (totalNeeded > NOTES_PER_SCROLL) {
+    await loadMoreResults(page, totalNeeded);
   }
 
   // Hover on notes to trigger URL generation with xsec_token
   debugLog('Starting hover phase...');
-  await hoverNotesForTokens(page, limit);
+  await hoverNotesForTokens(page, limit, skip);
 
   // Wait after hovering for any dynamic content to load
   await delay(1000);
 
   // Extract results
   debugLog('Starting extraction phase...');
-  const notes = await extractSearchResults(page, limit);
+  const notes = await extractSearchResults(page, limit, skip);
 
   debugLog(`performSearch complete, found ${notes.length} notes`);
 
@@ -310,14 +327,22 @@ async function performSearch(
 export async function executeSearch(options: SearchOptions): Promise<void> {
   const {
     keyword,
-    limit = DEFAULT_SEARCH_LIMIT,
+    limit: rawLimit = DEFAULT_SEARCH_LIMIT,
+    skip = 0,
     sort = 'general',
     noteType = 'all',
     timeRange = 'all',
     scope = 'all',
     location = 'all',
     headless,
+    user,
   } = options;
+
+  // Validate and clamp limit
+  const limit = Math.min(Math.max(1, rawLimit), MAX_SEARCH_LIMIT);
+  if (rawLimit !== limit) {
+    debugLog(`Limit adjusted from ${rawLimit} to ${limit} (max: ${MAX_SEARCH_LIMIT})`);
+  }
 
   const filters: SearchFilters = {
     sort,
@@ -328,15 +353,15 @@ export async function executeSearch(options: SearchOptions): Promise<void> {
   };
 
   debugLog(
-    `Search command: keyword="${keyword}", limit=${limit}, filters=${JSON.stringify(filters)}`
+    `Search command: keyword="${keyword}", limit=${limit}, skip=${skip}, filters=${JSON.stringify(filters)}, user=${user || 'default'}`
   );
   debugLog(`Headless mode: ${headless ?? config.headless}`);
 
   await withSession(
     async (session) => {
       // Validate cookies
-      debugLog('Loading and validating cookies...');
-      const cookies = await loadCookies();
+      debugLog(`Loading and validating cookies for user: ${user || 'default'}...`);
+      const cookies = await loadCookies(user);
       validateCookies(cookies);
 
       // Add cookies to context
@@ -373,7 +398,8 @@ export async function executeSearch(options: SearchOptions): Promise<void> {
 
       // Perform search
       debugLog('Starting search...');
-      const result = await performSearch(session.page, keyword, limit, filters);
+      const result = await performSearch(session.page, keyword, limit, skip, filters);
+      result.user = user;
 
       debugLog('Search complete, outputting result...');
       outputSuccess(result, 'PARSE:notes');

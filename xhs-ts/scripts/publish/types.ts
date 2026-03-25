@@ -5,6 +5,8 @@
  * @description Type definitions for publish functionality
  */
 
+import type { UserName } from '../user';
+
 // ============================================
 // Media Type
 // ============================================
@@ -28,6 +30,8 @@ export interface PublishOptions {
   tags?: string[];
   /** Headless mode override */
   headless?: boolean;
+  /** User name for multi-user support */
+  user?: UserName;
 }
 
 // ============================================
@@ -42,6 +46,8 @@ export interface PublishResult {
   /** Note URL on success */
   noteUrl?: string;
   message: string;
+  /** User name that published the note */
+  user?: UserName;
 }
 
 // ============================================

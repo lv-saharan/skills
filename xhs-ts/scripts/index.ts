@@ -7,13 +7,26 @@
  */
 
 import { Command } from 'commander';
-import type { CliLoginOptions, CliSearchOptions, CliPublishOptions } from './cli/types';
+import type {
+  CliLoginOptions,
+  CliSearchOptions,
+  CliPublishOptions,
+  CliUserOptions,
+} from './cli/types';
 import { executeLogin } from './login';
 import { executeSearch } from './search';
 import { executePublish } from './publish';
+import { ensureMigrated, listUsers, setCurrentUser, clearCurrentUser, resolveUser } from './user';
 import { config, debugLog } from './utils/helpers';
-import { outputError } from './utils/output';
+import { outputSuccess, outputError } from './utils/output';
 import { XhsErrorCode } from './shared';
+
+// ============================================
+// Startup: Run Migration
+// ============================================
+
+// Ensure multi-user structure exists before any command
+await ensureMigrated();
 
 // ============================================
 // CLI Setup
@@ -22,6 +35,41 @@ import { XhsErrorCode } from './shared';
 const program = new Command();
 
 program.name('xhs').description('Xiaohongshu automation CLI').version('0.0.2');
+
+// ============================================
+// User Command
+// ============================================
+
+program
+  .command('user')
+  .description('Manage users')
+  .option('--set-current <name>', 'Set current user')
+  .option('--set-default', 'Reset to default user')
+  .action(async (options: CliUserOptions) => {
+    try {
+      if (options.setCurrent) {
+        await setCurrentUser(options.setCurrent);
+        outputSuccess(
+          { current: options.setCurrent },
+          `RELAY:已切换到用户 "${options.setCurrent}"`
+        );
+        return;
+      }
+
+      if (options.setDefault) {
+        await clearCurrentUser();
+        outputSuccess({ current: 'default' }, 'RELAY:已切换到默认用户');
+        return;
+      }
+
+      // Default: list users
+      const result = await listUsers();
+      outputSuccess(result, 'PARSE:users');
+    } catch (error) {
+      debugLog('User command error:', error);
+      outputFromError(error);
+    }
+  });
 
 // ============================================
 // Login Command
@@ -38,6 +86,7 @@ program
     // CLI args override .env defaults
     const method = options.sms ? 'sms' : options.qr ? 'qr' : config.loginMethod;
     const headless = options.headless !== undefined ? options.headless : config.headless;
+    const user = resolveUser(options.user);
     const timeout = options.timeout ? parseInt(options.timeout, 10) : config.loginTimeout;
 
     debugLog(`Login command: method=${method}, headless=${headless}, timeout=${timeout}`);
@@ -45,6 +94,7 @@ program
     await executeLogin({
       method,
       headless,
+      user,
       timeout,
     });
   });
@@ -56,21 +106,28 @@ program
 program
   .command('search <keyword>')
   .description('Search notes by keyword')
-  .option('--limit <number>', 'Number of results', '20')
+  .option('--limit <number>', 'Number of results (default: 10, max: 100)', '10')
+  .option('--skip <number>', 'Number of results to skip (default: 0)', '0')
   .option('--sort <type>', 'Sort by: general, time_descending, or hot', 'general')
   .option('--note-type <type>', 'Note type: all, image, or video', 'all')
   .option('--time-range <range>', 'Time range: all, day, week, or month', 'all')
   .option('--scope <scope>', 'Search scope: all or following', 'all')
   .option('--location <location>', 'Location: all, nearby, or city', 'all')
   .option('--headless', 'Run in headless mode')
+  .option('--user <name>', 'User name for multi-user support')
   .action(async (keyword: string, options: CliSearchOptions) => {
     const limit = parseInt(options.limit, 10);
+    const skip = options.skip ? parseInt(options.skip, 10) : 0;
     const headless = options.headless !== undefined ? options.headless : config.headless;
+    const user = resolveUser(options.user);
 
-    debugLog(`Search: keyword="${keyword}", limit=${limit}, options=${JSON.stringify(options)}`);
+    debugLog(
+      `Search: keyword="${keyword}", limit=${limit}, skip=${skip}, user=${user}, options=${JSON.stringify(options)}`
+    );
 
     await executeSearch({
       keyword,
+      skip,
       limit,
       sort: options.sort,
       noteType: options.noteType,
@@ -78,6 +135,7 @@ program
       scope: options.scope,
       location: options.location,
       headless,
+      user,
     });
   });
 
@@ -94,6 +152,7 @@ program
   .option('--video <path>', 'Video path (alternative to images, max 500MB)')
   .option('--tags <tags>', 'Tags, comma separated (max 10 tags)')
   .option('--headless', 'Run in headless mode')
+  .option('--user <name>', 'User name for multi-user support')
   .action(async (options: CliPublishOptions) => {
     // Parse media paths
     let mediaPaths: string[] = [];
@@ -108,6 +167,7 @@ program
     const tags = options.tags ? options.tags.split(',').map((t: string) => t.trim()) : undefined;
 
     const headless = options.headless !== undefined ? options.headless : config.headless;
+    const user = resolveUser(options.user);
 
     debugLog(
       `Publish: title="${options.title}", media=${mediaPaths.length}, tags=${tags?.length || 0}, headless=${headless}`
@@ -119,6 +179,7 @@ program
       mediaPaths,
       tags,
       headless,
+      user,
     });
   });
 
@@ -221,6 +282,18 @@ process.on('unhandledRejection', (reason) => {
   outputError(String(reason), XhsErrorCode.BROWSER_ERROR);
   process.exit(1);
 });
+
+// ============================================
+// Helper
+// ============================================
+
+function outputFromError(error: unknown): void {
+  if (error instanceof Error) {
+    outputError(error.message, XhsErrorCode.BROWSER_ERROR);
+  } else {
+    outputError(String(error), XhsErrorCode.BROWSER_ERROR);
+  }
+}
 
 // ============================================
 // Run CLI

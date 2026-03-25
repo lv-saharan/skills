@@ -2,21 +2,22 @@
  * Cookie storage operations
  *
  * @module cookie/storage
- * @description Load, save, and delete cookies
+ * @description Load, save, and delete cookies with multi-user support
  */
 
 import { readFile, writeFile } from 'fs/promises';
-import { existsSync } from 'fs';
+import { existsSync, mkdirSync } from 'fs';
 import path from 'path';
 import type { BrowserContext } from 'playwright';
 import type { CookieEntry, CookieStorage } from './types';
+import type { UserName } from '../user';
 import { debugLog } from '../utils/helpers';
 
 // ============================================
 // Constants
 // ============================================
 
-/** Cookie file path (relative to project root) */
+/** Cookie file name */
 const COOKIE_FILE = 'cookies.json';
 
 // ============================================
@@ -24,17 +25,27 @@ const COOKIE_FILE = 'cookies.json';
 // ============================================
 
 /**
- * Get absolute path to cookie file
+ * Get users directory path
  */
-export function getCookiePath(): string {
-  return path.resolve(process.cwd(), COOKIE_FILE);
+function getUsersDir(): string {
+  return path.resolve(process.cwd(), 'users');
 }
 
 /**
- * Check if cookie file exists
+ * Get absolute path to cookie file for a specific user
+ * @param user - User name (optional, uses 'default' if not specified)
  */
-export function cookieExists(): boolean {
-  return existsSync(getCookiePath());
+export function getCookiePath(user?: UserName): string {
+  const userName = user || 'default';
+  return path.resolve(getUsersDir(), userName, COOKIE_FILE);
+}
+
+/**
+ * Check if cookie file exists for a user
+ * @param user - User name (optional)
+ */
+export function cookieExists(user?: UserName): boolean {
+  return existsSync(getCookiePath(user));
 }
 
 // ============================================
@@ -42,13 +53,14 @@ export function cookieExists(): boolean {
 // ============================================
 
 /**
- * Load cookies from storage
+ * Load cookies from storage for a specific user
+ * @param user - User name (optional)
  */
-export async function loadCookies(): Promise<CookieEntry[]> {
-  const cookiePath = getCookiePath();
+export async function loadCookies(user?: UserName): Promise<CookieEntry[]> {
+  const cookiePath = getCookiePath(user);
 
   if (!existsSync(cookiePath)) {
-    debugLog('Cookie file does not exist');
+    debugLog(`Cookie file does not exist for user: ${user || 'default'}`);
     return [];
   }
 
@@ -56,7 +68,7 @@ export async function loadCookies(): Promise<CookieEntry[]> {
     const content = await readFile(cookiePath, 'utf-8');
     const storage: CookieStorage = JSON.parse(content);
 
-    debugLog(`Loaded ${storage.cookies.length} cookies`);
+    debugLog(`Loaded ${storage.cookies.length} cookies for user: ${user || 'default'}`);
     return storage.cookies;
   } catch (error) {
     debugLog('Failed to load cookies:', error);
@@ -65,10 +77,18 @@ export async function loadCookies(): Promise<CookieEntry[]> {
 }
 
 /**
- * Save cookies to storage
+ * Save cookies to storage for a specific user
+ * @param cookies - Cookie array to save
+ * @param user - User name (optional)
  */
-export async function saveCookies(cookies: CookieEntry[]): Promise<void> {
-  const cookiePath = getCookiePath();
+export async function saveCookies(cookies: CookieEntry[], user?: UserName): Promise<void> {
+  const cookiePath = getCookiePath(user);
+  const cookieDir = path.dirname(cookiePath);
+
+  // Ensure user directory exists
+  if (!existsSync(cookieDir)) {
+    mkdirSync(cookieDir, { recursive: true });
+  }
 
   const storage: CookieStorage = {
     cookies,
@@ -80,10 +100,11 @@ export async function saveCookies(cookies: CookieEntry[]): Promise<void> {
 }
 
 /**
- * Delete cookie file
+ * Delete cookie file for a user
+ * @param user - User name (optional)
  */
-export async function deleteCookies(): Promise<void> {
-  const cookiePath = getCookiePath();
+export async function deleteCookies(user?: UserName): Promise<void> {
+  const cookiePath = getCookiePath(user);
 
   if (existsSync(cookiePath)) {
     const { unlink } = await import('fs/promises');
@@ -104,23 +125,25 @@ export async function extractCookies(context: BrowserContext): Promise<CookieEnt
 /**
  * Load and validate cookies in one step
  *
+ * @param user - User name (optional)
  * @returns Validated cookie array
  * @throws Error if cookies are invalid
  */
-export async function loadAndValidateCookies(): Promise<CookieEntry[]> {
+export async function loadAndValidateCookies(user?: UserName): Promise<CookieEntry[]> {
   const { validateCookies } = await import('./validation');
-  const cookies = await loadCookies();
+  const cookies = await loadCookies(user);
   validateCookies(cookies);
   return cookies;
 }
 
 /**
- * Add cookies to browser context
+ * Add cookies to browser context for a specific user
  *
  * @param context - Playwright browser context
+ * @param user - User name (optional)
  */
-export async function addCookiesToContext(context: BrowserContext): Promise<void> {
-  const cookies = await loadAndValidateCookies();
+export async function addCookiesToContext(context: BrowserContext, user?: UserName): Promise<void> {
+  const cookies = await loadAndValidateCookies(user);
   await context.addCookies(cookies);
-  debugLog(`Added ${cookies.length} cookies to context`);
+  debugLog(`Added ${cookies.length} cookies to context for user: ${user || 'default'}`);
 }

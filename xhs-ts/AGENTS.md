@@ -30,6 +30,11 @@ scripts/
 ├── config/               # 配置模块 (index.ts, config.ts, types.ts)
 ├── browser/              # 浏览器管理 (index.ts, context.ts, instance.ts, launch.ts, stealth.ts, types.ts)
 ├── cookie/               # Cookie 管理 (index.ts, storage.ts, validation.ts, types.ts)
+├── user/                 # 多用户管理模块
+│   ├── index.ts          # 入口：导出 API
+│   ├── storage.ts        # 目录操作、users.json 读写
+│   ├── migration.ts      # 单用户到多用户迁移
+│   └── types.ts          # 类型定义
 ├── login/                # 登录模块
 │   ├── index.ts          # 入口：导出 API
 │   ├── execute.ts        # 主编排 (<100 行)
@@ -361,3 +366,70 @@ await using session = await BrowserSession.create({ headless });
 
 - **Node.js**: >= 22.16.0 (required for `using` syntax)
 - **TypeScript**: >= 5.2 (for `AsyncDisposable` support)
+
+---
+
+## Multi-User Management
+
+### Architecture
+
+```
+users/
+├── users.json            # { current: "用户名", version: 1 }
+├── default/
+│   ├── cookies.json
+│   └── tmp/
+└── {用户名}/
+    ├── cookies.json
+    └── tmp/
+```
+
+### Key APIs
+
+```typescript
+import {
+  listUsers,           // 获取用户列表
+  setCurrentUser,      // 设置当前用户
+  clearCurrentUser,    // 重置为默认用户
+  resolveUser,         // 解析用户优先级
+  createUserDir,       // 创建用户目录
+  userExists,          // 检查用户是否存在
+} from './user';
+
+// 用户解析优先级: --user > users.json current > 'default'
+const user = resolveUser(options.user);
+```
+
+### User-Aware Functions
+
+所有需要用户上下文的函数都支持可选的 `user` 参数：
+
+```typescript
+// Cookie
+loadCookies(user?)
+saveCookies(cookies, user?)
+
+// Config
+getTmpDir(user?)
+getTmpFilePath(category, ext, user?)
+
+// Login
+executeLogin({ ..., user })
+qrLogin(session, timeout, closedRef, headless, user)
+smsLogin(session, timeout, closedRef, user)
+verifyExistingSession(user?)
+
+// Search/Publish
+executeSearch({ ..., user })
+executePublish({ ..., user })
+```
+
+### Migration
+
+首次启动时自动迁移：
+
+1. 创建 `users/default/` 目录
+2. 复制 `cookies.json` → `users/default/cookies.json`
+3. 移动 `tmp/*` → `users/default/tmp/`
+4. 创建 `users.json`
+5. 删除旧文件

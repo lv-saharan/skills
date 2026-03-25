@@ -10,6 +10,7 @@ import path from 'path';
 import { existsSync, mkdirSync } from 'fs';
 import type { AppConfig } from './types';
 import type { LoginMethod } from '../shared';
+import type { UserName } from '../user';
 
 // ============================================
 // Environment Loading
@@ -94,10 +95,19 @@ export function getProjectRoot(): string {
 }
 
 /**
- * Get tmp directory path (create if not exists)
+ * Get users directory path
  */
-export function getTmpDir(): string {
-  const tmpDir = path.resolve(getProjectRoot(), 'tmp');
+export function getUsersDir(): string {
+  return path.resolve(getProjectRoot(), 'users');
+}
+
+/**
+ * Get tmp directory path for a specific user
+ * @param user - User name (optional, uses default if not specified)
+ */
+export function getTmpDir(user?: UserName): string {
+  const userName = user || 'default';
+  const tmpDir = path.resolve(getUsersDir(), userName, 'tmp');
   if (!existsSync(tmpDir)) {
     mkdirSync(tmpDir, { recursive: true });
   }
@@ -127,9 +137,12 @@ export function generateFileName(category: string, ext: string): string {
 
 /**
  * Get full path for a file in tmp directory
+ * @param category - File category (e.g., 'qr_login')
+ * @param ext - File extension (e.g., 'png')
+ * @param user - User name (optional)
  */
-export function getTmpFilePath(category: string, ext: string): string {
-  return path.resolve(getTmpDir(), generateFileName(category, ext));
+export function getTmpFilePath(category: string, ext: string, user?: UserName): string {
+  return path.resolve(getTmpDir(user), generateFileName(category, ext));
 }
 
 // ============================================

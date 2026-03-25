@@ -20,7 +20,6 @@ Login to Xiaohongshu and save cookies.
 npm run login                    # QR code login (default)
 npm run login -- --sms           # SMS login
 npm run login -- --headless      # Headless mode (QR saved to file)
-npm run login -- --creator       # Login to creator center (required for publish)
 ```
 
 **Options:**
@@ -31,7 +30,6 @@ npm run login -- --creator       # Login to creator center (required for publish
 | `--sms` | SMS login |
 | `--headless` | Run in headless mode |
 | `--timeout <ms>` | Login timeout |
-| `--creator` | Login to creator center |
 
 **Output (success):**
 
@@ -68,6 +66,7 @@ Search notes by keyword.
 ```bash
 npm run search -- "美食探店"
 npm run search -- "美食探店" --limit 10 --sort hot
+npm run search -- "美食探店" --limit 20 --skip 20  # 分页：跳过前 20 条
 ```
 
 **Options:**
@@ -75,9 +74,15 @@ npm run search -- "美食探店" --limit 10 --sort hot
 | Option | Default | Description |
 |--------|---------|-------------|
 | `<keyword>` | (required) | Search keyword |
-| `--limit <n>` | 20 | Number of results |
-| `--sort <type>` | hot | Sort by: `hot` or `time` |
+| `--limit <n>` | 10 | Number of results (max: 100) |
+| `--skip <n>` | 0 | Number of results to skip |
+| `--sort <type>` | general | Sort by: `general`, `time_descending`, `hot` |
+| `--note-type <type>` | all | Note type: `all`, `image`, `video` |
+| `--time-range <range>` | all | Time range: `all`, `day`, `week`, `month` |
+| `--scope <scope>` | all | Search scope: `all`, `following` |
+| `--location <loc>` | all | Location: `all`, `nearby`, `city` |
 | `--headless` | false | Run in headless mode |
+| `--user <name>` | default | User name for multi-user support |
 
 **Output:**
 

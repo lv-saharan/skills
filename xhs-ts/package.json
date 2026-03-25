@@ -1,6 +1,6 @@
 {
   "name": "xhs-ts",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "小红书（Xiaohongshu）自动化操作技能，支持搜索、发布、互动、数据抓取",
   "type": "module",
   "bin": {
@@ -11,6 +11,8 @@
     "help": "tsx scripts/index.ts --help",
     "login": "tsx scripts/index.ts login",
     "login:headless": "tsx scripts/index.ts login --headless",
+    "user": "tsx scripts/index.ts user",
+    "user:use": "tsx scripts/index.ts user --set-current",
     "search": "tsx scripts/index.ts search",
     "publish": "tsx scripts/index.ts publish",
     "like": "tsx scripts/index.ts like",
@@ -54,8 +56,23 @@
     "skill",
     "scraper"
   ],
-  "author": "",
+  "author": "lv-saharan",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lv-saharan/skills.git",
+    "directory": "xhs-ts"
+  },
+  "homepage": "https://github.com/lv-saharan/skills/tree/main/xhs-ts#readme",
+  "bugs": {
+    "url": "https://github.com/lv-saharan/skills/issues"
+  },
+  "files": [
+    "scripts/**/*",
+    "README.md",
+    "LICENSE",
+    "SKILL.md"
+  ],
   "engines": {
     "node": ">=22.16.0"
   }
