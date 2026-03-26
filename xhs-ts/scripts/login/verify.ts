@@ -21,52 +21,45 @@ import { checkLoginStatus } from '../utils/anti-detect';
 export async function verifyExistingSession(user?: UserName): Promise<boolean> {
   debugLog(`Checking if already logged in for user: ${user || 'default'}...`);
 
-  try {
-    const cookies = await loadCookies(user);
-    if (!hasRequiredCookies(cookies)) {
-      debugLog('No valid cookies found');
-      return false;
-    }
-
-    debugLog('Found existing cookies, verifying login status...');
-
-    let verifyInstance: BrowserInstance | null = null;
-    try {
-      verifyInstance = await createBrowserInstance({ headless: true });
-      await verifyInstance.context.addCookies(cookies);
-      await verifyInstance.page.goto(XHS_URLS.home, {
-        waitUntil: 'domcontentloaded',
-        timeout: 30000,
-      });
-
-      // Wait for network to settle
-      await verifyInstance.page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {
-        debugLog('Network idle timeout in verification, continuing...');
-      });
-
-      // Additional wait for dynamic content to load
-      await delay(3000);
-
-      const isLoggedIn = await checkLoginStatus(verifyInstance.page);
-      debugLog(`checkLoginStatus result: ${isLoggedIn}`);
-
-      if (isLoggedIn) {
-        debugLog('Already logged in! Cookies are valid.');
-        return true;
-      }
-
-      debugLog('Cookies exist but login status invalid');
-      return false;
-    } catch (verifyError) {
-      debugLog('Cookie verification failed:', verifyError);
-      return false;
-    } finally {
-      if (verifyInstance) {
-        await closeBrowserInstance(verifyInstance);
-      }
-    }
-  } catch {
-    debugLog('No valid cookies found');
+  const cookies = await loadCookies(user);
+  if (!hasRequiredCookies(cookies)) {
+    debugLog('No valid cookies found (missing required cookies)');
     return false;
+  }
+
+  debugLog('Found existing cookies, verifying login status...');
+
+  let verifyInstance: BrowserInstance | null = null;
+  try {
+    verifyInstance = await createBrowserInstance({ headless: true });
+    await verifyInstance.context.addCookies(cookies);
+    await verifyInstance.page.goto(XHS_URLS.home, {
+      waitUntil: 'networkidle',
+      timeout: 30000,
+    });
+
+    // Wait for page to fully render
+    await delay(3000);
+
+    // Check login status using TWO CORE RULES:
+    // 1. Login button/modal visible? → NOT logged in
+    // 2. User avatar visible? → IS logged in
+    const isLoggedIn = await checkLoginStatus(verifyInstance.page);
+    debugLog(`checkLoginStatus result: ${isLoggedIn}`);
+
+    if (isLoggedIn) {
+      debugLog('Already logged in! Cookies are valid.');
+      return true;
+    }
+
+    debugLog('Cookies exist but session invalid');
+    return false;
+  } catch (verifyError) {
+    debugLog('Cookie verification failed:', verifyError);
+    return false;
+  } finally {
+    if (verifyInstance) {
+      await closeBrowserInstance(verifyInstance);
+    }
   }
 }

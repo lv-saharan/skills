@@ -8,7 +8,7 @@ description: |
 license: MIT
 compatibility: opencode
 metadata:
-  version: "0.0.4"
+  version: "0.0.5"
   openclaw:
     emoji: "📕"
     requires:
@@ -30,7 +30,7 @@ metadata:
 | Search | `npm run search -- "<keyword>" [-- --user <name>]` | ✅ Implemented |
 | Publish | `npm run publish -- [options] [-- --user <name>]` | ✅ Implemented |
 | User Management | `npm run user` | ✅ Implemented |
-| Like | `npm run like -- "<url>"` | ❌ Not implemented |
+| Like | `npm run like -- "<url>" [urls...] [-- --user <name>]` | ✅ Implemented |
 | Collect | `npm run collect -- "<url>"` | ❌ Not implemented |
 | Comment | `npm run comment -- "<url>" "text"` | ❌ Not implemented |
 | Follow | `npm run follow -- "<url>"` | ❌ Not implemented |
@@ -282,6 +282,60 @@ npm run publish -- --title "标题" --content "正文" --images "img1.jpg" --tag
 - 保持合理发布间隔
 - 发布失败时检查账号状态
 
+### Like
+
+Supports single or batch liking notes.
+
+> ⚠️ **URL must include `xsec_token` parameter, otherwise the note cannot be accessed**
+> 
+> Example: `https://www.xiaohongshu.com/explore/6762318400000000130009cd?xsec_token=ABZq3B9ldPQCqXvmFRI8HY7RmauIzwlsyErKncMQMqMJI%3D&xsec_source=pc_search`
+> 
+> Use `npm run search` to get complete URLs with tokens.
+
+```bash
+# Like a single note (must use complete URL with xsec_token)
+npm run like -- "https://www.xiaohongshu.com/explore/6762318400000000130009cd?xsec_token=ABZq3B9ldPQCqXvmFRI8HY7RmauIzwlsyErKncMQMqMJI%3D&xsec_source=pc_search"
+
+# Like multiple notes (space-separated)
+npm run like -- "https://www.xiaohongshu.com/explore/noteId1?xsec_token=xxx" "https://www.xiaohongshu.com/explore/noteId2?xsec_token=yyy"
+
+# Batch like with custom delay (default: 2000ms)
+npm run like -- "url1" "url2" "url3" --delay 3000
+
+# Use specific user
+npm run like -- "https://www.xiaohongshu.com/explore/noteId?xsec_token=xxx" --user "小号"
+
+# Headless mode
+npm run like -- "https://www.xiaohongshu.com/explore/noteId?xsec_token=xxx" --headless
+```
+
+**Parameters:**
+
+| 参数 | 说明 | 必填 | 默认值 |
+|------|------|------|--------|
+| `[urls...]` | Complete note URL with xsec_token (space-separated) | ✅ | — |
+| `--delay` | Delay between likes (ms) | ❌ | `2000` |
+| `--headless` | Run in headless mode | ❌ | `false` |
+| `--user` | User name | ❌ | Current user |
+
+**URL Format:**
+
+Must include `xsec_token`:
+```
+https://www.xiaohongshu.com/explore/{noteId}?xsec_token={token}&xsec_source=pc_search
+```
+
+**How to get complete URLs:**
+1. Search command: `npm run search -- "keyword"` → returns notes with complete URLs
+2. Browser: Open note → copy full URL from address bar
+
+**Notes:**
+- ❌ URLs without token (e.g., `.../explore/{noteId}`) are NOT supported
+- ❌ Short links (xhslink.com) are NOT supported
+- ✅ Already liked notes will be skipped
+- ✅ Login required
+- ✅ Keep 2-5 second intervals for batch operations
+
 ---
 
 ## Not Implemented
@@ -289,7 +343,6 @@ npm run publish -- --title "标题" --content "正文" --images "img1.jpg" --tag
 The following commands return `NOT_FOUND` error:
 
 ```bash
-npm run like -- "<url>"
 npm run collect -- "<url>"
 npm run comment -- "<url>" "text"
 npm run follow -- "<url>"

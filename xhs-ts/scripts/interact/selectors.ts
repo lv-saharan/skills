@@ -18,7 +18,9 @@
 // Note Page Selectors
 // ============================================
 
-/** Selectors for note detail page */
+/** Selectors for note detail page
+ * @status NOT_IMPLEMENTED - Reserved for future use
+ */
 export const NOTE_SELECTORS = {
   /** Note container */
   container: '.note-container, [class*="noteDetail"], [class*="NoteDetail"]',
@@ -38,6 +40,7 @@ export const NOTE_SELECTORS = {
 
 /**
  * Selectors for like button
+ * @status IMPLEMENTED
  *
  * IMPORTANT: XHS like button structure (verified 2026-03):
  * - Class: .like-wrapper (in .interact-container .buttons.engage-bar-style .left)
@@ -75,6 +78,7 @@ export const LIKE_SELECTORS = {
 
 /**
  * Selectors for collect (bookmark) button
+ * @status NOT_IMPLEMENTED - Reserved for future use
  *
  * Structure: .interact-container .buttons.engage-bar-style .left .collect-wrapper
  * Active state: .collect-wrapper.collect-active
@@ -117,6 +121,7 @@ export const COLLECT_SELECTORS = {
 
 /**
  * Selectors for comment section
+ * @status NOT_IMPLEMENTED - Reserved for future use
  *
  * Comment button: .chat-wrapper (in .left area)
  */
@@ -156,7 +161,9 @@ export const COMMENT_SELECTORS = {
 // Follow Button Selectors
 // ============================================
 
-/** Selectors for follow button */
+/** Selectors for follow button
+ * @status NOT_IMPLEMENTED - Reserved for future use
+ */
 export const FOLLOW_SELECTORS = {
   /** Follow button on user profile */
   button: ['button:has-text("关注")', '[class*="follow-btn"]', '[class*="followBtn"]'].join(', '),

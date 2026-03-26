@@ -7,6 +7,7 @@
 
 import type { Page, BrowserContext } from 'playwright';
 import type { BrowserInstance } from '../browser';
+import type { UserName } from '../user';
 import { XhsError, XhsErrorCode } from '../shared';
 import { loadCookies, saveCookies } from '../cookie';
 import { XHS_URLS, debugLog, delay, waitForCondition } from '../utils/helpers';
@@ -20,9 +21,14 @@ import { TIMEOUTS } from '../shared';
 /**
  * Check login status and auto-trigger login if needed
  *
+ * @param instance - Browser instance
+ * @param user - User name (optional)
  * @returns true if login successful or already logged in
  */
-export async function ensureMainSiteLogin(instance: BrowserInstance): Promise<boolean> {
+export async function ensureMainSiteLogin(
+  instance: BrowserInstance,
+  user?: UserName
+): Promise<boolean> {
   const isLoggedIn = await checkLoginStatus(instance.page);
   debugLog(`Login status on main site: ${isLoggedIn}`);
 
@@ -48,11 +54,11 @@ export async function ensureMainSiteLogin(instance: BrowserInstance): Promise<bo
   const { executeLogin } = await import('../login');
 
   try {
-    await executeLogin({ method: 'qr', creator: false });
+    await executeLogin({ method: 'qr', creator: false, user });
 
     // Reload cookies into browser context
     debugLog('Reloading cookies into current browser context...');
-    const newCookies = await loadCookies();
+    const newCookies = await loadCookies(user);
     await instance.context.addCookies(newCookies);
     debugLog(`Loaded ${newCookies.length} new cookies into browser context`);
 
@@ -104,11 +110,17 @@ export async function ensureMainSiteLogin(instance: BrowserInstance): Promise<bo
 
 /**
  * Wait for creator center login completion
+ *
+ * @param page - Playwright page
+ * @param context - Browser context
+ * @param timeout - Timeout in milliseconds
+ * @param user - User name (optional)
  */
 export async function waitForCreatorCenterLogin(
   page: Page,
   context: BrowserContext,
-  timeout = 120000
+  timeout = 120000,
+  user?: UserName
 ): Promise<boolean> {
   console.log('\n⚠️  需要登录创作者中心');
   console.log('📱 请在浏览器窗口中登录（扫码或短信验证）');
@@ -134,8 +146,8 @@ export async function waitForCreatorCenterLogin(
 
     console.log('✅ 创作者中心登录成功！\n');
     const newCookies = await context.cookies();
-    await saveCookies(newCookies);
-    debugLog('Saved creator center cookies');
+    await saveCookies(newCookies, user);
+    debugLog(`Saved creator center cookies for user: ${user || 'default'}`);
     return true;
   } catch {
     throw new XhsError('Creator center login timeout', XhsErrorCode.NOT_LOGGED_IN);

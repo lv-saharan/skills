@@ -6,6 +6,7 @@
  */
 
 import type { Page, BrowserContext } from 'playwright';
+import type { UserName } from '../user';
 import { delay } from './helpers';
 import { debugLog } from './logging';
 import { saveCookies } from '../cookie';
@@ -61,11 +62,12 @@ export async function requireLogin(page: Page): Promise<void> {
  * Save cookies from browser context
  *
  * @param context - Playwright browser context
+ * @param user - User name (optional)
  */
-export async function saveContextCookies(context: BrowserContext): Promise<void> {
+export async function saveContextCookies(context: BrowserContext, user?: UserName): Promise<void> {
   const cookies = await context.cookies();
-  await saveCookies(cookies);
-  debugLog(`Saved ${cookies.length} cookies from context`);
+  await saveCookies(cookies, user);
+  debugLog(`Saved ${cookies.length} cookies from context for user: ${user || 'default'}`);
 }
 
 /**

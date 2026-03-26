@@ -377,19 +377,6 @@ export async function executeSearch(options: SearchOptions): Promise<void> {
       debugLog(`Login status: ${isLoggedIn}`);
 
       if (!isLoggedIn) {
-        debugLog('Login check failed: checking for login modal...');
-
-        // Check specifically for login modal
-        const hasLoginModal = await session.page
-          .locator('[class*="login"], [class*="qrcode"], [class*="QRCode"]')
-          .first()
-          .isVisible()
-          .catch(() => false);
-
-        if (hasLoginModal) {
-          debugLog('Login modal detected - user needs to login');
-        }
-
         throw new XhsError(
           'Not logged in or session expired. Please run "xhs login" first.',
           XhsErrorCode.NOT_LOGGED_IN
