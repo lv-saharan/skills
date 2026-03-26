@@ -12,10 +12,12 @@ import type {
   CliSearchOptions,
   CliPublishOptions,
   CliUserOptions,
+  CliLikeOptions,
 } from './cli/types';
 import { executeLogin } from './login';
 import { executeSearch } from './search';
 import { executePublish } from './publish';
+import { executeLike } from './interact';
 import { ensureMigrated, listUsers, setCurrentUser, clearCurrentUser, resolveUser } from './user';
 import { config, debugLog } from './utils/helpers';
 import { outputSuccess, outputError } from './utils/output';
@@ -90,7 +92,9 @@ program
     const user = resolveUser(options.user);
     const timeout = options.timeout ? parseInt(options.timeout, 10) : config.loginTimeout;
 
-    debugLog(`Login command: method=${method}, headless=${headless}, timeout=${timeout}, user=${user}`);
+    debugLog(
+      `Login command: method=${method}, headless=${headless}, timeout=${timeout}, user=${user}`
+    );
 
     await executeLogin({
       method,
@@ -185,15 +189,42 @@ program
   });
 
 // ============================================
-// Like Command (Placeholder)
+// Like Command
 // ============================================
 
 program
-  .command('like <url>')
-  .description('Like a note')
-  .action(async (_url) => {
-    outputError('Like command not implemented yet', XhsErrorCode.NOT_FOUND);
-    process.exit(1);
+  .command('like [urls...]')
+  .description('Like one or multiple notes (URLs separated by space)')
+  .option('--headless', 'Run in headless mode')
+  .option('--user <name>', 'User name for multi-user support')
+  .option('--delay <ms>', 'Delay between likes in milliseconds (default: 2000)', '2000')
+  .action(async (urls: string[], options: CliLikeOptions) => {
+    if (!urls || urls.length === 0) {
+      outputError('请提供至少一个笔记URL', XhsErrorCode.NOT_FOUND);
+      process.exit(1);
+    }
+
+    const headless = options.headless !== undefined ? options.headless : config.headless;
+    const user = resolveUser(options.user);
+    const delayBetweenLikes = options.delay ? parseInt(options.delay, 10) : 2000;
+
+    debugLog(
+      'Like: urls=' +
+        urls.length +
+        ', headless=' +
+        headless +
+        ', user=' +
+        user +
+        ', delay=' +
+        delayBetweenLikes
+    );
+
+    await executeLike({
+      urls,
+      headless,
+      user,
+      delayBetweenLikes,
+    });
   });
 
 // ============================================

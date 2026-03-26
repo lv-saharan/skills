@@ -78,6 +78,19 @@ export interface InteractOptions {
 }
 
 /**
+ * Like command options (CLI-specific)
+ * Supports single or multiple URLs (space-separated)
+ */
+export interface CliLikeOptions {
+  /** Run in headless mode */
+  headless?: boolean;
+  /** User name for multi-user support */
+  user?: string;
+  /** Delay between likes in ms (for multiple URLs) */
+  delay?: string;
+}
+
+/**
  * User command options
  */
 export interface CliUserOptions {
