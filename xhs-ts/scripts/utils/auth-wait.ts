@@ -7,7 +7,7 @@
 
 import type { Page, BrowserContext } from 'playwright';
 import type { UserName } from '../user';
-import { delay } from './helpers';
+import { waitForCondition } from './helpers';
 import { debugLog } from './logging';
 import { saveCookies } from '../cookie';
 
@@ -19,24 +19,25 @@ import { saveCookies } from '../cookie';
  * @returns true if login successful, false if timeout
  */
 export async function waitForCreatorLogin(page: Page, timeout = 120000): Promise<boolean> {
-  const startTime = Date.now();
-
-  while (Date.now() - startTime < timeout) {
-    await delay(2000);
-    const url = page.url();
-
-    if (url.includes('creator.xiaohongshu.com') && !url.includes('login')) {
-      debugLog('User logged in to creator center');
-      return true;
-    }
-
-    const elapsed = Math.floor((Date.now() - startTime) / 1000);
-    if (elapsed % 10 === 0 && elapsed > 0) {
-      debugLog(`[${elapsed}s] Waiting for creator center login...`);
-    }
+  try {
+    await waitForCondition(
+      async () => {
+        const url = page.url();
+        return url.includes('creator.xiaohongshu.com') && !url.includes('login');
+      },
+      {
+        timeout,
+        interval: 2000,
+        timeoutMessage: 'Creator center login timeout',
+        onProgress: (elapsed) => debugLog(`[${elapsed}s] Waiting for creator center login...`),
+        progressInterval: 10000,
+      }
+    );
+    debugLog('User logged in to creator center');
+    return true;
+  } catch {
+    return false;
   }
-
-  return false;
 }
 
 /**
