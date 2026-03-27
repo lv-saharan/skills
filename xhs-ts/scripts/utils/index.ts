@@ -33,6 +33,7 @@ export {
   checkCaptcha,
   checkLoginStatus,
   waitForStable,
+  simulateReading,
 } from './anti-detect';
 
 // Output functions

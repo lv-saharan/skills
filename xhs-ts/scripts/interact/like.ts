@@ -12,7 +12,7 @@ import { XhsError, XhsErrorCode, TIMEOUTS } from '../shared';
 import { withSession } from '../browser';
 import { loadCookies, validateCookies } from '../cookie';
 import { config, debugLog, delay, randomDelay, XHS_URLS } from '../utils/helpers';
-import { humanClick, humanScroll, checkCaptcha, checkLoginStatus } from '../utils/anti-detect';
+import { humanClick, checkCaptcha, checkLoginStatus, simulateReading } from '../utils/anti-detect';
 import { outputSuccess, outputFromError } from '../utils/output';
 
 // ============================================
@@ -77,42 +77,6 @@ async function checkLikeStatus(page: Page): Promise<{ visible: boolean; liked: b
   } catch {
     return { visible: false, liked: false };
   }
-}
-
-// ============================================
-// Human-like Reading Simulation
-// ============================================
-
-async function simulateReading(page: Page): Promise<void> {
-  // 1. 随机移动鼠标到内容区域
-  const viewport = page.viewportSize();
-  if (viewport) {
-    await page.mouse.move(
-      Math.random() * viewport.width * 0.6 + viewport.width * 0.2,
-      Math.random() * viewport.height * 0.6 + viewport.height * 0.2
-    );
-    await delay(100 + Math.random() * 200);
-  }
-
-  // 2. 随机悬停在图片上
-  const images = await page.locator('img').all();
-  if (images.length > 0) {
-    const randomImg = images[Math.floor(Math.random() * Math.min(images.length, 5))];
-    await randomImg.hover({ timeout: 2000 }).catch(() => {});
-    await delay(500 + Math.random() * 1000);
-  }
-
-  // 3. 偶尔滚动一下（使用项目级 humanScroll）
-  if (Math.random() > 0.5) {
-    await humanScroll(page, {
-      direction: Math.random() > 0.5 ? 'down' : 'up',
-      distance: 100 + Math.random() * 200,
-    });
-  }
-
-  // 4. 随机阅读时间
-  await delay(1000 + Math.random() * 2000);
-  debugLog('模拟浏览完成');
 }
 
 // ============================================
