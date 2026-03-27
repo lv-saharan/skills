@@ -52,6 +52,16 @@ export type { FollowOptions, FollowResult, FollowManyResult, UserIdExtraction } 
 export type { NoteIdExtraction } from './types';
 
 // ============================================
+// Shared Utilities (for advanced usage)
+// ============================================
+
+export { withAuthenticatedAction, INTERACTION_DELAYS } from './shared';
+export {
+  extractNoteId as extractNoteIdUtil,
+  extractUserId as extractUserIdUtil,
+} from './url-utils';
+
+// ============================================
 // Selectors
 // ============================================
 // Exported for advanced usage and future interact features

@@ -46,3 +46,9 @@ export type {
 // ============================================
 
 export { NOTE_SELECTORS, USER_SELECTORS, ERROR_SELECTORS } from './selectors';
+
+// ============================================
+// Utilities
+// ============================================
+
+export { createNoteErrorResult, createUserErrorResult, parseCount } from './utils';

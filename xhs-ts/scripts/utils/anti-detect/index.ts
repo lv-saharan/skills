@@ -202,14 +202,17 @@ export async function checkLoginStatus(page: Page): Promise<boolean> {
     }
 
     // FALLBACK: URL-based check
-    // If on home/explore page without login modal/button, likely logged in
+    // If on home/explore/user profile page without login modal/button, likely logged in
+    // NOTE: User profile pages (/user/profile/) don't have standard header elements,
+    // so we rely on URL pattern + absence of login indicators
     if (
       currentUrl.includes('xiaohongshu.com') &&
       (currentUrl.includes('/explore') ||
         currentUrl.includes('/home') ||
+        currentUrl.includes('/user/profile/') ||
         currentUrl === 'https://www.xiaohongshu.com/')
     ) {
-      debugLog('On home/explore page without login indicators → IS logged in');
+      debugLog('On home/explore/user page without login indicators → IS logged in');
       return true;
     }
 

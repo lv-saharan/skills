@@ -17,11 +17,18 @@ import { debugLog } from '../utils/helpers';
  *
  * Key anti-detection technique: Use MINIMAL args
  * Only --start-maximized, no automation-related flags
+ *
+ * Signal handling: handleSIGINT/TERM/HUP enabled for automatic cleanup
+ * when process receives termination signals.
  */
 export async function launchBrowser(options: BrowserLaunchOptions = {}): Promise<Browser> {
   const launchOptions: Parameters<typeof chromium.launch>[0] = {
     headless: options.headless ?? config.headless,
     args: ['--start-maximized'],
+    // Enable signal handlers for automatic browser cleanup on termination
+    handleSIGINT: true,
+    handleSIGTERM: true,
+    handleSIGHUP: true,
   };
 
   // Use custom browser path if specified

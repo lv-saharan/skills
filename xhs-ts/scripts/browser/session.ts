@@ -9,6 +9,7 @@ import type { Browser, BrowserContext, Page } from 'playwright';
 import type { BrowserLaunchOptions, BrowserSession, TrackedPage, CleanupResult } from './types';
 import { launchBrowser } from './launch';
 import { createContext } from './context';
+import { setActiveBrowser } from './cleanup';
 import { debugLog } from '../utils/helpers';
 
 // ============================================
@@ -91,6 +92,8 @@ export class BrowserSessionImpl implements BrowserSession {
     try {
       browser = await launchBrowser(options);
       session._browser = browser;
+      // Register for global cleanup (crash recovery)
+      setActiveBrowser(browser);
 
       try {
         context = await createContext(browser, {
@@ -101,6 +104,7 @@ export class BrowserSessionImpl implements BrowserSession {
       } catch (error) {
         await safeClose(browser, 'browser');
         session._browser = null;
+        setActiveBrowser(null);
         throw error;
       }
 
@@ -113,6 +117,7 @@ export class BrowserSessionImpl implements BrowserSession {
         await safeClose(browser, 'browser');
         session._context = null;
         session._browser = null;
+        setActiveBrowser(null);
         throw error;
       }
 
@@ -258,6 +263,9 @@ export class BrowserSessionImpl implements BrowserSession {
         });
       }
     }
+
+    // Unregister from global cleanup tracking
+    setActiveBrowser(null);
 
     result.duration = Date.now() - startTime;
     debugLog(`Session: Disposal completed in ${result.duration}ms`);

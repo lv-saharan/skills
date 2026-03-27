@@ -164,7 +164,6 @@ async function searchViaHomepage(page: Page, keyword: string): Promise<void> {
       if (isVisible) {
         searchInput = input;
         debugLog(`Found search input with selector: ${selector}`);
-        debugLog(`Found search input with selector: ${selector}`);
         break;
       }
     } catch {

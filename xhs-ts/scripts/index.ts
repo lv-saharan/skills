@@ -27,6 +27,7 @@ import { executeScrapeNote, executeScrapeUser } from './scrape';
 import { ensureMigrated, listUsers, setCurrentUser, clearCurrentUser, resolveUser } from './user';
 import { config, debugLog } from './utils/helpers';
 import { outputSuccess, outputError } from './utils/output';
+import { forceCleanup } from './browser';
 import { XhsErrorCode } from './shared';
 
 // ============================================
@@ -307,7 +308,7 @@ program
   .option('--delay <ms>', 'Delay between follows in milliseconds (default: 2000)', '2000')
   .action(async (urls: string[], options: CliFollowOptions) => {
     if (!urls || urls.length === 0) {
-      outputError('���ṩ����һ���û���ҳURL', XhsErrorCode.NOT_FOUND);
+      outputError('请提供至少一个用户主页URL', XhsErrorCode.NOT_FOUND);
       process.exit(1);
     }
 
@@ -414,7 +415,7 @@ program
 
 program.exitOverride();
 
-process.on('uncaughtException', (error) => {
+process.on('uncaughtException', async (error) => {
   // Commander throws CommanderError for help/version display - these are normal, not errors
   if (error instanceof Error && 'code' in error) {
     const commanderError = error as Error & { code: string; exitCode?: number };
@@ -431,12 +432,14 @@ process.on('uncaughtException', (error) => {
     XhsErrorCode.BROWSER_ERROR,
     config.debug ? error.stack : undefined
   );
+  await forceCleanup();
   process.exit(1);
 });
 
-process.on('unhandledRejection', (reason) => {
+process.on('unhandledRejection', async (reason) => {
   debugLog('Unhandled rejection:', reason);
   outputError(String(reason), XhsErrorCode.BROWSER_ERROR);
+  await forceCleanup();
   process.exit(1);
 });
 

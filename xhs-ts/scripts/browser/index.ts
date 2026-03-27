@@ -15,6 +15,9 @@ export { createBrowserInstance, closeBrowserInstance, closeBrowser, withBrowser 
 export { launchBrowser, checkBrowserInstalled } from './launch';
 export { createContext } from './context';
 
+// Cleanup utilities
+export { setActiveBrowser, getActiveBrowser, forceCleanup } from './cleanup';
+
 // Types
 export type {
   BrowserInstance,

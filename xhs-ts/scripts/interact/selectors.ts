@@ -7,7 +7,7 @@
  * NOTE: XHS page structure changes frequently. These selectors use multiple
  * fallback patterns for robustness. If a selector fails, try the next one.
  *
- * Verified: 2026-03-26
+ * Verified: 2026-03-27
  * Structure: .interact-container .buttons.engage-bar-style .left
  *   - .like-wrapper (点赞)
  *   - .collect-wrapper (收藏)
@@ -155,30 +155,63 @@ export const COMMENT_SELECTORS = {
  * Selectors for follow button
  * @status IMPLEMENTED
  *
- * IMPORTANT: XHS follow button structure (verified 2026-03):
+ * IMPORTANT: XHS follow button structure (verified 2026-03-27):
+ * - Button class: .reds-button-new.follow-button (primary, most specific)
  * - Button text: "关注" / "+ 关注" (not following) or "已关注" (following)
- * - May also show "Follow" / "Following" in some contexts
- * - Located on user profile page
+ * - Located on user profile page, inside user info section
+ *
+ * NOTE: Page may have multiple follow buttons (recommended users section).
+ * We need to target the MAIN follow button in the user info area.
  */
 export const FOLLOW_SELECTORS = {
   /**
-   * Follow button selectors - ordered by specificity
-   * Matches buttons containing "关注" text or with follow-related classes
+   * Primary follow button selector - most specific
+   * This is the main follow button on user profile page
    */
-  button: [
+  primaryButton: '.reds-button-new.follow-button',
+
+  /**
+   * Fallback selectors for follow button - ordered by specificity
+   * Used when primary selector is not found
+   */
+  fallbackButtons: [
+    'button.follow-button',
     'button:has-text("关注")',
     'button:has-text("Follow")',
     '[class*="follow-btn"]',
     '[class*="followBtn"]',
-    '[class*="FollowBtn"]',
-    '[data-v-*][class*="follow"]',
+  ].join(', '),
+
+  /**
+   * Combined selector string for backward compatibility
+   * @deprecated Use primaryButton and fallbackButtons separately
+   */
+  button: [
+    '.reds-button-new.follow-button',
+    'button.follow-button',
+    'button:has-text("关注")',
+    'button:has-text("Follow")',
+    '[class*="follow-btn"]',
+    '[class*="followBtn"]',
+  ].join(', '),
+
+  /**
+   * User info container - the main area containing user profile info
+   * The follow button should be inside this container
+   */
+  userInfoContainer: [
+    '[class*="user-info"]',
+    '[class*="userInfo"]',
+    '.user-info',
+    '[class*="authorInfo"]',
+    '[class*="author-info"]',
   ].join(', '),
 
   /**
    * Following/unfollow state indicators
    * When following: button shows "已关注" or "Following"
    */
-  followingText: ['已关注', 'Following', 'following'].join(','),
+  followingText: ['已关注', '互相关注', '相互关注', 'Following', 'following'].join(','),
 
   /**
    * Not following state indicators

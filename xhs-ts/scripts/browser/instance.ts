@@ -9,6 +9,7 @@ import type { Browser, BrowserContext, Page } from 'playwright';
 import type { BrowserInstance, BrowserLaunchOptions, CleanupResult } from './types';
 import { launchBrowser } from './launch';
 import { createContext } from './context';
+import { setActiveBrowser } from './cleanup';
 import { debugLog } from '../utils/helpers';
 
 async function safeClose(resource: { close(): Promise<void> } | null, name: string): Promise<void> {
@@ -32,6 +33,8 @@ export async function createBrowserInstance(
 
   try {
     browser = await launchBrowser(options);
+    // Register for global cleanup (crash recovery)
+    setActiveBrowser(browser);
 
     try {
       context = await createContext(browser, {
@@ -122,6 +125,9 @@ export async function closeBrowserInstance(
       });
     }
   }
+
+  // Unregister from global cleanup tracking
+  setActiveBrowser(null);
 
   result.duration = Date.now() - startTime;
   return result;
