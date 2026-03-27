@@ -8,7 +8,7 @@ description: |
 license: MIT
 compatibility: opencode
 metadata:
-  version: "0.0.5"
+  version: "0.0.6"
   openclaw:
     emoji: "📕"
     requires:
