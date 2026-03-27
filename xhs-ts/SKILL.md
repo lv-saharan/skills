@@ -115,12 +115,22 @@ ACTION[:TARGET][:HINT]
 
 ### Channel-Specific Formatting
 
-> **When sending results to external channels (飞书/企业微信/微信), reference: [@references/channel-integration.md](references/channel-integration.md)**
+> **详细格式和发送流程见 [@references/channel-integration.md](references/channel-integration.md)**
 
-Key points:
-- **Feishu**: Interactive card + link preview format (两条消息)
-- **Enterprise WeChat**: `picurl` can use image URL directly
-- **All channels**: URLs must include `xsec_token` parameter
+| 渠道 | 格式 | 关键要点 |
+|------|------|----------|
+| **飞书** | 交互卡片 + 链接（两条消息） | URL 用反引号包裹；间隔 600ms+ |
+| **微信个人号** | 文字 + 图片（逐条发送） | 文字在前；每次只发一条，等待返回 |
+| **企业微信** | 图文 news 或 Markdown | `picurl` 可直接用图片 URL |
+
+**飞书卡片交互**：
+- ⚠️ **自定义机器人不支持交互回调**，按钮只能跳转 URL
+- 需要**应用机器人** + **长连接事件订阅**才能实现点赞/收藏/关注交互
+- 开通步骤：[开发者后台](https://open.feishu.cn/app) 创建应用 → 启用机器人 → 配置事件订阅
+
+**通用要点**：
+- URL **必须**包含 `xsec_token` 参数（否则提示"内容不存在")
+- 交互按钮回调：`xhs_like`, `xhs_collect`, `xhs_follow`
 
 ---
 

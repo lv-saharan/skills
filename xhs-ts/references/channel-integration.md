@@ -45,40 +45,105 @@ Agent 应根据接入的 Channel 类型，选择合适的消息发送格式。
 
 ## 小红书搜索结果输出格式
 
+### 搜索结果数据结构
+
+搜索命令返回的 `notes` 数组中每条笔记包含：
+
+| 字段 | 类型 | 用途 |
+|------|------|------|
+| `id` | string | 笔记 ID |
+| `title` | string | 笔记标题 |
+| `author.id` | string | 作者 ID（用于关注按钮） |
+| `author.name` | string | 作者名称 |
+| `stats.likes` | number | 点赞数 |
+| `stats.collects` | number | 收藏数 |
+| `cover` | string | 封面图 URL |
+| `url` | string | 笔记完整链接（含 xsec_token） |
+| `xsecToken` | string | 安全令牌（互动操作必需） |
+
+---
+
+## 飞书卡片交互说明
+
+> ⚠️ **重要**：飞书卡片交互功能需要**应用机器人**，自定义机器人不支持。
+
+### 自定义机器人 vs 应用机器人
+
+| 对比项 | 自定义机器人 | 应用机器人（推荐） |
+|--------|-------------|-------------------|
+| 创建方式 | 群设置中直接添加 | 开发者后台创建应用 |
+| 卡片按钮 | 仅支持跳转 URL | 支持**交互回调** ✅ |
+| 交互能力 | 无法接收按钮点击回调 | 通过长连接/Webhook接收回调 |
+| 适用场景 | 单向通知 | 交互式操作（点赞、收藏、关注） |
+| 开通复杂度 | 简单，无需审核 | 需创建应用、配置事件订阅 |
+
+### 如何开通卡片交互
+
+#### 步骤 1：创建飞书应用
+
+1. 访问 [飞书开发者后台](https://open.feishu.cn/app)
+2. 点击「创建企业自建应用」
+3. 填写应用名称（如：小红书助手）
+4. 在「应用功能」→「机器人」中启用机器人能力
+
+#### 步骤 2：配置事件订阅（长连接方式）
+
+飞书支持两种事件订阅方式，推荐使用**长连接**：
+
+| 方式 | 说明 | 适用场景 |
+|------|------|----------|
+| **长连接** | 应用主动连接飞书服务器，保持连接 | OpenClaw Agent（推荐）|
+| Webhook | 飞书推送事件到开发者服务器 | 有公网服务器的场景 |
+
+**长连接配置步骤**：
+
+1. 在开发者后台 → 「事件订阅」→ 选择「使用长连接接收事件」
+2. 添加事件：`im.message.receive_v1`（接收消息）
+3. OpenClaw 启动时会自动建立长连接
+
+#### 步骤 3：配置卡片交互回调
+
+1. 在 [飞书卡片搭建工具](https://open.feishu.cn/cardkit) 创建卡片
+2. 添加按钮，选择「回调」行为
+3. 配置回调数据（value）
+
+#### 步骤 4：发布应用
+
+1. 创建版本并发布
+2. 等待企业管理员审核（如需）
+3. 在群聊中添加应用机器人
+
+### 参考文档
+
+- [卡片交互机器人开发教程](https://open.feishu.cn/document/uAjLw4CM/uMzNwEjLzcDMx4yM3ATM/develop-a-card-interactive-bot/introduction)
+- [飞书卡片搭建工具](https://open.feishu.cn/cardkit)
+- [自定义机器人限制说明](https://open.feishu.cn/document/feishu-cards/quick-start/send-message-cards-with-custom-bot)
+
+---
+
 ### 飞书：交互式卡片 + 链接预览（推荐）
 
 **发送方式**：两条消息组合，触发飞书链接预览效果。
 
-#### 第一条：交互式卡片（带点赞按钮）
+#### 第一条：交互式卡片（带三个按钮）
+
+> **注意**：
+> - 以下 JSON 是 **飞书应用机器人消息格式**（`msg_type: "interactive"`）
+> - **自定义机器人不支持交互回调**，按钮点击无法触发服务器响应
+> - 如需交互功能，请参考上方「如何开通卡片交互」
 
 ```json
 {
   "msg_type": "interactive",
   "card": {
-    "config": { "wide_screen_mode": true },
+    "config": {"wide_screen_mode": true},
     "elements": [
-      {
-        "tag": "div",
-        "text": {
-          "content": "**标题内容**\n\n👤 作者：作者名\n❤️ 点赞数：18 赞",
-          "tag": "lark_md"
-        }
-      },
-      {
-        "tag": "action",
-        "actions": [
-          {
-            "tag": "button",
-            "text": { "tag": "plain_text", "content": "❤️ 点赞" },
-            "type": "primary",
-            "value": {
-              "action": "xhs_like",
-              "note_id": "xxx",
-              "xsec_token": "xxx"
-            }
-          }
-        ]
-      }
+      {"tag": "div", "text": {"content": "**标题内容**\n\n👤 作者：作者名\n❤️ 点赞数：18 赞", "tag": "lark_md"}},
+      {"tag": "action", "actions": [
+        {"tag": "button", "text": {"tag": "plain_text", "content": "❤️ 点赞"}, "type": "primary", "value": {"action": "xhs_like", "note_id": "xxx", "xsec_token": "xxx"}},
+        {"tag": "button", "text": {"tag": "plain_text", "content": "⭐ 收藏"}, "type": "default", "value": {"action": "xhs_collect", "note_id": "xxx", "xsec_token": "xxx"}},
+        {"tag": "button", "text": {"tag": "plain_text", "content": "👤 关注"}, "type": "default", "value": {"action": "xhs_follow", "author_id": "xxx"}}
+      ]}
     ]
   }
 }
@@ -94,16 +159,25 @@ Agent 应根据接入的 Channel 类型，选择合适的消息发送格式。
 
 #### 发送顺序
 
-1. 先发卡片 → 显示标题、作者、点赞数、点赞按钮
+1. 先发卡片 → 显示标题、作者、点赞数、三个按钮
 2. 再发链接 → 飞书自动生成链接预览（封面图 + 简介）
 3. 间隔 **600ms+** 避免飞书流控
+
+#### 按钮动作说明
+
+| 按钮 | action | 参数 |
+|------|--------|------|
+| ❤️ 点赞 | `xhs_like` | note_id, xsec_token |
+| ⭐ 收藏 | `xhs_collect` | note_id, xsec_token |
+| 👤 关注 | `xhs_follow` | author_id |
 
 #### 卡片按钮回调
 
 按钮 `value` 需包含：
-- `action`: `"xhs_like"` — 回调标识
-- `note_id`: 笔记 ID
-- `xsec_token`: 安全令牌
+- `action`: 回调标识（`xhs_like`, `xhs_collect`, `xhs_follow`）
+- `note_id`: 笔记 ID（点赞、收藏）
+- `xsec_token`: 安全令牌（点赞、收藏）
+- `author_id`: 作者 ID（关注）
 
 ---
 
@@ -163,7 +237,55 @@ Agent 应根据接入的 Channel 类型，选择合适的消息发送格式。
 
 ### 微信个人号
 
-发送纯文本消息，格式化为列表。
+> ⚠️ **重要：每条结果分两条消息，文字在前**
+
+**顺序**：文字1 → 图片1 → 文字2 → 图片2 → 文字3 → 图片3
+
+**关键**：每次只发一条，等待返回后再发下一条，保证顺序
+
+#### 搜索结果字段
+
+| 字段 | 用途 | 示例 |
+|------|------|------|
+| `cover` | 封面图 URL（发送图片消息） | `https://sns-webpic-qc.xhscdn.com/xxx!nc_n_webp_mw_1` |
+| `url` | 笔记链接（发送文字消息） | `https://www.xiaohongshu.com/explore/noteId?xsec_token=xxx` |
+| `xsecToken` | 安全令牌（用于互动操作） | `xxx%3D` |
+
+#### 发送流程
+
+**步骤1**：发送文字
+```json
+{
+  "action": "send",
+  "message": "标题 (点赞数)\nhttps://www.xiaohongshu.com/explore/笔记ID?xsec_token=xxx%3D&xsec_source=pc_search"
+}
+```
+等待返回...
+
+**步骤2**：发送封面图
+```json
+{
+  "action": "send",
+  "media": "https://sns-webpic-qc.xhscdn.com/xxx!nc_n_webp_mw_1"
+}
+```
+等待返回...
+
+**步骤3**：发送下一条结果的文字...
+**步骤4**：发送下一条结果的图片...
+
+#### 错误做法
+
+❌ 多条消息同时发送（顺序可能乱）
+❌ 图片在前，文字在后（顺序错误）
+❌ 直接回复文字（`_` 变斜体，链接失效）
+
+#### 正确做法
+
+✅ 文字在前，图片在后
+✅ 每次只发一条，等待返回
+✅ 用 message 工具发送（绕过 Markdown）
+✅ URL 保持原样（包含 `_` 和 `%3D`）
 
 ---
 
@@ -175,8 +297,10 @@ Agent 应根据接入的 Channel 类型，选择合适的消息发送格式。
 | **链接用 a 标签** | 飞书富文本中链接必须用 `a` 标签，防止 `_` 被解析为斜体 |
 | **URL 反引号包裹** | 飞书纯链接消息必须用反引号包裹，否则预览失效 |
 | **两条消息间隔** | 飞书交互卡片 + 链接之间间隔 600ms+ 避免流控 |
+| **微信顺序** | 文字在前，图片在后；每次只发一条，等待返回后再发下一条 |
+| **微信发送方式** | 用 message 工具发送文字（绕过 Markdown 解析），media 工具发送图片 |
 | **企业微信 picurl** | 可直接使用图片 URL，无需下载上传（最优） |
-| **批量发送间隔** | 飞书 600ms+，企业微信 3s+（20条/分钟限制） |
+| **批量发送间隔** | 飞书 600ms+，企业微信 3s+（20条/分钟限制），微信 逐条等待 |
 
 ---
 
@@ -185,8 +309,8 @@ Agent 应根据接入的 Channel 类型，选择合适的消息发送格式。
 ### DISPLAY_IMAGE
 
 ```
-本地文件 → 飞书: 上传 | 企业微信: Base64 | 微信: CDN上传 | CLI: look_at
-网络图片 → 飞书: 下载上传 | 企业微信: picurl ✅ | 微信: 下载上传 | CLI: 输出链接
+本地文件 → 飞书: 上传 | 企业微信: Base64 | 微信个人号: CDN上传 | CLI: look_at
+网络图片 → 飞书: 下载上传 | 企业微信: picurl ✅ | 微信个人号: 下载上传 | CLI: 输出链接
 ```
 
 ### PARSE（搜索结果）
@@ -194,13 +318,15 @@ Agent 应根据接入的 Channel 类型，选择合适的消息发送格式。
 ```
 飞书: 交互式卡片 + 链接预览（推荐） | 富文本 post（备选）
 企业微信: 图文 news 或 Markdown
-微信: 纯文本
+微信个人号: 文字 + 图片（两条消息，逐条发送）
 CLI: 表格
 ```
 
-### XHS_LIKE（点赞回调）
+### XHS_LIKE/XHS_COLLECT/XHS_FOLLOW（回调处理）
 
 飞书交互卡片按钮触发时，`value` 包含：
+
+**点赞回调**：
 ```json
 {
   "action": "xhs_like",
@@ -209,7 +335,27 @@ CLI: 表格
 }
 ```
 
-Agent 应调用 `xhs-ts like` 命令执行点赞操作。
+**收藏回调**：
+```json
+{
+  "action": "xhs_collect",
+  "note_id": "xxx",
+  "xsec_token": "xxx"
+}
+```
+
+**关注回调**：
+```json
+{
+  "action": "xhs_follow",
+  "author_id": "xxx"
+}
+```
+
+Agent 应调用相应的 `xhs-ts` 命令执行操作：
+- `npm run like -- "<url>"` — 点赞
+- `npm run collect -- "<url>"` — 收藏
+- `npm run follow -- "<url>"` — 关注
 
 ---
 
