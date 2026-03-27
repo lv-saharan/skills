@@ -31,10 +31,11 @@ metadata:
 | Publish | `npm run publish -- [options] [-- --user <name>]` | ✅ Implemented |
 | User Management | `npm run user` | ✅ Implemented |
 | Like | `npm run like -- "<url>" [urls...] [-- --user <name>]` | ✅ Implemented |
-| Collect | `npm run collect -- "<url>"` | ❌ Not implemented |
+| Collect | `npm run collect -- "<url>" [urls...] [-- --user <name>]` | ✅ Implemented |
 | Comment | `npm run comment -- "<url>" "text"` | ❌ Not implemented |
 | Follow | `npm run follow -- "<url>"` | ❌ Not implemented |
-| Scrape note/user | `npm run start -- scrape-note/user "<url>"` | ❌ Not implemented |
+| Scrape note | `npm run start -- scrape-note "<url>"` | ✅ Implemented |
+| Scrape user | `npm run start -- scrape-user "<url>"` | ✅ Implemented |
 
 > All commands support `--user <name>` for multi-account operations.
 
@@ -338,12 +339,121 @@ https://www.xiaohongshu.com/explore/{noteId}?xsec_token={token}&xsec_source=pc_s
 
 ---
 
+## Scrape Note
+
+Scrape detailed information from a note page.
+
+```bash
+# Basic scrape
+npm run start -- scrape-note "https://www.xiaohongshu.com/explore/noteId?xsec_token=xxx"
+
+# Include comments
+npm run start -- scrape-note "https://www.xiaohongshu.com/explore/noteId?xsec_token=xxx" --comments
+
+# Limit comments to 50
+npm run start -- scrape-note "https://www.xiaohongshu.com/explore/noteId?xsec_token=xxx" --comments --max-comments 50
+
+# Use specific user
+npm run start -- scrape-note "https://www.xiaohongshu.com/explore/noteId?xsec_token=xxx" --user "小号"
+```
+
+**Parameters:**
+
+| 参数 | 说明 | 必填 | 默认值 |
+|------|------|------|--------|
+| `<url>` | Note URL (with xsec_token recommended) | ✅ | — |
+| `--comments` | Include comments in result | ❌ | `false` |
+| `--max-comments` | Max comments to include (max: 100) | ❌ | `20` |
+| `--headless` | Run in headless mode | ❌ | `false` |
+| `--user` | User name for multi-user support | ❌ | Current user |
+
+**Output:**
+
+```json
+{
+  "success": true,
+  "noteId": "note-id",
+  "url": "https://www.xiaohongshu.com/explore/note-id",
+  "title": "笔记标题",
+  "content": "笔记正文内容...",
+  "type": "image",
+  "images": ["https://..."],
+  "author": { "id": "user-id", "name": "作者名", "avatar": "...", "url": "..." },
+  "stats": { "likes": 1000, "collects": 500, "comments": 100, "shares": 50 },
+  "tags": ["美食", "探店"],
+  "publishTime": "2024-01-01",
+  "location": "上海",
+  "scrapedAt": "2024-01-15T10:30:00.000Z"
+}
+```
+
+**Notes:**
+- URL with `xsec_token` provides full access to note content
+- Private notes or rate-limited pages may return errors
+- Comments extraction may be slow for notes with many comments
+
+---
+
+## Scrape User
+
+Scrape user profile information.
+
+```bash
+# Basic scrape
+npm run start -- scrape-user "https://www.xiaohongshu.com/user/profile/userId"
+
+# Include recent notes
+npm run start -- scrape-user "https://www.xiaohongshu.com/user/profile/userId" --notes
+
+# Limit notes to 24
+npm run start -- scrape-user "https://www.xiaohongshu.com/user/profile/userId" --notes --max-notes 24
+
+# Use specific user
+npm run start -- scrape-user "https://www.xiaohongshu.com/user/profile/userId" --user "小号"
+```
+
+**Parameters:**
+
+| 参数 | 说明 | 必填 | 默认值 |
+|------|------|------|--------|
+| `<url>` | User profile URL | ✅ | — |
+| `--notes` | Include recent notes preview | ❌ | `false` |
+| `--max-notes` | Max notes to include (max: 50) | ❌ | `12` |
+| `--headless` | Run in headless mode | ❌ | `false` |
+| `--user` | User name for multi-user support | ❌ | Current user |
+
+**Output:**
+
+```json
+{
+  "success": true,
+  "userId": "user-id",
+  "url": "https://www.xiaohongshu.com/user/profile/user-id",
+  "name": "用户昵称",
+  "avatar": "https://...",
+  "bio": "个人简介...",
+  "location": "上海",
+  "stats": { "follows": 100, "fans": 10000, "liked": 50000, "notes": 200 },
+  "tags": ["美食博主", "探店达人"],
+  "recentNotes": [
+    { "id": "note-id", "cover": "...", "title": "...", "likes": 1000, "type": "image", "url": "..." }
+  ],
+  "scrapedAt": "2024-01-15T10:30:00.000Z"
+}
+```
+
+**Notes:**
+- Private accounts may have limited data
+- Recent notes require `--notes` flag
+- Notes URLs include `xsec_token` for direct access
+
+---
+
 ## Not Implemented
 
 The following commands return `NOT_FOUND` error:
 
 ```bash
-npm run collect -- "<url>"
 npm run comment -- "<url>" "text"
 npm run follow -- "<url>"
 ```

@@ -15,7 +15,7 @@
 | 📝 发布 | `npm run publish -- [options]` | ✅ 已实现 | 图文/视频笔记发布 |
 | 👤 多用户 | `npm run user` | ✅ 已实现 | 多账号管理 |
 | 💬 点赞 | `npm run like -- "<url>" [urls...]` | ✅ 已实现 | 点赞笔记（支持批量） |
-| 📌 收藏 | `npm run collect -- "<url>"` | ❌ 未实现 | 收藏笔记 |
+| 📌 收藏 | `npm run collect -- "<url>" [urls...]` | ✅ 已实现 | 收藏笔记（支持批量） |
 | 💭 评论 | `npm run comment -- "<url>" "text"` | ❌ 未实现 | 评论笔记 |
 | 👥 关注 | `npm run follow -- "<url>"` | ❌ 未实现 | 关注用户 |
 | 📊 抓取 | `npm run start -- scrape-note/user` | ❌ 未实现 | 笔记详情、用户主页数据 |
@@ -416,14 +416,65 @@ https://www.xiaohongshu.com/explore/{noteId}?xsec_token={token}&xsec_source=pc_s
 - ✅ 需要先登录才能点赞
 - ✅ 批量点赞建议间隔 2-5 秒以避免触发风控
 
+### 收藏笔记
+
+支持单个或批量收藏笔记。
+
+> ⚠️ **重要：URL 必须包含 `xsec_token` 参数，否则无法访问笔记**
+> 
+> 完整 URL 示例：`https://www.xiaohongshu.com/explore/6762318400000000130009cd?xsec_token=ABZq3B9ldPQCqXvmFRI8HY7RmauIzwlsyErKncMQMqMJI%3D&xsec_source=pc_search`
+> 
+> 建议通过 `npm run search` 命令获取带有 token 的完整 URL。
+
+```bash
+# 收藏单个笔记（必须使用带 xsec_token 的完整 URL）
+npm run collect -- "https://www.xiaohongshu.com/explore/6762318400000000130009cd?xsec_token=ABZq3B9ldPQCqXvmFRI8HY7RmauIzwlsyErKncMQMqMJI%3D&xsec_source=pc_search"
+
+# 批量收藏多个笔记（空格分隔）
+npm run collect -- "https://www.xiaohongshu.com/explore/note-id1?xsec_token=xxx" "https://www.xiaohongshu.com/explore/note-id2?xsec_token=yyy"
+
+# 批量收藏，设置间隔 3 秒（默认 2 秒）
+npm run collect -- "url1" "url2" "url3" --delay 3000
+
+# 使用指定用户收藏
+npm run collect -- "https://www.xiaohongshu.com/explore/note-id?xsec_token=xxx" --user "小号"
+
+# 无头模式运行
+npm run collect -- "https://www.xiaohongshu.com/explore/note-id?xsec_token=xxx" --headless
+```
+
+**参数说明：**
+
+| 参数 | 说明 | 必填 | 默认值 |
+|------|------|------|--------|
+| `[urls...]` | 笔记完整 URL（支持多个，空格分隔，**必须带 xsec_token**） | ✅ | — |
+| `--delay` | 批量收藏间隔（毫秒） | ❌ | `2000` |
+| `--headless` | 无头模式运行 | ❌ | `false` |
+| `--user` | 指定用户 | ❌ | 当前用户 |
+
+**URL 格式要求：**
+
+必须包含 `xsec_token` 参数：
+```
+https://www.xiaohongshu.com/explore/{noteId}?xsec_token={token}&xsec_source=pc_search
+```
+
+**获取完整 URL 的方法：**
+1. 使用搜索命令：`npm run search -- "关键词"` → 返回的笔记已包含完整 URL
+2. 从浏览器复制：打开笔记页 → 复制地址栏完整 URL
+
+**注意事项：**
+- ❌ 不支持不带 token 的 URL（如 `.../explore/{noteId}`）
+- ❌ 不支持短链接（xhslink.com）
+- ✅ 如果笔记已收藏，会跳过点击操作
+- ✅ 需要先登录才能收藏
+- ✅ 批量收藏建议间隔 2-5 秒以避免触发风控
+
 ### 其他互动操作（未实现）
 
 以下命令目前返回 `NOT_FOUND` 错误：
 
 ```bash
-# 收藏
-npm run collect -- "https://www.xiaohongshu.com/explore/note-id"
-
 # 评论
 npm run comment -- "https://www.xiaohongshu.com/explore/note-id" "太棒了！"
 
