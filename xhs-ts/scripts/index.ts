@@ -13,11 +13,17 @@ import type {
   CliPublishOptions,
   CliUserOptions,
   CliLikeOptions,
+  CliCollectOptions,
+  CliCommentOptions,
+  CliFollowOptions,
+  CliScrapeNoteOptions,
+  CliScrapeUserOptions,
 } from './cli/types';
 import { executeLogin } from './login';
 import { executeSearch } from './search';
 import { executePublish } from './publish';
-import { executeLike } from './interact';
+import { executeLike, executeCollect, executeComment, executeFollow } from './interact';
+import { executeScrapeNote, executeScrapeUser } from './scrape';
 import { ensureMigrated, listUsers, setCurrentUser, clearCurrentUser, resolveUser } from './user';
 import { config, debugLog } from './utils/helpers';
 import { outputSuccess, outputError } from './utils/output';
@@ -228,27 +234,65 @@ program
   });
 
 // ============================================
-// Collect Command (Placeholder)
+// Collect Command
 // ============================================
 
 program
-  .command('collect <url>')
-  .description('Collect a note')
-  .action(async (_url) => {
-    outputError('Collect command not implemented yet', XhsErrorCode.NOT_FOUND);
-    process.exit(1);
+  .command('collect [urls...]')
+  .description('Collect (bookmark) one or multiple notes (URLs separated by space)')
+  .option('--headless', 'Run in headless mode')
+  .option('--user <name>', 'User name for multi-user support')
+  .option('--delay <ms>', 'Delay between collects in milliseconds (default: 2000)', '2000')
+  .action(async (urls: string[], options: CliCollectOptions) => {
+    if (!urls || urls.length === 0) {
+      outputError('请提供至少一个笔记URL', XhsErrorCode.NOT_FOUND);
+      process.exit(1);
+    }
+
+    const headless = options.headless !== undefined ? options.headless : config.headless;
+    const user = resolveUser(options.user);
+    const delayBetweenCollects = options.delay ? parseInt(options.delay, 10) : 2000;
+
+    debugLog(
+      'Collect: urls=' +
+        urls.length +
+        ', headless=' +
+        headless +
+        ', user=' +
+        user +
+        ', delay=' +
+        delayBetweenCollects
+    );
+
+    await executeCollect({
+      urls,
+      headless,
+      user,
+      delayBetweenCollects,
+    });
   });
 
 // ============================================
-// Comment Command (Placeholder)
+// Comment Command
 // ============================================
 
 program
   .command('comment <url> <text>')
   .description('Comment on a note')
-  .action(async (_url, _text) => {
-    outputError('Comment command not implemented yet', XhsErrorCode.NOT_FOUND);
-    process.exit(1);
+  .option('--headless', 'Run in headless mode')
+  .option('--user <name>', 'User name for multi-user support')
+  .action(async (url: string, text: string, options: CliCommentOptions) => {
+    const headless = options.headless !== undefined ? options.headless : config.headless;
+    const user = resolveUser(options.user);
+
+    debugLog('Comment: url=' + url + ', text=' + text + ', user=' + user);
+
+    await executeComment({
+      url,
+      text,
+      headless,
+      user,
+    });
   });
 
 // ============================================
@@ -256,31 +300,112 @@ program
 // ============================================
 
 program
-  .command('follow <url>')
-  .description('Follow a user')
-  .action(async (_url) => {
-    outputError('Follow command not implemented yet', XhsErrorCode.NOT_FOUND);
-    process.exit(1);
+  .command('follow [urls...]')
+  .description('Follow one or multiple users (User profile URLs separated by space)')
+  .option('--headless', 'Run in headless mode')
+  .option('--user <name>', 'User name for multi-user support')
+  .option('--delay <ms>', 'Delay between follows in milliseconds (default: 2000)', '2000')
+  .action(async (urls: string[], options: CliFollowOptions) => {
+    if (!urls || urls.length === 0) {
+      outputError('���ṩ����һ���û���ҳURL', XhsErrorCode.NOT_FOUND);
+      process.exit(1);
+    }
+
+    const headless = options.headless !== undefined ? options.headless : config.headless;
+    const user = resolveUser(options.user);
+    const delayBetweenFollows = options.delay ? parseInt(options.delay, 10) : 2000;
+
+    debugLog(
+      'Follow: urls=' +
+        urls.length +
+        ', headless=' +
+        headless +
+        ', user=' +
+        user +
+        ', delay=' +
+        delayBetweenFollows
+    );
+
+    await executeFollow({
+      urls,
+      headless,
+      user,
+      delayBetweenFollows,
+    });
   });
 
 // ============================================
-// Scrape Command (Placeholder)
+// Scrape Note Command
 // ============================================
 
 program
   .command('scrape-note <url>')
-  .description('Scrape note details')
-  .action(async (_url) => {
-    outputError('Scrape-note command not implemented yet', XhsErrorCode.NOT_FOUND);
-    process.exit(1);
+  .description('Scrape note details from a note URL')
+  .option('--headless', 'Run in headless mode')
+  .option('--user <name>', 'User name for multi-user support')
+  .option('--comments', 'Include comments in result (default: false)')
+  .option('--max-comments <number>', 'Max comments to include (default: 20, max: 100)', '20')
+  .action(async (url: string, options: CliScrapeNoteOptions) => {
+    const headless = options.headless !== undefined ? options.headless : config.headless;
+    const user = resolveUser(options.user);
+    const includeComments = options.comments ?? false;
+    const maxComments = options.maxComments ? parseInt(options.maxComments, 10) : 20;
+
+    debugLog(
+      'Scrape-note: url=' +
+        url +
+        ', headless=' +
+        headless +
+        ', user=' +
+        user +
+        ', includeComments=' +
+        includeComments
+    );
+
+    await executeScrapeNote({
+      url,
+      headless,
+      user,
+      includeComments,
+      maxComments,
+    });
   });
+
+// ============================================
+// Scrape User Command
+// ============================================
 
 program
   .command('scrape-user <url>')
-  .description('Scrape user profile')
-  .action(async (_url) => {
-    outputError('Scrape-user command not implemented yet', XhsErrorCode.NOT_FOUND);
-    process.exit(1);
+  .description('Scrape user profile from a user profile URL')
+  .option('--headless', 'Run in headless mode')
+  .option('--user <name>', 'User name for multi-user support')
+  .option('--notes', 'Include recent notes in result (default: false)')
+  .option('--max-notes <number>', 'Max notes to include (default: 12, max: 50)', '12')
+  .action(async (url: string, options: CliScrapeUserOptions) => {
+    const headless = options.headless !== undefined ? options.headless : config.headless;
+    const user = resolveUser(options.user);
+    const includeNotes = options.notes ?? false;
+    const maxNotes = options.maxNotes ? parseInt(options.maxNotes, 10) : 12;
+
+    debugLog(
+      'Scrape-user: url=' +
+        url +
+        ', headless=' +
+        headless +
+        ', user=' +
+        user +
+        ', includeNotes=' +
+        includeNotes
+    );
+
+    await executeScrapeUser({
+      url,
+      headless,
+      user,
+      includeNotes,
+      maxNotes,
+    });
   });
 
 // ============================================

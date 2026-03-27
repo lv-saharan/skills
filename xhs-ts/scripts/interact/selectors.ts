@@ -84,20 +84,10 @@ export const LIKE_SELECTORS = {
  * Active state: .collect-wrapper.collect-active
  */
 export const COLLECT_SELECTORS = {
-  /** Collect button selectors */
-  button: [
-    // Primary: Direct class selector
-    '.collect-wrapper',
-    // Fallback: Position in left area
-    '.left > .collect-wrapper',
-    '.buttons.engage-bar-style .collect-wrapper',
-    '.interact-container .collect-wrapper',
-    // Legacy patterns
-    '[class*="collect-wrapper"]',
-    '[class*="collectWrapper"]',
-    '[class*="collect"]',
-    '[class*="Collect"]',
-  ].join(', '),
+  /**
+   * Collect button selectors - ordered by specificity
+   */
+  button: '.interact-container .buttons .collect-wrapper',
 
   /** Collect icon inside button */
   icon: ['svg', 'img', '[class*="collect-icon"]'].join(', '),
@@ -161,16 +151,44 @@ export const COMMENT_SELECTORS = {
 // Follow Button Selectors
 // ============================================
 
-/** Selectors for follow button
- * @status NOT_IMPLEMENTED - Reserved for future use
+/**
+ * Selectors for follow button
+ * @status IMPLEMENTED
+ *
+ * IMPORTANT: XHS follow button structure (verified 2026-03):
+ * - Button text: "关注" / "+ 关注" (not following) or "已关注" (following)
+ * - May also show "Follow" / "Following" in some contexts
+ * - Located on user profile page
  */
 export const FOLLOW_SELECTORS = {
-  /** Follow button on user profile */
-  button: ['button:has-text("关注")', '[class*="follow-btn"]', '[class*="followBtn"]'].join(', '),
+  /**
+   * Follow button selectors - ordered by specificity
+   * Matches buttons containing "关注" text or with follow-related classes
+   */
+  button: [
+    'button:has-text("关注")',
+    'button:has-text("Follow")',
+    '[class*="follow-btn"]',
+    '[class*="followBtn"]',
+    '[class*="FollowBtn"]',
+    '[data-v-*][class*="follow"]',
+  ].join(', '),
 
-  /** Unfollow state */
-  unfollowText: '已关注, Following',
+  /**
+   * Following/unfollow state indicators
+   * When following: button shows "已关注" or "Following"
+   */
+  followingText: ['已关注', 'Following', 'following'].join(','),
 
-  /** Follow state */
-  followText: '关注，Follow, + 关注',
+  /**
+   * Not following state indicators
+   * When not following: button shows "关注" or "Follow" or "+ 关注"
+   */
+  notFollowingText: ['关注', 'Follow', '+ 关注', '+ Follow'].join(','),
+
+  /** User info container on profile page */
+  userInfo: '[class*="user-info"], [class*="userInfo"], .user-info',
+
+  /** Username element */
+  username: '[class*="user-name"], [class*="userName"], .user-name',
 } as const;

@@ -91,6 +91,42 @@ export interface CliLikeOptions {
 }
 
 /**
+ * Collect command options (CLI-specific)
+ * Supports single or multiple URLs (space-separated)
+ */
+export interface CliCollectOptions {
+  /** Run in headless mode */
+  headless?: boolean;
+  /** User name for multi-user support */
+  user?: string;
+  /** Delay between collects in ms (for multiple URLs) */
+  delay?: string;
+}
+
+/**
+ * Comment command options (CLI-specific)
+ */
+export interface CliCommentOptions {
+  /** Run in headless mode */
+  headless?: boolean;
+  /** User name for multi-user support */
+  user?: string;
+}
+
+/**
+ * Follow command options (CLI-specific)
+ * Supports single or multiple URLs (space-separated)
+ */
+export interface CliFollowOptions {
+  /** Run in headless mode */
+  headless?: boolean;
+  /** User name for multi-user support */
+  user?: string;
+  /** Delay between follows in ms (for multiple URLs) */
+  delay?: string;
+}
+
+/**
  * User command options
  */
 export interface CliUserOptions {
@@ -98,4 +134,32 @@ export interface CliUserOptions {
   setCurrent?: string;
   /** Set to default user */
   setDefault?: boolean;
+}
+
+/**
+ * Scrape note command options (CLI-specific)
+ */
+export interface CliScrapeNoteOptions {
+  /** Run in headless mode */
+  headless?: boolean;
+  /** User name for multi-user support */
+  user?: string;
+  /** Include comments in result */
+  comments?: boolean;
+  /** Max comments to include */
+  maxComments?: string;
+}
+
+/**
+ * Scrape user command options (CLI-specific)
+ */
+export interface CliScrapeUserOptions {
+  /** Run in headless mode */
+  headless?: boolean;
+  /** User name for multi-user support */
+  user?: string;
+  /** Include recent notes in result */
+  notes?: boolean;
+  /** Max notes to include */
+  maxNotes?: string;
 }
