@@ -48,7 +48,189 @@ const NOTES_PER_SCROLL = 20;
 // Use TIMEOUTS.PAGE_LOAD from shared
 const SELECTOR_TIMEOUT = 15000;
 
-// URL builder imported from ./url-builder
+// ============================================
+// Homepage Search Selectors
+// ============================================
+
+/** Homepage search input selectors (multiple fallbacks) */
+const HOMEPAGE_SEARCH_INPUT_SELECTORS = [
+  'input[placeholder*="探索"]',
+  'input[placeholder*="搜索"]',
+  '.search-input input',
+  'header input[type="text"]',
+  '#search-input',
+  '[class*="search"] input',
+];
+
+/** Homepage search button selectors (multiple fallbacks) */
+const HOMEPAGE_SEARCH_BUTTON_SELECTORS = [
+  'header button[type="submit"]',
+  'header .search-btn',
+  'header [class*="searchBtn"]',
+  'button[aria-label*="搜索"]',
+  'button[aria-label*="search"]',
+];
+
+// ============================================
+// Verification Page Detection
+// ============================================
+
+/**
+ * Check if current page is a verification/captcha/login redirect page
+ * This happens when XHS detects automated access and blocks direct URL navigation
+ */
+async function isVerificationPage(page: Page): Promise<boolean> {
+  const url = page.url();
+
+  // Check URL patterns for verification pages
+  if (
+    url.includes('/website-login/captcha') ||
+    url.includes('/login/captcha') ||
+    url.includes('/verify') ||
+    url.includes('/captcha') ||
+    url.includes('/signin')
+  ) {
+    debugLog('Verification page detected via URL pattern');
+    return true;
+  }
+
+  // Check for verification page elements
+  const verificationIndicators = [
+    '.captcha-container',
+    '#captcha',
+    '[class*="verify"]',
+    '[class*="verification"]',
+    'text=/安全验证/',
+    'text=/请完成验证/',
+  ];
+
+  for (const selector of verificationIndicators) {
+    try {
+      const isVisible = await page.locator(selector).first().isVisible({ timeout: 1000 });
+      if (isVisible) {
+        debugLog(`Verification page detected via element: ${selector}`);
+        return true;
+      }
+    } catch {
+      // Ignore
+    }
+  }
+
+  return false;
+}
+
+/**
+ * Check if search container is present (results loaded)
+ */
+async function hasSearchResults(page: Page): Promise<boolean> {
+  try {
+    const container = page.locator(SEARCH_CONTAINER_SELECTOR);
+    const isVisible = await container.isVisible({ timeout: 3000 });
+    if (isVisible) {
+      const noteCount = await page.locator(NOTE_ITEM_SELECTOR).count();
+      return noteCount > 0;
+    }
+  } catch {
+    // Ignore
+  }
+  return false;
+}
+
+// ============================================
+// Homepage Search Fallback
+// ============================================
+
+/**
+ * Perform search via homepage search bar
+ * This is a fallback when direct URL navigation is blocked by verification
+ */
+async function searchViaHomepage(page: Page, keyword: string): Promise<void> {
+  debugLog('Attempting search via homepage search bar...');
+
+  // Navigate to homepage
+  await page.goto(XHS_URLS.home, {
+    waitUntil: 'domcontentloaded',
+    timeout: TIMEOUTS.PAGE_LOAD,
+  });
+  await delay(2000);
+
+  // Find search input
+  let searchInput: ReturnType<Page['locator']> | null = null;
+  // Track which selector worked
+  for (const selector of HOMEPAGE_SEARCH_INPUT_SELECTORS) {
+    try {
+      const input = page.locator(selector).first();
+      const isVisible = await input.isVisible({ timeout: 2000 });
+      if (isVisible) {
+        searchInput = input;
+        debugLog(`Found search input with selector: ${selector}`);
+        debugLog(`Found search input with selector: ${selector}`);
+        break;
+      }
+    } catch {
+      // Try next selector
+    }
+  }
+
+  if (!searchInput) {
+    throw new XhsError(
+      'Cannot find search input on homepage. The page structure may have changed.',
+      XhsErrorCode.NOT_FOUND
+    );
+  }
+
+  // Click on search input to focus
+  await searchInput.click();
+  await randomDelay(300, 500);
+
+  // Clear existing content and type keyword
+  await searchInput.fill('');
+  await randomDelay(200, 400);
+
+  // Type keyword with human-like delays
+  for (const char of keyword) {
+    await searchInput.pressSequentially(char, { delay: 50 + Math.random() * 50 });
+  }
+
+  await randomDelay(500, 1000);
+
+  // Find and click search button or press Enter
+  let searchButton: ReturnType<Page['locator']> | null = null;
+  for (const selector of HOMEPAGE_SEARCH_BUTTON_SELECTORS) {
+    try {
+      const btn = page.locator(selector).first();
+      const isVisible = await btn.isVisible({ timeout: 2000 });
+      if (isVisible) {
+        searchButton = btn;
+        debugLog(`Found search button with selector: ${selector}`);
+        break;
+      }
+    } catch {
+      // Try next selector
+    }
+  }
+
+  if (searchButton) {
+    await searchButton.click();
+  } else {
+    // Fallback: Press Enter key
+    debugLog('Search button not found, pressing Enter instead');
+    await searchInput.press('Enter');
+  }
+
+  // Wait for navigation to search results
+  debugLog('Waiting for search results to load...');
+  await delay(3000);
+
+  // Wait for search results container
+  try {
+    await page.waitForSelector(SEARCH_CONTAINER_SELECTOR, { timeout: SELECTOR_TIMEOUT });
+    debugLog(`Found search container: ${SEARCH_CONTAINER_SELECTOR}`);
+  } catch {
+    debugLog('Search container not found after homepage search');
+    await delay(2000);
+  }
+}
 
 // ============================================
 // Filter Options Interface
@@ -68,13 +250,14 @@ interface SearchFilters {
 // ============================================
 
 /**
- * Navigate to search page and wait for results
+ * Navigate to search page with fallback to homepage search bar
+ * When direct URL navigation is blocked by verification, use homepage search instead
  */
 async function navigateToSearch(
   page: Page,
   keyword: string,
   filters: SearchFilters
-): Promise<void> {
+): Promise<{ usedFallback: boolean }> {
   const searchUrl = buildSearchUrl({
     keyword,
     sort: filters.sort,
@@ -90,6 +273,28 @@ async function navigateToSearch(
     timeout: TIMEOUTS.PAGE_LOAD,
   });
 
+  // Check if we were redirected to verification page
+  const isVerification = await isVerificationPage(page);
+
+  if (isVerification) {
+    debugLog('Redirected to verification page, attempting homepage search fallback...');
+
+    // Try homepage search as fallback
+    await searchViaHomepage(page, keyword);
+
+    // Check if we now have search results
+    const hasResults = await hasSearchResults(page);
+    if (!hasResults) {
+      throw new XhsError(
+        'Homepage search fallback failed. Cannot access search results.',
+        XhsErrorCode.NOT_FOUND
+      );
+    }
+
+    debugLog('Homepage search fallback successful');
+    return { usedFallback: true };
+  }
+
   // Wait for search results container
   try {
     await page.waitForSelector(SEARCH_CONTAINER_SELECTOR, { timeout: SELECTOR_TIMEOUT });
@@ -97,10 +302,20 @@ async function navigateToSearch(
   } catch {
     debugLog('Search container not found, waiting for page load');
     await delay(3000);
+
+    // Double check if we need fallback (verification page might load after delay)
+    const stillNoResults = !(await hasSearchResults(page));
+    if (stillNoResults) {
+      debugLog('No results after waiting, attempting homepage search fallback...');
+      await searchViaHomepage(page, keyword);
+      return { usedFallback: true };
+    }
   }
 
   // Apply filters via UI if needed (some filters may require UI interaction)
   await applyFiltersViaUI(page, filters);
+
+  return { usedFallback: false };
 }
 
 /**
@@ -264,8 +479,11 @@ async function performSearch(
 ): Promise<SearchResult> {
   debugLog('Starting performSearch...');
 
-  // Navigate to search page
-  await navigateToSearch(page, keyword, filters);
+  // Navigate to search page (with fallback to homepage search)
+  const { usedFallback } = await navigateToSearch(page, keyword, filters);
+  if (usedFallback) {
+    debugLog('Search completed via homepage fallback');
+  }
 
   // Wait for page to stabilize
   debugLog('Waiting for page to stabilize...');
