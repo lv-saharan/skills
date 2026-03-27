@@ -113,6 +113,15 @@ ACTION[:TARGET][:HINT]
 | `WAIT` | Wait for user action, prompt HINT text |
 | `PARSE` | Format `data` content and display |
 
+### Channel-Specific Formatting
+
+> **When sending results to external channels (飞书/企业微信/微信), reference: [@references/channel-integration.md](references/channel-integration.md)**
+
+Key points:
+- **Feishu**: Interactive card + link preview format (两条消息)
+- **Enterprise WeChat**: `picurl` can use image URL directly
+- **All channels**: URLs must include `xsec_token` parameter
+
 ---
 
 ## Commands
@@ -145,6 +154,8 @@ npm run search -- "美食探店" --limit 10 --sort hot --note-type image --time-
 # Search followed users only
 npm run search -- "美食探店" --scope following
 ```
+
+> **Output formatting**: For sending results to Feishu/WeChat, see [@references/channel-integration.md](references/channel-integration.md)
 
 | Parameter | Values | Default |
 |-----------|--------|---------|
