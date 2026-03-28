@@ -22,8 +22,6 @@ export {
 // Helper types
 export type { WaitForConditionOptions } from './helpers';
 
-// Auth wait utilities
-export { waitForCreatorLogin, saveContextCookies, resolveHeadless } from './auth-wait';
 // Anti-detect utilities
 export {
   humanClick,
