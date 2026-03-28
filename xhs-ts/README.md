@@ -1,6 +1,6 @@
 # 小红书自动化 Skill (xhs-ts)
 
-[![Version](https://img.shields.io/badge/version-0.0.7-blue.svg)](https://github.com/lv-saharan/skills/tree/main/xhs-ts)
+[![Version](https://img.shields.io/badge/version-0.0.8-blue.svg)](https://github.com/lv-saharan/skills/tree/main/xhs-ts)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Node](https://img.shields.io/badge/node-%3E%3D22.16.0-brightgreen.svg)](https://nodejs.org/)
 

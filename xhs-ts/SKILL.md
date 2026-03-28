@@ -8,7 +8,7 @@ description: |
 license: MIT
 compatibility: opencode
 metadata:
-  version: "0.0.7"
+  version: "0.0.8"
   openclaw:
     emoji: "📕"
     requires:
@@ -120,10 +120,6 @@ ACTION[:TARGET][:HINT]
 | 渠道 | 格式 | 关键要点 |
 |------|------|----------|
 | **飞书** | 交互卡片 + 链接（两条消息） | URL 用反引号包裹；间隔 600ms+ |
-
-**飞书卡片示例（小红书搜索结果）：**
-
-![飞书卡片示例](assets/feishu-card.png)
 | **微信个人号** | 文字 + 图片（逐条发送） | 文字在前；每次只发一条，等待返回 |
 | **企业微信** | 图文 news 或 Markdown | `picurl` 可直接用图片 URL |
 
