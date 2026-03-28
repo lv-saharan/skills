@@ -7,7 +7,6 @@
 
 import type { Page, BrowserContext } from 'playwright';
 import type { UserName } from '../user';
-import { waitForCondition } from './helpers';
 import { debugLog } from './logging';
 import { saveCookies } from '../cookie';
 
@@ -20,18 +19,9 @@ import { saveCookies } from '../cookie';
  */
 export async function waitForCreatorLogin(page: Page, timeout = 120000): Promise<boolean> {
   try {
-    await waitForCondition(
-      async () => {
-        const url = page.url();
-        return url.includes('creator.xiaohongshu.com') && !url.includes('login');
-      },
-      {
-        timeout,
-        interval: 2000,
-        timeoutMessage: 'Creator center login timeout',
-        onProgress: (elapsed) => debugLog(`[${elapsed}s] Waiting for creator center login...`),
-        progressInterval: 10000,
-      }
+    await page.waitForURL(
+      (url) => url.href.includes('creator.xiaohongshu.com') && !url.href.includes('login'),
+      { timeout }
     );
     debugLog('User logged in to creator center');
     return true;

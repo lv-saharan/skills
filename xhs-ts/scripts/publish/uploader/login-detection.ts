@@ -8,7 +8,7 @@
 import type { Page } from 'playwright';
 import { XhsError, XhsErrorCode } from '../../shared';
 import { TIMEOUTS } from '../../shared';
-import { waitForCondition, debugLog } from '../../utils/helpers';
+import { debugLog } from '../../utils/helpers';
 
 /**
  * Check if we're on the login page
@@ -93,25 +93,14 @@ export async function waitForUserLogin(page: Page): Promise<void> {
   console.log('📱 Please log in using the browser window (QR code or SMS).\n');
 
   try {
-    await waitForCondition(
-      async () => {
-        const url = page.url();
-        if (!url.includes('creator.xiaohongshu.com/publish')) {
-          return false;
-        }
-        return page
-          .locator('button:has-text("上传图片")')
-          .isVisible()
-          .catch(() => false);
-      },
-      {
-        timeout: TIMEOUTS.LOGIN,
-        interval: 1000,
-        timeoutMessage: 'Login timeout',
-        onProgress: (elapsed) => debugLog(`[${elapsed}s] Waiting for user login...`),
-        progressInterval: 10000,
-      }
-    );
+    // Wait for URL to match publish page
+    await page.waitForURL('**/creator.xiaohongshu.com/publish**', {
+      timeout: TIMEOUTS.LOGIN,
+    });
+    // Then wait for upload button to appear
+    await page.locator('button:has-text("上传图片")').waitFor({
+      timeout: TIMEOUTS.LOGIN,
+    });
     debugLog('User logged in successfully, back to publish page');
     console.log('✅ Login successful! Continuing with publish...\n');
   } catch {
