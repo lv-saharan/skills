@@ -1,6 +1,6 @@
 # 小红书自动化 Skill (xhs-ts)
 
-[![Version](https://img.shields.io/badge/version-0.0.6-blue.svg)](https://github.com/lv-saharan/skills/tree/main/xhs-ts)
+[![Version](https://img.shields.io/badge/version-0.0.7-blue.svg)](https://github.com/lv-saharan/skills/tree/main/xhs-ts)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Node](https://img.shields.io/badge/node-%3E%3D22.16.0-brightgreen.svg)](https://nodejs.org/)
 
@@ -308,6 +308,10 @@ ACTION[:TARGET][:HINT]
 | `RELAY` | 直接转发消息给用户 |
 | `WAIT` | 等待用户操作，提示 HINT 文本 |
 | `PARSE` | 格式化 `data` 内容并展示 |
+
+**飞书卡片示例（小红书搜索结果）：**
+
+![飞书卡片示例](assets/feishu-card.png)
 
 ---
 
