@@ -100,6 +100,7 @@ async function performSearch(
 
   return {
     keyword,
+    requested: limit,
     total: notes.length,
     notes,
   };

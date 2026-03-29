@@ -54,7 +54,7 @@ export async function extractSearchResults(
     // Direct page.evaluate with arrow function
     // __name polyfill is injected via stealth.ts to handle tsx/esbuild injection
     const rawData = (await page.evaluate(
-      ({ containerSel, noteSel, skip, max }) => {
+      ({ containerSel, noteSel, skip, max: _max, limit }) => {
         const container = document.querySelector(containerSel);
         if (!container) {
           return { error: 'container_not_found', selector: containerSel, count: 0, results: [] };
@@ -120,7 +120,9 @@ export async function extractSearchResults(
           return { noteId, xsecToken };
         };
 
-        for (let idx = skip; idx < items.length && idx < max; idx++) {
+        // Continue iterating until we have enough valid results
+        // (some items may not have noteId, so we need to look beyond max)
+        for (let idx = skip; idx < items.length && results.length < limit; idx++) {
           const item = items[idx];
           const info = extractInfo(item);
 
@@ -136,24 +138,25 @@ export async function extractSearchResults(
               '&xsec_source=pc_search'
             : 'https://www.xiaohongshu.com/explore/' + info.noteId;
 
-          const titleEl =
-            item.querySelector("[class*='title']") || item.querySelector("[class*='content']");
+          // Title: use .title span or .title directly (XHS uses <a class="title"><span>text</span></a>)
+          const titleEl = item.querySelector('.title span') || item.querySelector('.title');
           const title = titleEl?.textContent?.trim() || '笔记 ' + (idx - skip + 1);
 
           const imgEl = item.querySelector('img');
           const cover = imgEl?.src || '';
 
-          const authorNameEl =
-            item.querySelector("[class*='author']") || item.querySelector("[class*='name']");
+          // Author name: use .name directly (separate from .time in .name-time-wrapper)
+          // Note: [class*='author'] would match the whole <a class="author"> which includes time
+          const authorNameEl = item.querySelector('.name');
           const authorLinkEl = item.querySelector("a[href*='/user/profile/']");
           const authorHref = authorLinkEl?.getAttribute('href') || '';
           const authorIdMatch = authorHref.match(new RegExp('/user/profile/([a-zA-Z0-9]+)'));
 
-          const likesEl = item.querySelector("[class*='like'] .count, .like-wrapper .count");
-          const collectsEl = item.querySelector(
-            "[class*='collect'] .count, .collect-wrapper .count"
-          );
-          const commentsEl = item.querySelector("[class*='comment'] .count, .chat-wrapper .count");
+          // Likes: the only stat shown on search results page
+          const likesEl = item.querySelector('.like-wrapper .count');
+
+          // Note: XHS search results page does NOT show collects/comments counts
+          // These are only available on the note detail page
 
           results.push({
             id: info.noteId,
@@ -165,8 +168,8 @@ export async function extractSearchResults(
             },
             stats: {
               likes: parseCount(likesEl?.textContent),
-              collects: parseCount(collectsEl?.textContent),
-              comments: parseCount(commentsEl?.textContent),
+              collects: 0, // Not available on search results page
+              comments: 0, // Not available on search results page
             },
             cover,
             url: noteUrl,
@@ -181,6 +184,7 @@ export async function extractSearchResults(
         noteSel: NOTE_ITEM_SELECTOR,
         skip: startIndex,
         max: endIndex,
+        limit: limit,
       }
     )) as ExtractResult;
 

@@ -102,6 +102,9 @@ export interface SearchResultNote {
 /** Search result output */
 export interface SearchResult {
   keyword: string;
+  /** Number of results requested by user */
+  requested: number;
+  /** Number of results actually returned */
   total: number;
   notes: SearchResultNote[];
   /** User name that performed the search */

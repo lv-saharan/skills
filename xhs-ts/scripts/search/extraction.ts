@@ -24,6 +24,9 @@ export const NOTES_PER_SCROLL = 20;
 /**
  * Extract note links by hovering on note items
  * This triggers the generation of xsec_token in URLs
+ *
+ * @param count - Number of valid results needed (will hover extra for backup)
+ * @param skip - Number of results to skip
  */
 export async function hoverNotesForTokens(
   page: Page,
@@ -40,9 +43,11 @@ export async function hoverNotesForTokens(
 
   debugLog(`Found ${elementCount} note elements`);
 
-  // Need to hover from skip to skip + count
+  // Hover extra notes as backup (some may lack valid noteId)
+  // Add 20% buffer to ensure enough valid results
+  const hoverBuffer = Math.ceil(count * 0.2);
   const startIndex = skip;
-  const endIndex = Math.min(elementCount, skip + count);
+  const endIndex = Math.min(elementCount, skip + count + hoverBuffer);
   const hoverCount = endIndex - startIndex;
 
   if (hoverCount <= 0) {
