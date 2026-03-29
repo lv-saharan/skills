@@ -1,0 +1,37 @@
+# Dependencies
+node_modules/
+
+# Environment
+cookies.json
+test-cookies.json
+
+# Browser profile (persistent context)
+browser-profile/
+
+# Temp files
+tmp/
+
+# Build
+dist/
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Test
+test-results/
+playwright-report/
+blob-report/
+
+# Multi-user data
+users/

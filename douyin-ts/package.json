@@ -1,0 +1,45 @@
+{
+  "name": "douyin-ts",
+  "version": "0.0.1",
+  "description": "抖音自动化 - 支持语义化筛选参数的搜索视频、搜索用户、点赞、收藏、关注",
+  "type": "module",
+  "bin": {
+    "douyin": "./scripts/index.ts"
+  },
+  "scripts": {
+    "start": "tsx scripts/index.ts",
+    "help": "tsx scripts/index.ts --help",
+    "login": "tsx scripts/index.ts login",
+    "login:headless": "tsx scripts/index.ts login --headless",
+    "user": "tsx scripts/index.ts user",
+    "user:use": "tsx scripts/index.ts user --set-current",
+    "search-video": "tsx scripts/index.ts search-video",
+    "search-user": "tsx scripts/index.ts search-user",
+    "like": "tsx scripts/index.ts like",
+    "collect": "tsx scripts/index.ts collect",
+    "follow": "tsx scripts/index.ts follow",
+    "install:browser": "npx playwright install chromium",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "commander": "^12.0.0",
+    "dotenv": "^16.6.1",
+    "playwright": "^1.40.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.0"
+  },
+  "keywords": [
+    "douyin",
+    "抖音",
+    "playwright",
+    "automation"
+  ],
+  "author": "lv-saharan",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.16.0"
+  }
+}
