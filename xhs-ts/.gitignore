@@ -32,5 +32,6 @@ Thumbs.db
 test-results/
 playwright-report/
 blob-report/
+
 # Multi-user data
 users/

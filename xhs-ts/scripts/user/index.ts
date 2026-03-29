@@ -6,7 +6,18 @@
  */
 
 // Types
-export type { UserName, UserInfo, UserListResult, UsersMeta } from './types';
+export type {
+  UserName,
+  UserInfo,
+  UserListResult,
+  UsersMeta,
+  UserFingerprint,
+  DeviceConfig,
+  WebGLConfig,
+  BrowserConfig,
+  ScreenConfig,
+  DevicePlatform,
+} from './types';
 
 // Storage operations
 export {
@@ -26,6 +37,17 @@ export {
   clearCurrentUser,
   resolveUser,
 } from './storage';
+
+// Fingerprint operations
+export {
+  getUserFingerprint,
+  saveUserFingerprint,
+  hasUserFingerprint,
+  regenerateUserFingerprint,
+  getFingerprintInfo,
+  getMostMainstreamPreset,
+  getDefaultPresetInfo,
+} from './fingerprint';
 
 // Migration
 export { isMigrationNeeded, migrateToMultiUser, ensureMigrated } from './migration';

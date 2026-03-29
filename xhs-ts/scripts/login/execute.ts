@@ -14,8 +14,7 @@ import { qrLogin } from './qr';
 import { smsLogin } from './sms';
 import { verifyExistingSession } from './verify';
 import { createUserDir, userExists, resolveUser } from '../user';
-
-const browserClosedRef = { closed: false };
+import { deleteCookies } from '../cookie';
 
 export async function executeLogin(options: LoginOptions): Promise<void> {
   const { method = 'qr', headless, timeout = TIMEOUTS.LOGIN, creator, user } = options;
@@ -44,7 +43,9 @@ export async function executeLogin(options: LoginOptions): Promise<void> {
     return;
   }
 
-  // Cookies expired or not found - proceed with login
+  // Cookies expired - delete invalid cookies and proceed with login
+  await deleteCookies(resolvedUser);
+  debugLog('Deleted expired cookies');
   debugLog('Proceeding with login flow...');
 
   try {
@@ -56,10 +57,10 @@ export async function executeLogin(options: LoginOptions): Promise<void> {
         let result: LoginResult;
         if (method === 'sms') {
           debugLog('Starting SMS login...');
-          result = await smsLogin(session, timeout, browserClosedRef, resolvedUser);
+          result = await smsLogin(session, timeout, resolvedUser);
         } else {
           debugLog('Starting QR code login...');
-          result = await qrLogin(session, timeout, browserClosedRef, isHeadless, resolvedUser);
+          result = await qrLogin(session, timeout, isHeadless, resolvedUser);
         }
 
         debugLog('Login complete, outputting result...');

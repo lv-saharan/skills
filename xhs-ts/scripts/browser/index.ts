@@ -15,6 +15,15 @@ export { createBrowserInstance, closeBrowserInstance, closeBrowser, withBrowser 
 export { launchBrowser, checkBrowserInstalled } from './launch';
 export { createContext } from './context';
 
+// Fingerprint presets
+export {
+  MAINSTREAM_PRESETS,
+  selectPresetByWeight,
+  getPresetList,
+  getScreenResolutionStats,
+  validatePreset,
+} from './fingerprint-presets';
+
 // Cleanup utilities
 export { setActiveBrowser, getActiveBrowser, forceCleanup } from './cleanup';
 
@@ -27,3 +36,13 @@ export type {
   CleanupResult,
   AsyncDisposableResource,
 } from './types';
+
+export type { CreateContextOptions } from './context';
+export type {
+  DevicePreset,
+  DevicePlatform as DevicePlatformType,
+  DeviceConfig as DeviceConfigType,
+  WebGLConfig as WebGLConfigType,
+  BrowserConfig as BrowserConfigType,
+  ScreenConfig as ScreenConfigType,
+} from './fingerprint-presets';

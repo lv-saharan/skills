@@ -10,7 +10,7 @@ import type { UserName } from '../user';
 import { withSession } from '../browser';
 import { loadCookies, validateCookies } from '../cookie';
 import { XhsError, XhsErrorCode, TIMEOUTS } from '../shared';
-import { XHS_URLS, delay, randomDelay } from '../utils/helpers';
+import { XHS_URLS, delay, gaussianDelay } from '../utils/helpers';
 import { checkLoginStatus, checkCaptcha, simulateReading } from '../utils/anti-detect';
 
 // ============================================
@@ -23,11 +23,11 @@ export const INTERACTION_PAGE_LOAD_TIMEOUT = 20000;
 /** Delay constants for interaction operations */
 export const INTERACTION_DELAYS = {
   /** Delay after page navigation */
-  afterNavigation: { min: 1500, max: 2500 },
+  afterNavigation: { mean: 2000, stdDev: 400 },
   /** Delay after click action */
-  afterClick: { min: 1000, max: 1500 },
+  afterClick: { mean: 1200, stdDev: 300 },
   /** Default batch operation interval */
-  batchInterval: 2000,
+  batchInterval: { mean: 3000, stdDev: 800 },
 } as const;
 
 // ============================================
@@ -88,7 +88,7 @@ export async function navigateToPage(page: Page, url: string): Promise<void> {
   await page
     .waitForLoadState('networkidle', { timeout: INTERACTION_PAGE_LOAD_TIMEOUT })
     .catch(() => {});
-  await randomDelay(INTERACTION_DELAYS.afterNavigation.min, INTERACTION_DELAYS.afterNavigation.max);
+  await gaussianDelay(INTERACTION_DELAYS.afterNavigation);
 }
 
 /**
@@ -159,11 +159,12 @@ export async function executeBatch<T, R>(
   items: T[],
   processItem: (item: T, index: number) => Promise<R>,
   options: {
+    /** Optional delay between items (ms). If not provided, uses Gaussian default. */
     delayBetween?: number;
     onProgress?: (completed: number, total: number) => void;
   } = {}
 ): Promise<R[]> {
-  const { delayBetween = INTERACTION_DELAYS.batchInterval, onProgress } = options;
+  const { onProgress } = options;
   const results: R[] = [];
 
   for (let i = 0; i < items.length; i++) {
@@ -176,7 +177,12 @@ export async function executeBatch<T, R>(
 
     // Delay between items (not after last one)
     if (i < items.length - 1) {
-      await randomDelay(delayBetween, delayBetween + 1000);
+      // Use Gaussian delay for human-like behavior
+      if (options.delayBetween) {
+        await gaussianDelay({ mean: options.delayBetween, stdDev: options.delayBetween * 0.25 });
+      } else {
+        await gaussianDelay(INTERACTION_DELAYS.batchInterval);
+      }
     }
   }
 

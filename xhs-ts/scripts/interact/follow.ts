@@ -10,7 +10,7 @@ import type { FollowOptions, FollowResult, UserIdExtraction } from './types';
 import { FOLLOW_SELECTORS } from './selectors';
 import { withAuthenticatedAction, INTERACTION_DELAYS, preparePageForAction } from './shared';
 import { extractUserId as extractUserIdFromUrl } from './url-utils';
-import { debugLog, delay, randomDelay } from '../utils/helpers';
+import { debugLog, gaussianDelay } from '../utils/helpers';
 import { humanClick, checkLoginStatus } from '../utils/anti-detect';
 import { outputSuccess, outputFromError } from '../utils/output';
 
@@ -161,7 +161,7 @@ async function performFollow(page: Page, url: string): Promise<FollowResult> {
     }
   }
 
-  await delay(INTERACTION_DELAYS.afterClick.min + Math.random() * 500);
+  await gaussianDelay(INTERACTION_DELAYS.afterClick);
 
   // Check if login required after click
   if (!(await checkLoginStatus(page))) {
@@ -185,7 +185,7 @@ async function performFollow(page: Page, url: string): Promise<FollowResult> {
  * - Multiple URLs: output batch result with statistics
  */
 export async function executeFollow(options: FollowOptions): Promise<void> {
-  const { urls, headless, user, delayBetweenFollows = INTERACTION_DELAYS.batchInterval } = options;
+  const { urls, headless, user, delayBetweenFollows } = options;
   const isSingle = urls.length === 1;
 
   debugLog('关注: urls=' + urls.length + ', single=' + isSingle + ', user=' + (user || 'default'));
@@ -210,7 +210,12 @@ export async function executeFollow(options: FollowOptions): Promise<void> {
 
         // Delay between follows (not after last one)
         if (i < urls.length - 1) {
-          await randomDelay(delayBetweenFollows, delayBetweenFollows + 1000);
+          // Use Gaussian delay for human-like behavior
+          if (delayBetweenFollows) {
+            await gaussianDelay({ mean: delayBetweenFollows, stdDev: delayBetweenFollows * 0.25 });
+          } else {
+            await gaussianDelay(INTERACTION_DELAYS.batchInterval);
+          }
         }
       }
 

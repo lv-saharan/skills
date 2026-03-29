@@ -10,7 +10,7 @@ import type { CommentOptions, CommentResult } from './types';
 import { COMMENT_SELECTORS } from './selectors';
 import { withAuthenticatedAction, INTERACTION_DELAYS, preparePageForAction } from './shared';
 import { extractNoteId } from './url-utils';
-import { debugLog, delay } from '../utils/helpers';
+import { debugLog, delay, gaussianDelay } from '../utils/helpers';
 import { humanClick, humanScroll, checkLoginStatus } from '../utils/anti-detect';
 import { outputSuccess, outputFromError } from '../utils/output';
 
@@ -185,7 +185,7 @@ async function performComment(page: Page, url: string, text: string): Promise<Co
   // Click submit
   debugLog('点击发送按钮...');
   await submitLocator.click();
-  await delay(INTERACTION_DELAYS.afterClick.min + Math.random() * 500);
+  await gaussianDelay(INTERACTION_DELAYS.afterClick);
 
   // Check for error popup after clicking
   const errorResult = await checkCommentError(page);

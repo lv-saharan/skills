@@ -11,7 +11,7 @@ import { LIKE_SELECTORS } from './selectors';
 import { XhsError, XhsErrorCode, TIMEOUTS } from '../shared';
 import { withSession } from '../browser';
 import { loadCookies, validateCookies } from '../cookie';
-import { config, debugLog, delay, randomDelay, XHS_URLS } from '../utils/helpers';
+import { config, debugLog, delay, gaussianDelay, XHS_URLS } from '../utils/helpers';
 import { humanClick, checkCaptcha, checkLoginStatus, simulateReading } from '../utils/anti-detect';
 import { outputSuccess, outputFromError } from '../utils/output';
 
@@ -210,7 +210,7 @@ export async function executeLike(options: LikeOptions): Promise<void> {
         // Delay between likes (not after last one)
         if (i < urls.length - 1) {
           const delayMs = delayBetweenLikes ?? 2000;
-          await randomDelay(delayMs, delayMs + 1000);
+          await gaussianDelay({ mean: delayMs, stdDev: delayMs * 0.25 });
         }
       }
 

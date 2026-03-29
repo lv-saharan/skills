@@ -1,0 +1,280 @@
+{
+  "devicePresets": [
+    {
+      "weight": 25,
+      "description": "Windows + Intel UHD + 1920×1080 (主流办公用户)",
+      "device": {
+        "platform": "Windows",
+        "hardwareConcurrency": 8,
+        "deviceMemory": 8
+      },
+      "webgl": {
+        "vendor": "Google Inc. (Intel)",
+        "renderer": "ANGLE (Intel, Intel(R) UHD Graphics 630 Direct3D11 vs_5_0 ps_5_0, D3D11)"
+      },
+      "browser": {
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36",
+        "vendor": "Google Inc.",
+        "languages": ["zh-CN", "zh", "en-US", "en"]
+      },
+      "screen": {
+        "width": 1920,
+        "height": 1080,
+        "colorDepth": 24
+      }
+    },
+    {
+      "weight": 10,
+      "description": "Windows + Intel UHD + 1536×864 (笔记本缩放)",
+      "device": {
+        "platform": "Windows",
+        "hardwareConcurrency": 8,
+        "deviceMemory": 8
+      },
+      "webgl": {
+        "vendor": "Google Inc. (Intel)",
+        "renderer": "ANGLE (Intel, Intel(R) UHD Graphics 620 Direct3D11 vs_5_0 ps_5_0, D3D11)"
+      },
+      "browser": {
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36",
+        "vendor": "Google Inc.",
+        "languages": ["zh-CN", "zh", "en-US", "en"]
+      },
+      "screen": {
+        "width": 1536,
+        "height": 864,
+        "colorDepth": 24
+      }
+    },
+    {
+      "weight": 15,
+      "description": "Windows + NVIDIA RTX 3060 + 2560×1440 (游戏/年轻用户)",
+      "device": {
+        "platform": "Windows",
+        "hardwareConcurrency": 12,
+        "deviceMemory": 16
+      },
+      "webgl": {
+        "vendor": "Google Inc. (NVIDIA)",
+        "renderer": "ANGLE (NVIDIA, NVIDIA GeForce RTX 3060 Direct3D11 vs_5_0 ps_5_0, D3D11)"
+      },
+      "browser": {
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36",
+        "vendor": "Google Inc.",
+        "languages": ["zh-CN", "zh", "en-US", "en"]
+      },
+      "screen": {
+        "width": 2560,
+        "height": 1440,
+        "colorDepth": 24
+      }
+    },
+    {
+      "weight": 5,
+      "description": "Windows + NVIDIA GTX 1660 + 1920×1080 (中端游戏用户)",
+      "device": {
+        "platform": "Windows",
+        "hardwareConcurrency": 8,
+        "deviceMemory": 16
+      },
+      "webgl": {
+        "vendor": "Google Inc. (NVIDIA)",
+        "renderer": "ANGLE (NVIDIA, NVIDIA GeForce GTX 1660 SUPER Direct3D11 vs_5_0 ps_5_0, D3D11)"
+      },
+      "browser": {
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36",
+        "vendor": "Google Inc.",
+        "languages": ["zh-CN", "zh", "en-US", "en"]
+      },
+      "screen": {
+        "width": 1920,
+        "height": 1080,
+        "colorDepth": 24
+      }
+    },
+    {
+      "weight": 5,
+      "description": "Windows + AMD Radeon + 3840×2160 (4K极客用户)",
+      "device": {
+        "platform": "Windows",
+        "hardwareConcurrency": 16,
+        "deviceMemory": 32
+      },
+      "webgl": {
+        "vendor": "Google Inc. (AMD)",
+        "renderer": "ANGLE (AMD, AMD Radeon RX 6800 XT Direct3D11 vs_5_0 ps_5_0, D3D11)"
+      },
+      "browser": {
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36",
+        "vendor": "Google Inc.",
+        "languages": ["zh-CN", "zh", "en-US", "en"]
+      },
+      "screen": {
+        "width": 3840,
+        "height": 2160,
+        "colorDepth": 24
+      }
+    },
+    {
+      "weight": 15,
+      "description": "macOS Intel + Iris + 2560×1600 (设计师/专业用户)",
+      "device": {
+        "platform": "MacIntel",
+        "hardwareConcurrency": 8,
+        "deviceMemory": 16
+      },
+      "webgl": {
+        "vendor": "Google Inc. (Intel Inc.)",
+        "renderer": "ANGLE (Intel Inc., Intel(R) Iris(TM) Plus Graphics 640, OpenGL)"
+      },
+      "browser": {
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36",
+        "vendor": "Google Inc.",
+        "languages": ["zh-CN", "zh", "en-US", "en"]
+      },
+      "screen": {
+        "width": 2560,
+        "height": 1600,
+        "colorDepth": 24
+      }
+    },
+    {
+      "weight": 10,
+      "description": "macOS Apple M1/M2 + 2560×1600 (新Mac用户)",
+      "device": {
+        "platform": "MacIntel",
+        "hardwareConcurrency": 8,
+        "deviceMemory": 8
+      },
+      "webgl": {
+        "vendor": "Google Inc. (Apple)",
+        "renderer": "ANGLE (Apple, Apple M1, OpenGL)"
+      },
+      "browser": {
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36",
+        "vendor": "Google Inc.",
+        "languages": ["zh-CN", "zh", "en-US", "en"]
+      },
+      "screen": {
+        "width": 2560,
+        "height": 1600,
+        "colorDepth": 24
+      }
+    },
+    {
+      "weight": 5,
+      "description": "Windows + Intel HD + 1440×900 (老款笔记本)",
+      "device": {
+        "platform": "Windows",
+        "hardwareConcurrency": 4,
+        "deviceMemory": 8
+      },
+      "webgl": {
+        "vendor": "Google Inc. (Intel)",
+        "renderer": "ANGLE (Intel, Intel(R) HD Graphics 5500 Direct3D11 vs_5_0 ps_5_0, D3D11)"
+      },
+      "browser": {
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36",
+        "vendor": "Google Inc.",
+        "languages": ["zh-CN", "zh", "en-US", "en"]
+      },
+      "screen": {
+        "width": 1440,
+        "height": 900,
+        "colorDepth": 24
+      }
+    },
+    {
+      "weight": 5,
+      "description": "Windows + Intel UHD + 3840×2160 (4K办公用户)",
+      "device": {
+        "platform": "Windows",
+        "hardwareConcurrency": 8,
+        "deviceMemory": 16
+      },
+      "webgl": {
+        "vendor": "Google Inc. (Intel)",
+        "renderer": "ANGLE (Intel, Intel(R) UHD Graphics 770 Direct3D11 vs_5_0 ps_5_0, D3D11)"
+      },
+      "browser": {
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36",
+        "vendor": "Google Inc.",
+        "languages": ["zh-CN", "zh", "en-US", "en"]
+      },
+      "screen": {
+        "width": 3840,
+        "height": 2160,
+        "colorDepth": 24
+      }
+    },
+    {
+      "weight": 5,
+      "description": "Windows + NVIDIA RTX 4070 + 3840×2160 (4K创作用户)",
+      "device": {
+        "platform": "Windows",
+        "hardwareConcurrency": 16,
+        "deviceMemory": 32
+      },
+      "webgl": {
+        "vendor": "Google Inc. (NVIDIA)",
+        "renderer": "ANGLE (NVIDIA, NVIDIA GeForce RTX 4070 Direct3D11 vs_5_0 ps_5_0, D3D11)"
+      },
+      "browser": {
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36",
+        "vendor": "Google Inc.",
+        "languages": ["zh-CN", "zh", "en-US", "en"]
+      },
+      "screen": {
+        "width": 3840,
+        "height": 2160,
+        "colorDepth": 24
+      }
+    },
+    {
+      "weight": 5,
+      "description": "Windows + AMD Radeon + 2560×1440 (AMD极客用户)",
+      "device": {
+        "platform": "Windows",
+        "hardwareConcurrency": 12,
+        "deviceMemory": 32
+      },
+      "webgl": {
+        "vendor": "Google Inc. (AMD)",
+        "renderer": "ANGLE (AMD, AMD Radeon RX 6600 XT Direct3D11 vs_5_0 ps_5_0, D3D11)"
+      },
+      "browser": {
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36",
+        "vendor": "Google Inc.",
+        "languages": ["zh-CN", "zh", "en-US", "en"]
+      },
+      "screen": {
+        "width": 2560,
+        "height": 1440,
+        "colorDepth": 24
+      }
+    },
+    {
+      "weight": 5,
+      "description": "macOS Apple M2 + 3840×2160 (Mac 4K外接)",
+      "device": {
+        "platform": "MacIntel",
+        "hardwareConcurrency": 8,
+        "deviceMemory": 16
+      },
+      "webgl": {
+        "vendor": "Google Inc. (Apple)",
+        "renderer": "ANGLE (Apple, Apple M2, OpenGL)"
+      },
+      "browser": {
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36",
+        "vendor": "Google Inc.",
+        "languages": ["zh-CN", "zh", "en-US", "en"]
+      },
+      "screen": {
+        "width": 3840,
+        "height": 2160,
+        "colorDepth": 24
+      }
+    }
+  ]
+}

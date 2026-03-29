@@ -113,11 +113,7 @@ async function isQrCodeExpired(page: Page): Promise<boolean> {
  *
  * Any combination of these indicates successful login.
  */
-export async function waitForQrScan(
-  page: Page,
-  timeout: number,
-  browserClosedRef?: { closed: boolean }
-): Promise<void> {
+export async function waitForQrScan(page: Page, timeout: number): Promise<void> {
   debugLog('Waiting for QR code scan...');
   debugLog('Detection: QR disappeared + (URL changed OR modal disappeared)');
 
@@ -130,8 +126,8 @@ export async function waitForQrScan(
     async () => {
       const elapsed = Math.floor((Date.now() - startTime) / 1000);
 
-      // Check if browser was closed
-      if (browserClosedRef?.closed) {
+      // Check if page/browser was closed by user
+      if (page.isClosed()) {
         throw new XhsError(
           'Browser window closed by user. Login cancelled.',
           XhsErrorCode.LOGIN_FAILED
@@ -217,7 +213,6 @@ export async function waitForQrScan(
 export async function qrLogin(
   instance: BrowserSession,
   timeout: number,
-  browserClosedRef: { closed: boolean },
   isHeadless: boolean,
   user?: UserName
 ): Promise<LoginResult> {
@@ -259,7 +254,7 @@ export async function qrLogin(
   }
 
   // Wait for scan and login
-  await waitForQrScan(page, timeout, browserClosedRef);
+  await waitForQrScan(page, timeout);
 
   // Navigate to home page to ensure session is established
   debugLog('Navigating to home page to finalize login...');

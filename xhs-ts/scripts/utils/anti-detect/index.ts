@@ -8,6 +8,15 @@
 import type { Page, Locator } from 'playwright';
 import { delay, randomDelay, debugLog } from '../helpers';
 
+// Re-export advanced modules
+export { humanMouseMoveBezier, humanMouseMoveToElement } from './mouse-trajectory';
+export {
+  humanScrollPhysics,
+  humanScrollToPosition,
+  humanScrollToBottom,
+  humanScrollRead,
+} from './scroll-physics';
+
 async function getRandomPointInElement(element: Locator): Promise<{ x: number; y: number } | null> {
   const box = await element.boundingBox();
   if (!box) {
@@ -56,22 +65,127 @@ export async function humanClick(
   }
 }
 
+/**
+ * Human-like typing with Gaussian delay and occasional typos
+ *
+ * Features:
+ * - Gaussian distribution for key delays (more realistic than uniform)
+ * - Occasional typo simulation (mistype + backspace + correct)
+ * - Variable key hold duration
+ *
+ * @param page - Playwright page
+ * @param selector - Element selector
+ * @param text - Text to type
+ * @param options - Typing options
+ */
 export async function humanType(
   page: Page,
   selector: string,
   text: string,
-  options: { delay?: number; clear?: boolean } = {}
+  options: {
+    /** Mean delay between keystrokes in ms (default: 50) */
+    meanDelay?: number;
+    /** Standard deviation for delay variation (default: 20) */
+    stdDev?: number;
+    /** Clear existing text before typing (default: false) */
+    clear?: boolean;
+    /** Typo probability (0-1, default: 0.02 for 2%) */
+    typoRate?: number;
+  } = {}
 ): Promise<boolean> {
-  const { delay: typeDelay = 50, clear = false } = options;
+  const { meanDelay = 50, stdDev = 20, clear = false, typoRate = 0.02 } = options;
   try {
     const element = page.locator(selector);
     await element.waitFor({ state: 'visible', timeout: 5000 });
     if (clear) {
       await element.fill('');
     }
-    for (const char of text) {
-      await element.pressSequentially(char, { delay: typeDelay + Math.random() * 50 });
+
+    // Get nearby characters for typo simulation
+    const getNearbyChar = (char: string): string => {
+      const keyboard: Record<string, string[]> = {
+        a: ['s', 'q', 'z'],
+        s: ['a', 'd', 'w', 'x'],
+        d: ['s', 'f', 'e', 'c'],
+        f: ['d', 'g', 'r', 'v'],
+        g: ['f', 'h', 't', 'b'],
+        h: ['g', 'j', 'y', 'n'],
+        j: ['h', 'k', 'u', 'm'],
+        k: ['j', 'l', 'i'],
+        l: ['k', 'o'],
+        q: ['w', 'a'],
+        w: ['q', 'e', 's'],
+        e: ['w', 'r', 'd'],
+        r: ['e', 't', 'f'],
+        t: ['r', 'y', 'g'],
+        y: ['t', 'u', 'h'],
+        u: ['y', 'i', 'j'],
+        i: ['u', 'o', 'k'],
+        o: ['i', 'p', 'l'],
+        p: ['o'],
+        z: ['a', 'x'],
+        x: ['z', 's', 'c'],
+        c: ['x', 'd', 'v'],
+        v: ['c', 'f', 'b'],
+        b: ['v', 'g', 'n'],
+        n: ['b', 'h', 'm'],
+        m: ['n', 'j'],
+      };
+      const lower = char.toLowerCase();
+      if (keyboard[lower] && Math.random() < 0.7) {
+        const nearby = keyboard[lower];
+        const wrong = nearby[Math.floor(Math.random() * nearby.length)];
+        return char === lower ? wrong : wrong.toUpperCase();
+      }
+      // Random character from same row
+      const rows = ['qwertyuiop', 'asdfghjkl', 'zxcvbnm'];
+      for (const row of rows) {
+        const idx = row.indexOf(lower);
+        if (idx >= 0) {
+          const wrong = row[Math.floor(Math.random() * row.length)];
+          return char === lower ? wrong : wrong.toUpperCase();
+        }
+      }
+      return char;
+    };
+
+    // Gaussian delay helper
+    const gaussianDelay = (mean: number, sd: number): number => {
+      const u1 = Math.random();
+      const u2 = Math.random();
+      const z0 = Math.sqrt(-2.0 * Math.log(u1)) * Math.cos(2.0 * Math.PI * u2);
+      return Math.max(10, Math.floor(z0 * sd + mean));
+    };
+
+    for (let i = 0; i < text.length; i++) {
+      const char = text[i];
+
+      // Simulate occasional typo
+      if (Math.random() < typoRate && /[a-zA-Z]/.test(char)) {
+        // Type wrong character
+        const wrongChar = getNearbyChar(char);
+        await element.pressSequentially(wrongChar, { delay: gaussianDelay(meanDelay, stdDev) });
+
+        // Pause (realize the mistake)
+        await delay(100 + Math.random() * 150);
+
+        // Delete wrong character
+        await element.press('Backspace');
+        await delay(80 + Math.random() * 100);
+
+        // Type correct character
+        await element.pressSequentially(char, { delay: gaussianDelay(meanDelay, stdDev) });
+      } else {
+        // Normal typing with Gaussian delay
+        await element.pressSequentially(char, { delay: gaussianDelay(meanDelay, stdDev) });
+      }
+
+      // Occasional thinking pause (1% chance after spaces or punctuation)
+      if ((char === ' ' || char === '.' || char === ',') && Math.random() < 0.01) {
+        await delay(200 + Math.random() * 500);
+      }
     }
+
     return true;
   } catch (error) {
     debugLog('Human type failed: ' + selector, error);

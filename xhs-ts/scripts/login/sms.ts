@@ -19,7 +19,7 @@ import type { LoginResult } from './types';
 export async function smsLogin(
   instance: BrowserSession,
   timeout: number,
-  browserClosedRef: { closed: boolean },
+
   user?: UserName
 ): Promise<LoginResult> {
   const { page } = instance;
@@ -40,7 +40,7 @@ export async function smsLogin(
   await waitForCondition(
     async () => {
       // Check if browser was closed
-      if (browserClosedRef?.closed) {
+      if (page.isClosed()) {
         throw new XhsError(
           'Browser window closed by user. Login cancelled.',
           XhsErrorCode.LOGIN_FAILED

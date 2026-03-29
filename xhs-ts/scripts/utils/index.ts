@@ -12,6 +12,7 @@ export {
   config,
   delay,
   randomDelay,
+  gaussianDelay,
   randomString,
   XHS_URLS,
   isXhsUrl,
