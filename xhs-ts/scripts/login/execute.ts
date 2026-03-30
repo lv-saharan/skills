@@ -46,8 +46,10 @@ export async function executeLogin(options: LoginOptions): Promise<void> {
   // Note: Profile mode handles cookie persistence automatically
   debugLog('Proceeding with login flow...');
 
+  let profileResult: Awaited<ReturnType<typeof launchProfileBrowser>> | undefined;
+
   try {
-    const profileResult = await launchProfileBrowser({
+    profileResult = await launchProfileBrowser({
       user: resolvedUser,
       headless: headless ?? config.headless,
       autoCreate: true,
@@ -77,6 +79,12 @@ export async function executeLogin(options: LoginOptions): Promise<void> {
   } catch (error) {
     debugLog('Login error:', error);
     outputFromError(error);
+  } finally {
+    // Ensure browser is closed
+    if (profileResult?.browser) {
+      await profileResult.browser.close();
+      debugLog('Browser closed after login');
+    }
   }
 }
 
