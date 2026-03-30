@@ -9,9 +9,9 @@ import type { Page } from 'playwright';
 import type { ScrapeUserOptions, ScrapeUserResult, UserIdExtraction } from './types';
 import { USER_SELECTORS, ERROR_SELECTORS } from './selectors';
 import { TIMEOUTS } from '../shared';
-import { withSession } from '../browser';
-import { loadCookies, validateCookies } from '../cookie';
-import { config, debugLog, delay, XHS_URLS } from '../utils/helpers';
+import { withProfile, randomStealthDelay } from '../browser';
+import { resolveUser } from '../user/storage';
+import { debugLog, delay, XHS_URLS } from '../utils/helpers';
 import { checkCaptcha, checkLoginStatus, simulateReading, humanScroll } from '../utils/anti-detect';
 import { outputSuccess, outputFromError } from '../utils/output';
 
@@ -438,26 +438,26 @@ export async function executeScrapeUser(options: ScrapeUserOptions): Promise<voi
     '抓取用户: url=' + url + ', user=' + (user || 'default') + ', includeNotes=' + includeNotes
   );
 
-  await withSession(
-    async (session) => {
-      // Load and validate cookies
-      const cookies = await loadCookies(user);
-      validateCookies(cookies);
-      await session.context.addCookies(cookies);
+  const resolvedUser = user ?? resolveUser();
 
-      // Navigate to home first to establish session
-      await session.page.goto(XHS_URLS.home, { timeout: TIMEOUTS.PAGE_LOAD });
-      await delay(2000);
+  await withProfile(
+    resolvedUser,
+    async (page, profileResult) => {
+      const { behavior } = profileResult;
+
+      // Navigate to home and verify login (Profile auto-loads persisted state)
+      await page.goto(XHS_URLS.home, { timeout: TIMEOUTS.PAGE_LOAD });
+      await randomStealthDelay(behavior, 'read');
 
       // Check login status (optional for public profiles)
-      const isLoggedIn = await checkLoginStatus(session.page);
+      const isLoggedIn = await checkLoginStatus(page);
       if (!isLoggedIn) {
         debugLog('未登录，可能无法查看完整用户信息');
       }
 
       // Scrape the user
-      const result = await scrapeUser(session.page, url, { includeNotes, maxNotes });
-      result.user = user;
+      const result = await scrapeUser(page, url, { includeNotes, maxNotes });
+      result.user = resolvedUser;
 
       // Output result
       if (!result.success && result.error) {
@@ -466,7 +466,7 @@ export async function executeScrapeUser(options: ScrapeUserOptions): Promise<voi
         outputSuccess(result, 'PARSE:user');
       }
     },
-    { headless: headless ?? config.headless }
+    { headless: headless ?? false }
   ).catch((error) => {
     debugLog('抓取用户出错:', error);
     outputFromError(error);

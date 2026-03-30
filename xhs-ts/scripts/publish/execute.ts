@@ -5,11 +5,11 @@
  * @description Publish notes (image or video) to Xiaohongshu
  */
 
-import { withSession } from '../browser';
-import { loadCookies, validateCookies } from '../cookie';
+import { withProfile, randomStealthDelay } from '../browser';
+import { resolveUser } from '../user/storage';
 import { XhsError, XhsErrorCode } from '../shared';
 import { TIMEOUTS } from '../shared';
-import { XHS_URLS, config, debugLog, delay, randomDelay } from '../utils/helpers';
+import { XHS_URLS, debugLog, randomDelay } from '../utils/helpers';
 import { checkLoginStatus } from '../utils/anti-detect';
 import { outputSuccess, outputError, outputFromError } from '../utils/output';
 import type { PublishOptions } from './types';
@@ -34,12 +34,17 @@ import { submitAndVerify, clickPublishButtonOnHomepage } from './submitter';
  */
 export async function executePublish(options: PublishOptions): Promise<void> {
   const { title, content, mediaPaths, tags, headless, user } = options;
+  const resolvedUser = user ?? resolveUser();
 
-  debugLog(`Publish command: title="${title}", media=${mediaPaths.length} files, user=${user}`);
-  debugLog(`Headless mode: ${headless ?? config.headless}`);
+  debugLog(
+    `Publish command: title="${title}", media=${mediaPaths.length} files, user=${resolvedUser}`
+  );
 
-  await withSession(
-    async (session) => {
+  await withProfile(
+    resolvedUser,
+    async (page, profileResult) => {
+      const { behavior, context } = profileResult;
+
       // Validate content
       debugLog('Validating content...');
       validateContent(title, content, tags);
@@ -56,24 +61,15 @@ export async function executePublish(options: PublishOptions): Promise<void> {
       }
       debugLog(`Media validation passed: type=${mediaValidation.type}`);
 
-      // Load and validate cookies
-      debugLog(`Loading and validating cookies for user: ${user || 'default'}...`);
-      const cookies = await loadCookies(user);
-      validateCookies(cookies);
-
-      // Add cookies to context
-      debugLog('Adding cookies to context...');
-      await session.context.addCookies(cookies);
-
-      // Navigate to homepage and verify login
+      // Navigate to homepage and verify login (Profile auto-loads persisted state)
       debugLog('Navigating to homepage...');
-      await session.page.goto(XHS_URLS.home, {
+      await page.goto(XHS_URLS.home, {
         waitUntil: 'domcontentloaded',
         timeout: TIMEOUTS.PAGE_LOAD,
       });
-      await delay(2000);
+      await randomStealthDelay(behavior, 'read');
 
-      const isLoggedIn = await checkLoginStatus(session.page);
+      const isLoggedIn = await checkLoginStatus(page);
       debugLog(`Login status: ${isLoggedIn}`);
 
       if (!isLoggedIn) {
@@ -85,14 +81,11 @@ export async function executePublish(options: PublishOptions): Promise<void> {
 
       // Click publish button on homepage to open creator center
       debugLog('Opening creator center from homepage...');
-      const publishPage = await clickPublishButtonOnHomepage(session.page, session.context);
+      const publishPage = await clickPublishButtonOnHomepage(page, context);
 
       if (!publishPage) {
         throw new XhsError('Failed to open creator center', XhsErrorCode.BROWSER_ERROR);
       }
-
-      // Track the publish page for automatic cleanup
-      session.trackPage(publishPage, 'publish');
 
       // Check if redirected to login page
       const currentUrl = publishPage.url();
@@ -129,7 +122,7 @@ export async function executePublish(options: PublishOptions): Promise<void> {
       // Submit and verify
       debugLog('Submitting note...');
       const result = await submitAndVerify(publishPage);
-      result.user = user;
+      result.user = resolvedUser;
 
       debugLog('Publish complete, outputting result...');
       if (result.success) {
@@ -139,7 +132,7 @@ export async function executePublish(options: PublishOptions): Promise<void> {
       }
       debugLog('Result output complete');
     },
-    { headless: headless ?? config.headless }
+    { headless: headless ?? false }
   ).catch((error) => {
     debugLog('Publish error:', error);
     outputFromError(error);

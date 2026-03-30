@@ -13,9 +13,9 @@ import { extractSearchResults } from './result-extractor';
 import { hoverNotesForTokens, loadMoreResults, NOTES_PER_SCROLL } from './extraction';
 import { XhsError, XhsErrorCode } from '../shared';
 import { TIMEOUTS } from '../shared';
-import { withSession } from '../browser';
-import { loadCookies, validateCookies } from '../cookie';
-import { XHS_URLS, config, debugLog, delay } from '../utils/helpers';
+import { withProfile, randomStealthDelay } from '../browser';
+import { resolveUser } from '../user/storage';
+import { XHS_URLS, debugLog, delay } from '../utils/helpers';
 import { checkCaptcha, checkLoginStatus } from '../utils/anti-detect';
 import { outputSuccess, outputFromError } from '../utils/output';
 
@@ -141,28 +141,23 @@ export async function executeSearch(options: SearchOptions): Promise<void> {
     location,
   };
 
+  const resolvedUser = user ?? resolveUser();
+
   debugLog(
-    `Search command: keyword="${keyword}", limit=${limit}, skip=${skip}, filters=${JSON.stringify(filters)}, user=${user || 'default'}`
+    `Search command: keyword="${keyword}", limit=${limit}, skip=${skip}, filters=${JSON.stringify(filters)}, user=${resolvedUser}`
   );
-  debugLog(`Headless mode: ${headless ?? config.headless}`);
 
-  await withSession(
-    async (session) => {
-      // Validate cookies
-      debugLog(`Loading and validating cookies for user: ${user || 'default'}...`);
-      const cookies = await loadCookies(user);
-      validateCookies(cookies);
+  await withProfile(
+    resolvedUser,
+    async (page, profileResult) => {
+      const { behavior } = profileResult;
 
-      // Add cookies to context
-      debugLog('Adding cookies to context...');
-      await session.context.addCookies(cookies);
+      // Navigate to home and verify login (Profile auto-loads persisted state)
+      debugLog('Navigating to homepage...');
+      await page.goto(XHS_URLS.home, { timeout: TIMEOUTS.PAGE_LOAD });
+      await randomStealthDelay(behavior, 'read');
 
-      // Verify login status
-      debugLog('Verifying login status...');
-      await session.page.goto(XHS_URLS.home, { timeout: TIMEOUTS.PAGE_LOAD });
-      await delay(2000); // Wait for page to fully load
-
-      const isLoggedIn = await checkLoginStatus(session.page);
+      const isLoggedIn = await checkLoginStatus(page);
       debugLog(`Login status: ${isLoggedIn}`);
 
       if (!isLoggedIn) {
@@ -174,14 +169,14 @@ export async function executeSearch(options: SearchOptions): Promise<void> {
 
       // Perform search
       debugLog('Starting search...');
-      const result = await performSearch(session.page, keyword, limit, skip, filters);
-      result.user = user;
+      const result = await performSearch(page, keyword, limit, skip, filters);
+      result.user = resolvedUser;
 
       debugLog('Search complete, outputting result...');
       outputSuccess(result, 'PARSE:notes');
       debugLog('Result output complete');
     },
-    { headless: headless ?? config.headless }
+    { headless: headless ?? false }
   ).catch((error) => {
     debugLog('Search error:', error);
     outputFromError(error);

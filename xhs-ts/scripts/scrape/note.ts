@@ -9,9 +9,9 @@ import type { Page } from 'playwright';
 import type { ScrapeNoteOptions, ScrapeNoteResult, NoteIdExtraction } from './types';
 import { NOTE_SELECTORS, ERROR_SELECTORS } from './selectors';
 import { XhsError, XhsErrorCode, TIMEOUTS } from '../shared';
-import { withSession } from '../browser';
-import { loadCookies, validateCookies } from '../cookie';
-import { config, debugLog, delay, XHS_URLS } from '../utils/helpers';
+import { withProfile, randomStealthDelay } from '../browser';
+import { resolveUser } from '../user/storage';
+import { debugLog, delay, XHS_URLS } from '../utils/helpers';
 import { checkCaptcha, checkLoginStatus, simulateReading } from '../utils/anti-detect';
 import { outputSuccess, outputFromError } from '../utils/output';
 
@@ -452,35 +452,29 @@ export async function executeScrapeNote(options: ScrapeNoteOptions): Promise<voi
 
   // Clamp max comments
   const maxComments = Math.min(Math.max(1, rawMaxComments || DEFAULT_MAX_COMMENTS), MAX_COMMENTS);
+  const resolvedUser = user ?? resolveUser();
 
   debugLog(
-    '抓取笔记: url=' +
-      url +
-      ', user=' +
-      (user || 'default') +
-      ', includeComments=' +
-      includeComments
+    '抓取笔记: url=' + url + ', user=' + resolvedUser + ', includeComments=' + includeComments
   );
 
-  await withSession(
-    async (session) => {
-      // Load and validate cookies
-      const cookies = await loadCookies(user);
-      validateCookies(cookies);
-      await session.context.addCookies(cookies);
+  await withProfile(
+    resolvedUser,
+    async (page, profileResult) => {
+      const { behavior } = profileResult;
 
-      // Navigate to home first to establish session
-      await session.page.goto(XHS_URLS.home, { timeout: TIMEOUTS.PAGE_LOAD });
-      await delay(2000);
+      // Navigate to home and verify login (Profile auto-loads persisted state)
+      await page.goto(XHS_URLS.home, { timeout: TIMEOUTS.PAGE_LOAD });
+      await randomStealthDelay(behavior, 'read');
 
       // Check login status
-      if (!(await checkLoginStatus(session.page))) {
+      if (!(await checkLoginStatus(page))) {
         throw new XhsError('未登录，请先执行 "xhs login"', XhsErrorCode.NOT_LOGGED_IN);
       }
 
       // Scrape the note
-      const result = await scrapeNote(session.page, url, { includeComments, maxComments });
-      result.user = user;
+      const result = await scrapeNote(page, url, { includeComments, maxComments });
+      result.user = resolvedUser;
 
       // Output result
       if (!result.success && result.error) {
@@ -489,7 +483,7 @@ export async function executeScrapeNote(options: ScrapeNoteOptions): Promise<voi
         outputSuccess(result, 'PARSE:note');
       }
     },
-    { headless: headless ?? config.headless }
+    { headless: headless ?? false }
   ).catch((error) => {
     debugLog('抓取笔记出错:', error);
     outputFromError(error);
