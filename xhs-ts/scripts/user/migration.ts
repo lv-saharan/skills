@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Migration logic for multi-user support
  *
  * @module user/migration
@@ -8,7 +8,13 @@
 import { copyFile, readdir, rename, stat, unlink, rmdir } from 'fs/promises';
 import { existsSync, mkdirSync, readFileSync } from 'fs';
 import path from 'path';
-import { getUsersDir, getUserDir, getUserTmpDir, saveUsersMeta, loadUsersMeta } from './storage';
+import {
+  getUsersDir,
+  getUserDir,
+  getUserTmpDir,
+  saveUsersMeta,
+  loadUsersMetaAsync,
+} from './storage';
 import type { UsersMeta } from './types';
 import { debugLog } from '../utils/helpers';
 
@@ -77,7 +83,7 @@ export function isMigrationNeeded(): boolean {
     try {
       const content = readFileSync(usersJsonPath, 'utf-8');
       const parsed = JSON.parse(content) as { version?: number; [key: string]: unknown };
-      
+
       // Check version BEFORE loadUsersMeta() because it auto-migrates v1 to v2
       if (typeof parsed.version !== 'number' || parsed.version < 2) {
         return true;
@@ -88,9 +94,14 @@ export function isMigrationNeeded(): boolean {
     }
   }
 
-  // Try to read users.json
+  // Try to read users.json synchronously (isMigrationNeeded is sync)
   try {
-    const usersMeta = loadUsersMeta();
+    const usersJsonPath = path.resolve(getUsersDir(), 'users.json');
+    if (!existsSync(usersJsonPath)) {
+      return true;
+    }
+    const content = readFileSync(usersJsonPath, 'utf-8');
+    const usersMeta = JSON.parse(content) as UsersMeta;
 
     // Check version
     if (usersMeta.version < 2) {
@@ -149,7 +160,7 @@ export async function migrateToMultiUser(): Promise<void> {
   if (existsSync(oldCookiePath)) {
     // Backup before migration
     await backupCookies(defaultUserDir);
-    
+
     await copyFile(oldCookiePath, newCookiePath);
     debugLog(`Migrated cookies.json to ${newCookiePath}`);
 
@@ -232,7 +243,7 @@ export async function migrateToProfile(): Promise<void> {
   }
 
   try {
-    const usersMeta = loadUsersMeta();
+    const usersMeta = await loadUsersMetaAsync();
 
     // Handle version 1 structure
     if (usersMeta.version < 2) {
@@ -241,7 +252,7 @@ export async function migrateToProfile(): Promise<void> {
     }
 
     // Migrate each user to Profile structure
-    for (const [userName, profile] of Object.entries(usersMeta.profiles || {})) {
+    for (const [userName, profile] of Object.entries(usersMeta.profiles ?? {})) {
       const userDir = getUserDir(userName);
       const userDataDir = path.resolve(userDir, 'user-data');
       const metaPath = path.resolve(userDir, 'meta.json');
@@ -285,14 +296,32 @@ import { writeFile } from 'fs/promises';
  * 2. migrateToProfile (v2 → Profile architecture)
  */
 export async function ensureMigrated(): Promise<void> {
+  const migrationErrors: Error[] = [];
+
   try {
     // First migration: single-user → multi-user
     await migrateToMultiUser();
+  } catch (error) {
+    migrationErrors.push(error instanceof Error ? error : new Error(String(error)));
+    debugLog('Multi-user migration error:', error);
+  }
 
+  try {
     // Second migration: multi-user → profile
     await migrateToProfile();
   } catch (error) {
-    debugLog('Migration error:', error);
-    // Don't throw - allow app to continue even if migration fails
+    migrationErrors.push(error instanceof Error ? error : new Error(String(error)));
+    debugLog('Profile migration error:', error);
+  }
+
+  // Log summary of migration issues (but don't throw to allow app to continue)
+  if (migrationErrors.length > 0) {
+    console.warn('[Migration] Completed with ' + migrationErrors.length + ' warning(s):');
+    for (const err of migrationErrors) {
+      console.warn('  - ' + err.message);
+    }
+    console.warn(
+      '[Migration] Application will continue, but some features may not work correctly.'
+    );
   }
 }

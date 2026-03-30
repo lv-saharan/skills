@@ -8,7 +8,6 @@
 import type { BrowserInstance } from '../browser';
 import type { UserName } from '../user';
 import { XhsError, XhsErrorCode } from '../shared';
-import { saveCookies, extractCookies } from '../cookie';
 import { XHS_URLS, debugLog, delay, randomDelay, waitForCondition } from '../utils/helpers';
 import { humanClick, checkLoginStatus } from '../utils/anti-detect';
 import type { LoginResult } from './types';
@@ -70,13 +69,12 @@ export async function smsLogin(
     }
   );
 
-  // Save cookies
-  const cookies = await extractCookies(instance.context);
-  await saveCookies(cookies, user);
+  // Profile auto-persists cookies to user-data/ directory
+  debugLog('Login successful. Session will auto-persist to profile.');
 
   return {
     success: true,
-    message: 'Login successful. Cookies saved.',
+    message: 'Login successful. Session persisted to profile.',
     cookieSaved: true,
     user,
   };

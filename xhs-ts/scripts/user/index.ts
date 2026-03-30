@@ -1,4 +1,4 @@
-/**
+﻿/**
  * User module entry point
  *
  * @module user
@@ -44,12 +44,15 @@ export {
   createUserDir,
   listUsers,
   loadUsersMeta,
+  loadUsersMetaAsync,
   saveUsersMeta,
   getCurrentUser,
+  getCurrentUserAsync,
   setCurrentUser,
   clearCurrentUser,
   resolveUser,
-  // New Profile operations (Task 3)
+  resolveUserAsync,
+  // Profile operations
   createUserProfile,
   loadUserProfile,
   updateLastUsed,

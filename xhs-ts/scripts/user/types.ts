@@ -140,8 +140,6 @@ export interface UserFingerprint {
 export interface UserInfo {
   /** User name (directory name) */
   name: UserName;
-  /** Whether user has valid cookies */
-  hasCookie: boolean;
   /** Whether user has fingerprint configured */
   hasFingerprint?: boolean;
   /** Whether user has Profile directory structure */
@@ -197,8 +195,6 @@ export interface UserProfile {
   environment: UserEnvironment;
   /** Path to user's user-data directory (Playwright persistent context) */
   userDataDir: string;
-  /** Whether the user has valid cookies */
-  hasCookie: boolean;
 }
 
 // ============================================
@@ -206,9 +202,9 @@ export interface UserProfile {
 // ============================================
 
 /**
- * Profile status indicating migration/state
+ * Profile status
  */
-export type ProfileStatus = 'none' | 'legacy' | 'full';
+export type ProfileStatus = 'none' | 'full';
 
 /**
  * Profile existence information
@@ -218,8 +214,8 @@ export interface ProfileStatusInfo {
   status: ProfileStatus;
   /** Whether user-data directory exists */
   hasUserDataDir: boolean;
-  /** Whether legacy cookies.json exists */
-  hasLegacyCookies: boolean;
+  /** Whether meta.json exists */
+  hasMeta: boolean;
 }
 
 // ============================================
