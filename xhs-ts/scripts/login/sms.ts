@@ -5,7 +5,7 @@
  * @description SMS authentication flow
  */
 
-import type { BrowserSession } from '../browser';
+import type { BrowserInstance } from '../browser';
 import type { UserName } from '../user';
 import { XhsError, XhsErrorCode } from '../shared';
 import { saveCookies, extractCookies } from '../cookie';
@@ -17,7 +17,7 @@ import type { LoginResult } from './types';
  * Perform SMS login (interactive)
  */
 export async function smsLogin(
-  instance: BrowserSession,
+  instance: BrowserInstance,
   timeout: number,
 
   user?: UserName

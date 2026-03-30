@@ -5,7 +5,7 @@
  * @description Handle user authentication via QR code or SMS
  */
 
-import { withSession } from '../browser';
+import { launchProfileBrowser } from '../browser';
 import { TIMEOUTS } from '../shared';
 import { config, debugLog } from '../utils/helpers';
 import { outputSuccess, outputFromError } from '../utils/output';
@@ -14,7 +14,6 @@ import { qrLogin } from './qr';
 import { smsLogin } from './sms';
 import { verifyExistingSession } from './verify';
 import { createUserDir, userExists, resolveUser } from '../user';
-import { deleteCookies } from '../cookie';
 
 export async function executeLogin(options: LoginOptions): Promise<void> {
   const { method = 'qr', headless, timeout = TIMEOUTS.LOGIN, creator, user } = options;
@@ -43,31 +42,38 @@ export async function executeLogin(options: LoginOptions): Promise<void> {
     return;
   }
 
-  // Cookies expired - delete invalid cookies and proceed with login
-  await deleteCookies(resolvedUser);
-  debugLog('Deleted expired cookies');
+  // Session invalid - proceed with login flow
+  // Note: Profile mode handles cookie persistence automatically
   debugLog('Proceeding with login flow...');
 
   try {
-    await withSession(
-      async (session) => {
-        const isHeadless = headless ?? config.headless;
-        debugLog('Session created');
+    const profileResult = await launchProfileBrowser({
+      user: resolvedUser,
+      headless: headless ?? config.headless,
+      autoCreate: true,
+    });
 
-        let result: LoginResult;
-        if (method === 'sms') {
-          debugLog('Starting SMS login...');
-          result = await smsLogin(session, timeout, resolvedUser);
-        } else {
-          debugLog('Starting QR code login...');
-          result = await qrLogin(session, timeout, isHeadless, resolvedUser);
-        }
+    const isHeadless = headless ?? config.headless;
+    debugLog('Profile browser launched');
 
-        debugLog('Login complete, outputting result...');
-        outputSuccess(result, 'RELAY:登录成功');
-      },
-      { headless: headless ?? config.headless }
-    );
+    // Create session object compatible with BrowserSession interface
+    const session = {
+      page: profileResult.page,
+      context: profileResult.context,
+      browser: profileResult.browser,
+    };
+
+    let result: LoginResult;
+    if (method === 'sms') {
+      debugLog('Starting SMS login...');
+      result = await smsLogin(session, timeout, resolvedUser);
+    } else {
+      debugLog('Starting QR code login...');
+      result = await qrLogin(session, timeout, isHeadless, resolvedUser);
+    }
+
+    debugLog('Login complete, outputting result...');
+    outputSuccess(result, 'RELAY:登录成功');
   } catch (error) {
     debugLog('Login error:', error);
     outputFromError(error);

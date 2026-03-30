@@ -6,7 +6,7 @@
  */
 
 import { copyFile, readdir, rename, stat, unlink, rmdir } from 'fs/promises';
-import { existsSync, mkdirSync } from 'fs';
+import { existsSync, mkdirSync, readFileSync } from 'fs';
 import path from 'path';
 import { getUsersDir, getUserDir, getUserTmpDir, saveUsersMeta, loadUsersMeta } from './storage';
 import type { UsersMeta } from './types';
@@ -59,6 +59,7 @@ async function backupCookies(userDir: string): Promise<string | null> {
  * - users/ directory doesn't exist (v1 → v2)
  * - users.json version < 2 (v1)
  * - users/{user}/user-data/ doesn't exist (v2 without profile)
+ * - users.json is corrupted/invalid JSON
  */
 export function isMigrationNeeded(): boolean {
   const usersDir = getUsersDir();
@@ -66,6 +67,25 @@ export function isMigrationNeeded(): boolean {
   // Check if users directory exists
   if (!existsSync(usersDir)) {
     return true;
+  }
+
+  // Validate users.json BEFORE calling loadUsersMeta()
+  // loadUsersMeta() catches errors and returns defaults, so we need to
+  // manually validate the JSON to detect corrupted files
+  const usersJsonPath = path.resolve(getUsersDir(), 'users.json');
+  if (existsSync(usersJsonPath)) {
+    try {
+      const content = readFileSync(usersJsonPath, 'utf-8');
+      const parsed = JSON.parse(content) as { version?: number; [key: string]: unknown };
+      
+      // Check version BEFORE loadUsersMeta() because it auto-migrates v1 to v2
+      if (typeof parsed.version !== 'number' || parsed.version < 2) {
+        return true;
+      }
+    } catch {
+      // JSON is corrupted - migration needed to rebuild
+      return true;
+    }
   }
 
   // Try to read users.json

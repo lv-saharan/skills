@@ -7,7 +7,7 @@
 
 import type { Page } from 'playwright';
 import { XhsError, XhsErrorCode } from '../shared';
-import type { BrowserSession } from '../browser';
+import type { BrowserInstance } from '../browser';
 import type { UserName } from '../user';
 import { saveCookies, extractCookies, hasRequiredCookies } from '../cookie';
 import { XHS_URLS, debugLog, delay, randomDelay, waitForCondition } from '../utils/helpers';
@@ -211,7 +211,7 @@ export async function waitForQrScan(page: Page, timeout: number): Promise<void> 
  * Perform QR code login
  */
 export async function qrLogin(
-  instance: BrowserSession,
+  instance: BrowserInstance,
   timeout: number,
   isHeadless: boolean,
   user?: UserName
