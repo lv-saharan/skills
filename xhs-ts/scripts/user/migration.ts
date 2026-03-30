@@ -120,10 +120,17 @@ export async function migrateToMultiUser(): Promise<void> {
     }
   }
 
-  // Step 4: Create users.json
+  // Step 4: Create users.json (version 2 - Profile architecture)
   const meta: UsersMeta = {
     current: DEFAULT_USER,
-    version: 1,
+    version: 2,
+    profiles: {
+      [DEFAULT_USER]: {
+        createdAt: new Date().toISOString(),
+        lastUsedAt: new Date().toISOString(),
+        environmentType: 'gui-native',
+      },
+    },
   };
   await saveUsersMeta(meta);
   debugLog('Created users.json');

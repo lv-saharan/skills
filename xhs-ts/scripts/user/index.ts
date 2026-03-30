@@ -2,7 +2,7 @@
  * User module entry point
  *
  * @module user
- * @description Multi-user management for xhs-ts
+ * @description Multi-user management and Profile architecture for xhs-ts
  */
 
 // Types
@@ -17,6 +17,16 @@ export type {
   BrowserConfig,
   ScreenConfig,
   DevicePlatform,
+  // New Profile types (Task 1)
+  EnvironmentType,
+  FingerprintSource,
+  DeviceProfile,
+  UserEnvironment,
+  UserMeta,
+  UserProfile,
+  ProfileStatus,
+  ProfileStatusInfo,
+  ProfileRef,
 } from './types';
 
 // Storage operations
@@ -24,10 +34,13 @@ export {
   getUsersDir,
   getUserDir,
   getUserTmpDir,
+  getUserDataDir,
   validateUserName,
   isValidUserName,
   usersDirExists,
   userExists,
+  hasProfile,
+  getProfileStatus,
   createUserDir,
   listUsers,
   loadUsersMeta,
@@ -36,9 +49,13 @@ export {
   setCurrentUser,
   clearCurrentUser,
   resolveUser,
+  // New Profile operations (Task 3)
+  createUserProfile,
+  loadUserProfile,
+  updateLastUsed,
 } from './storage';
 
-// Fingerprint operations
+// Fingerprint operations (includes getMostMainstreamPreset)
 export {
   getUserFingerprint,
   saveUserFingerprint,
@@ -48,6 +65,18 @@ export {
   getMostMainstreamPreset,
   getDefaultPresetInfo,
 } from './fingerprint';
+
+// Environment detection (Task 2)
+export {
+  hasDisplaySupport,
+  detectDeviceProfile,
+  detectEnvironmentType,
+  detectEnvironment,
+  selectPresetBySmartMatch,
+  getMostMainstreamPresetInfo,
+  generateEnvironmentFingerprint,
+  generateFingerprint,
+} from './environment';
 
 // Migration
 export { isMigrationNeeded, migrateToMultiUser, ensureMigrated } from './migration';
