@@ -298,7 +298,6 @@ export async function launchProfileBrowser(
     environmentType,
     userDataDir,
     hasFingerprint: !!profile.fingerprint,
-    hasCookie: profile.hasCookie,
   });
 
   // Build launch options for persistent context
@@ -352,16 +351,14 @@ export async function launchProfileBrowser(
   }
 
   // Add Sec-CH-UA headers (Chrome Client Hints)
+  // Extract Chrome version from User-Agent to ensure consistency
+  const chromeVersion = profile.fingerprint.browser.userAgent.match(/Chrome\/(\d+)/)?.[1] ?? '135';
   const platform = profile.fingerprint.device.platform;
   const secChUaPlatform =
-    platform === 'MacIntel'
-      ? '"macOS"'
-      : platform === 'Linux x86_64'
-        ? '"Linux"'
-        : '"Windows"';
+    platform === 'MacIntel' ? '"macOS"' : platform === 'Linux x86_64' ? '"Linux"' : '"Windows"';
 
   await context.setExtraHTTPHeaders({
-    'sec-ch-ua': '"Google Chrome";v="135", "Chromium";v="135", "Not:A-Brand";v="8"',
+    'sec-ch-ua': `"Google Chrome";v="${chromeVersion}", "Chromium";v="${chromeVersion}", "Not:A-Brand";v="8"`,
     'sec-ch-ua-mobile': '?0',
     'sec-ch-ua-platform': secChUaPlatform,
     'accept-language': profile.fingerprint.browser.languages
@@ -371,7 +368,11 @@ export async function launchProfileBrowser(
   debugLog('Added Sec-CH-UA headers');
 
   // Inject stealth script
-  const stealthScript = generateStealthScript(profile.fingerprint, behavior.stealthConfig, behavior.geolocation);
+  const stealthScript = generateStealthScript(
+    profile.fingerprint,
+    behavior.stealthConfig,
+    behavior.geolocation
+  );
   await context.addInitScript(stealthScript);
   debugLog('Stealth script injected', {
     environmentType,
@@ -380,7 +381,7 @@ export async function launchProfileBrowser(
 
   // Get default page
   const pages = context.pages();
-  const page = pages[0] ?? await context.newPage();
+  const page = pages[0] ?? (await context.newPage());
 
   // Update last used timestamp
   await import('../user/storage').then(({ updateLastUsed }) => updateLastUsed(user));
@@ -455,9 +456,10 @@ export async function randomStealthDelay(
   behavior: StealthBehaviorConfig,
   actionType: 'action' | 'read' = 'action'
 ): Promise<void> {
-  const { min, max } = actionType === 'read'
-    ? { min: behavior.minReadTime, max: behavior.maxReadTime }
-    : { min: behavior.minActionDelay, max: behavior.maxActionDelay };
+  const { min, max } =
+    actionType === 'read'
+      ? { min: behavior.minReadTime, max: behavior.maxReadTime }
+      : { min: behavior.minActionDelay, max: behavior.maxActionDelay };
 
   const delayMs = Math.floor(Math.random() * (max - min + 1)) + min;
   await delay(delayMs);
