@@ -5,17 +5,14 @@
  * @description Handle user authentication via QR code for Douyin
  */
 
-import { withSession } from '../browser';
+import { launchProfileBrowser } from '../browser';
 import { TIMEOUTS } from '../shared';
-import { config } from '../config';
-import { debugLog } from '../utils/helpers';
+import { config, debugLog } from '../utils/helpers';
 import { outputSuccess, outputFromError } from '../utils/output';
 import type { LoginOptions, LoginResult } from './types';
 import { qrLogin } from './qr';
 import { verifyExistingSession } from './verify';
 import { createUserDir, userExists, resolveUser } from '../user';
-
-const browserClosedRef = { closed: false };
 
 export async function executeLogin(options: LoginOptions): Promise<void> {
   const { method = 'qr', headless, timeout = TIMEOUTS.LOGIN, user } = options;
@@ -44,27 +41,45 @@ export async function executeLogin(options: LoginOptions): Promise<void> {
     return;
   }
 
-  // Cookies expired or not found - proceed with login
+  // Session invalid - proceed with login flow
+  // Note: Profile mode handles cookie persistence automatically
   debugLog('Proceeding with login flow...');
 
+  let profileResult: Awaited<ReturnType<typeof launchProfileBrowser>> | undefined;
+
   try {
-    await withSession(
-      async (session) => {
-        const isHeadless = headless ?? config.headless;
-        debugLog('Session created');
+    profileResult = await launchProfileBrowser({
+      user: resolvedUser,
+      headless: headless ?? config.headless,
+      autoCreate: true,
+    });
 
-        // Only QR login is supported for Douyin
-        debugLog('Starting QR code login...');
-        const result = await qrLogin(session, timeout, browserClosedRef, isHeadless, resolvedUser);
+    const isHeadless = headless ?? config.headless;
+    debugLog('Profile browser launched');
 
-        debugLog('Login complete, outputting result...');
-        outputSuccess(result, 'RELAY:登录成功');
-      },
-      { headless: headless ?? config.headless }
-    );
+    // Create session object compatible with BrowserSession interface
+    const session = {
+      page: profileResult.page,
+      context: profileResult.context,
+      browser: profileResult.browser,
+    };
+
+    // Only QR login is supported for Douyin
+    debugLog('Starting QR code login...');
+    const browserClosedRef = { closed: false };
+    const result = await qrLogin(session, timeout, browserClosedRef, isHeadless, resolvedUser);
+
+    debugLog('Login complete, outputting result...');
+    outputSuccess(result, 'RELAY:登录成功');
   } catch (error) {
     debugLog('Login error:', error);
     outputFromError(error);
+  } finally {
+    // Ensure browser is closed
+    if (profileResult?.browser) {
+      await profileResult.browser.close();
+      debugLog('Browser closed after login');
+    }
   }
 }
 

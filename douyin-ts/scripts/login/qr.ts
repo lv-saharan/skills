@@ -5,10 +5,19 @@
  * @description QR code authentication flow for Douyin
  */
 
-import type { Page, Browser, Locator } from 'playwright';
+import type { Page, Browser, BrowserContext, Locator } from 'playwright';
 import { DouyinError, DouyinErrorCode } from '../shared';
-import type { BrowserSession } from '../browser';
 import type { UserName } from '../user';
+
+/**
+ * Simple session object for login flow
+ * Only needs page, browser, and context
+ */
+interface LoginSession {
+  page: Page;
+  browser: Browser;
+  context: BrowserContext;
+}
 import { saveCookies, extractCookies, hasRequiredCookies } from '../cookie';
 import { DY_URLS, getTmpFilePath } from '../config';
 import { debugLog, delay, randomDelay, waitForCondition } from '../utils/helpers';
@@ -318,7 +327,7 @@ export async function waitForQrScan(page: Page, timeout: number, browserClosedRe
 // ============================================
 
 export async function qrLogin(
-  session: BrowserSession,
+  session: LoginSession,
   timeout: number,
   browserClosedRef: { closed: boolean },
   isHeadless: boolean,
