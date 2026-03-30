@@ -28,19 +28,19 @@ scripts/
 ├── index.ts              # CLI 入口
 ├── cli/types.ts          # CLI 类型定义
 ├── config/               # 配置模块 (index.ts, config.ts, types.ts)
-├── browser/              # 浏览器管理 (index.ts, context.ts, instance.ts, launch.ts, session.ts, stealth.ts, types.ts)
-├── cookie/               # Cookie 管理 (index.ts, storage.ts, validation.ts, types.ts)
-├── user/                 # 多用户管理模块
+├── browser/              # 浏览器管理 (index.ts, context.ts, instance.ts, launch.ts, session.ts, profile-launcher.ts, types.ts)
+├── user/                 # 多用户管理 + Profile 架构
 │   ├── index.ts          # 入口：导出 API
-│   ├── storage.ts        # 目录操作、users.json 读写
+│   ├── storage.ts        # 目录操作、users.json 读写、Profile 管理
 │   ├── migration.ts      # 单用户到多用户迁移
+│   ├── fingerprint.ts    # 设备指纹生成
 │   └── types.ts          # 类型定义
 ├── login/                # 登录模块
 │   ├── index.ts          # 入口：导出 API
 │   ├── execute.ts        # 主编排 (<100 行)
 │   ├── qr.ts             # QR 登录
 │   ├── sms.ts            # SMS 登录
-│   ├── verify.ts         # Cookie 验证
+│   ├── verify.ts         # 登录状态验证
 │   └── types.ts          # 类型定义
 ├── search/               # 搜索模块 (index.ts, execute.ts, result-extractor.ts, url-builder.ts, types.ts)
 ├── publish/              # 发布模块
@@ -270,31 +270,33 @@ throw new XhsError(message, XhsErrorCode.NOT_LOGGED_IN);
 ### Modern Pattern with `await using`
 
 ```typescript
-import { withSession } from './browser';
+import { withProfile } from './browser';
 
-// Pattern 1: Using withSession helper
-const result = await withSession(async (session) => {
-  await session.page.goto('https://example.com');
-  return await session.page.title();
+// Pattern 1: Using withProfile helper (recommended)
+await withProfile('my-user', async (page, profileResult) => {
+  const { behavior, context } = profileResult;
+  await page.goto('https://example.com');
+  return await page.title();
 }, { headless: true });
 
-// Pattern 2: Direct await using
-await using session = await BrowserSession.create({ headless: true });
-await session.page.goto('https://example.com');
-// Automatic cleanup when scope exits
+// Pattern 2: Direct launchProfileBrowser
+const result = await launchProfileBrowser({ user: 'my-user' });
+await result.page.goto('https://example.com');
+// Automatic cleanup when result goes out of scope
 ```
 
 ### Multi-Page Management
 
 ```typescript
-await withSession(async (session) => {
+await withProfile('my-user', async (page, profileResult) => {
+  const { context } = profileResult;
+  
   const [newPage] = await Promise.all([
-    session.context.waitForEvent('page'),
-    session.page.click('a[href*="creator.xiaohongshu.com"]'),
+    context.waitForEvent('page'),
+    page.click('a[href*="creator.xiaohongshu.com"]'),
   ]);
   
-  const trackedPage = session.trackPage(newPage, 'publish');
-  await trackedPage.page.goto('...');
+  await newPage.goto('...');
 }, { headless: true });
 ```
 
@@ -306,12 +308,16 @@ await withSession(async (session) => {
 
 ```
 users/
-├── users.json            # { current: "用户名", version: 1 }
+├── users.json            # { current: "用户名", version: 2, profiles: {...} }
 ├── default/
-│   ├── cookies.json
+│   ├── user-data/        # Playwright 持久化上下文（自动保存 cookies、localStorage）
+│   ├── meta.json         # Profile 元数据
+│   ├── fingerprint.json  # 设备指纹
 │   └── tmp/
 └── {用户名}/
-    ├── cookies.json
+    ├── user-data/
+    ├── meta.json
+    ├── fingerprint.json
     └── tmp/
 ```
 
@@ -323,8 +329,8 @@ import {
   setCurrentUser,      // 设置当前用户
   clearCurrentUser,    // 重置为默认用户
   resolveUser,         // 解析用户优先级
-  createUserDir,       // 创建用户目录
-  userExists,          // 检查用户是否存在
+  createUserProfile,   // 创建用户 Profile
+  hasProfile,          // 检查 Profile 是否存在
 } from './user';
 
 // 用户解析优先级: --user > users.json current > 'default'
@@ -336,10 +342,9 @@ const user = resolveUser(options.user);
 首次启动时自动迁移：
 
 1. 创建 `users/default/` 目录
-2. 复制 `cookies.json` → `users/default/cookies.json`
-3. 移动 `tmp/*` → `users/default/tmp/`
-4. 创建 `users.json`
-5. 删除旧文件
+2. 创建 `user-data/` 目录（Playwright 持久化上下文）
+3. 创建 `meta.json` 和 `fingerprint.json`
+4. 创建 `users.json` (version: 2)
 
 ---
 
@@ -355,7 +360,7 @@ npm run lint && npm run typecheck
 ## Important Notes
 
 1. **Rate Limiting**: 使用 `randomDelay()` 
-2. **Cookie Storage**: `cookies.json` (git-ignored)
+2. **Session Storage**: Playwright persistent context 自动保存（`user-data/`）
 3. **Debug Mode**: `DEBUG=true` in `.env`
 4. **Headless Mode**: 无显示时强制 true
 5. **Pure TypeScript**: 无编译，tsx 直接执行

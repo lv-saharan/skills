@@ -130,10 +130,14 @@ xhs-ts/
 ├── users/                    # 多用户目录
 │   ├── users.json            # 用户元数据
 │   ├── default/              # 默认用户
-│   │   ├── cookies.json
-│   │   └── tmp/
+│   │   ├── user-data/        # Playwright 持久化上下文（自动保存 cookies、localStorage）
+│   │   ├── meta.json         # Profile 元数据
+│   │   ├── fingerprint.json  # 设备指纹
+│   │   └── tmp/              # 临时文件
 │   └── 小号/                 # 用户"小号"
-│       ├── cookies.json
+│       ├── user-data/
+│       ├── meta.json
+│       ├── fingerprint.json
 │       └── tmp/
 ```
 

@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-- Node.js >= 18
+- Node.js >= 22.16.0 (required for `using` syntax)
 - npm or pnpm
 
 ## Install Steps
@@ -36,20 +36,17 @@ PLAYWRIGHT_DOWNLOAD_HOST=https://npmmirror.com/mirrors/playwright npm run instal
 npm run start -- --help
 ```
 
-## Manual Cookie Import
+## Login
 
-If login fails, manually import cookies:
+The Profile architecture automatically manages session state. Simply run:
 
-1. Login to xiaohongshu.com in browser
-2. Open DevTools (F12) → Application → Cookies → xiaohongshu.com
-3. Copy key cookies (a1, web_session, etc.)
-4. Create `{baseDir}/cookies.json`:
-
-```json
-{
-  "cookies": [
-    { "name": "a1", "value": "YOUR_VALUE", "domain": ".xiaohongshu.com", "path": "/" },
-    { "name": "web_session", "value": "YOUR_VALUE", "domain": ".xiaohongshu.com", "path": "/" }
-  ]
-}
+```bash
+npm run start -- login
 ```
+
+This will:
+1. Create a user profile in `users/default/`
+2. Launch a browser with persistent context
+3. Auto-save cookies and localStorage to `users/default/user-data/`
+
+No manual cookie import needed.

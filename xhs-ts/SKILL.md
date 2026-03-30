@@ -62,12 +62,16 @@ xhs-ts supports multiple Xiaohongshu accounts with isolated cookies and temporar
 ```
 xhs-ts/
 ├── users/                    # Multi-user directory
-│   ├── users.json            # User metadata (current user)
+│   ├── users.json            # User metadata (current user, version: 2)
 │   ├── default/              # Default user
-│   │   ├── cookies.json      # Cookies
+│   │   ├── user-data/        # Playwright persistent context (auto-saves cookies, localStorage)
+│   │   ├── meta.json         # Profile metadata
+│   │   ├── fingerprint.json  # Device fingerprint
 │   │   └── tmp/              # Temporary files (QR codes)
 │   ├── 小号/                 # User "小号"
-│   │   ├── cookies.json
+│   │   ├── user-data/
+│   │   ├── meta.json
+│   │   ├── fingerprint.json
 │   │   └── tmp/
 │   └── ...
 ```

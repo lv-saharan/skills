@@ -36,6 +36,9 @@ DEBUG=false
 
 | File | Purpose |
 |------|---------|
-| `{baseDir}/cookies.json` | Cookie storage |
-| `{baseDir}/tmp/qr_login_*.png` | QR code images (headless mode) |
+| `{baseDir}/users/{user}/user-data/` | Playwright persistent context (auto-saves cookies, localStorage) |
+| `{baseDir}/users/{user}/meta.json` | Profile metadata |
+| `{baseDir}/users/{user}/fingerprint.json` | Device fingerprint |
+| `{baseDir}/users/{user}/tmp/` | Temporary files (QR codes) |
+| `{baseDir}/users.json` | User metadata (current user, profiles) |
 | `{baseDir}/.env` | Environment configuration |
