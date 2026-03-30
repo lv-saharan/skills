@@ -9,7 +9,6 @@ import type { Page } from 'playwright';
 import { XhsError, XhsErrorCode } from '../shared';
 import type { BrowserInstance } from '../browser';
 import type { UserName } from '../user';
-import { saveCookies, extractCookies, hasRequiredCookies } from '../cookie';
 import { XHS_URLS, debugLog, delay, randomDelay, waitForCondition } from '../utils/helpers';
 import { humanClick, checkCaptcha } from '../utils/anti-detect';
 import { outputQrCode } from '../utils/output';
@@ -38,6 +37,15 @@ const LOGIN_MODAL_SELECTORS = [
   '[class*="loginModal"]',
   '.qrcode-login',
   '.login-wrapper',
+];
+
+/** Login button selectors (to trigger login from home page) */
+const LOGIN_BUTTON_SELECTORS = [
+  'header button:has-text("登录")',
+  'header a:has-text("登录")',
+  'header button:has-text("登录/注册")',
+  'nav button:has-text("登录")',
+  'button[class*="login"]',
 ];
 
 /** QR code expired patterns */
@@ -208,6 +216,51 @@ export async function waitForQrScan(page: Page, timeout: number): Promise<void> 
 // ============================================
 
 /**
+ * Trigger login modal from home page
+ *
+ * Strategy: Start from home page for natural behavior
+ * 1. Navigate to home page
+ * 2. Wait for page to load
+ * 3. Check if login modal already visible (auto-popup)
+ * 4. If not, click login button to trigger login modal
+ */
+async function triggerLoginModal(page: Page): Promise<void> {
+  debugLog('Navigating to home page...');
+  await page.goto(XHS_URLS.home, { waitUntil: 'domcontentloaded', timeout: 30000 });
+  await randomDelay(2000, 3000);
+
+  // Check if login modal is already visible (auto-popup)
+  const modalVisible = await isAnyVisible(page, LOGIN_MODAL_SELECTORS);
+  if (modalVisible) {
+    debugLog('Login modal already visible (auto-popup)');
+    return;
+  }
+
+  // Check if QR code is already visible (direct /login redirect)
+  const qrVisible = await isAnyVisible(page, QR_SELECTORS);
+  if (qrVisible) {
+    debugLog('QR code already visible (redirected to login)');
+    return;
+  }
+
+  // Click login button to trigger login modal
+  debugLog('Clicking login button to trigger login modal...');
+  for (const selector of LOGIN_BUTTON_SELECTORS) {
+    const clicked = await humanClick(page, selector);
+    if (clicked) {
+      debugLog('Clicked login button: ' + selector);
+      await delay(2000);
+      return;
+    }
+  }
+
+  // Fallback: navigate directly to login page
+  debugLog('No login button found, navigating to login page...');
+  await page.goto(XHS_URLS.login, { waitUntil: 'domcontentloaded', timeout: 30000 });
+  await randomDelay(1000, 2000);
+}
+
+/**
  * Perform QR code login
  */
 export async function qrLogin(
@@ -218,9 +271,8 @@ export async function qrLogin(
 ): Promise<LoginResult> {
   const { page } = instance;
 
-  // Navigate to login page
-  await page.goto(XHS_URLS.login);
-  await randomDelay(1000, 2000);
+  // Start from home page (natural behavior)
+  await triggerLoginModal(page);
 
   // Try to find QR code
   let qrFound = false;
@@ -264,26 +316,12 @@ export async function qrLogin(
 
   await delay(1000);
 
-  // Extract and save cookies
-  const cookies = await extractCookies(instance.context);
-  debugLog('Extracted ' + cookies.length + ' cookies from context');
-
-  if (cookies.length === 0) {
-    throw new XhsError(
-      'Login appeared successful but no cookies were extracted. Please try again.',
-      XhsErrorCode.LOGIN_FAILED
-    );
-  }
-
-  if (!hasRequiredCookies(cookies)) {
-    debugLog('Warning: Required cookies (a1, web_session) not found in extracted cookies');
-  }
-
-  await saveCookies(cookies, user);
+  // Profile auto-persists cookies to user-data/ directory
+  debugLog('Login successful. Session will auto-persist to profile.');
 
   return {
     success: true,
-    message: 'Login successful. Cookies saved.',
+    message: 'Login successful. Session persisted to profile.',
     cookieSaved: true,
     user,
   };

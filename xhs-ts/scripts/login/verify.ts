@@ -6,6 +6,7 @@
  */
 
 import type { UserName } from '../user';
+import { hasProfile } from '../user/storage';
 import { launchProfileBrowser } from '../browser';
 import { XHS_URLS, debugLog, delay } from '../utils/helpers';
 import { checkLoginStatus } from '../utils/anti-detect';
@@ -21,6 +22,12 @@ import { checkLoginStatus } from '../utils/anti-detect';
  */
 export async function verifyExistingSession(user?: UserName): Promise<boolean> {
   debugLog(`Checking if already logged in for user: ${user || 'default'}...`);
+
+  // Check if profile exists first (new users don't have profile)
+  if (!hasProfile(user || 'default')) {
+    debugLog('Profile does not exist, user needs to login');
+    return false;
+  }
 
   // Use Profile API to verify session
   // The profile browser will automatically load persisted cookies

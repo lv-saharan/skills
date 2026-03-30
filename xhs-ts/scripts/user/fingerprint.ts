@@ -8,14 +8,14 @@
 import { existsSync } from 'fs';
 import { readFile, writeFile } from 'fs/promises';
 import path from 'path';
-import os from 'os';
 import type { UserName, UserFingerprint } from './types';
 import { getUserDir } from './storage';
 import {
-  MAINSTREAM_PRESETS,
-  type DevicePreset,
-  type DevicePlatform,
-} from '../browser/fingerprint-presets';
+  selectPresetBySmartMatch,
+  getMostMainstreamPreset,
+  hasDisplaySupport,
+  detectScreenResolution,
+} from './environment';
 import { debugLog } from '../utils/helpers';
 
 // ============================================
@@ -37,122 +37,14 @@ function getFingerprintPath(user: UserName): string {
 }
 
 // ============================================
-// Device Detection
-// ============================================
-
-/**
- * Detected device profile
- */
-interface DeviceProfile {
-  platform: DevicePlatform;
-  hardwareConcurrency: number;
-  deviceMemory: number;
-}
-
-/**
- * Detect current device characteristics
- *
- * Uses Node.js APIs to get real device info for smart preset matching.
- */
-function detectDeviceProfile(): DeviceProfile {
-  // Detect platform
-  let platform: DevicePlatform;
-  switch (process.platform) {
-    case 'darwin':
-      platform = 'MacIntel';
-      break;
-    case 'linux':
-      platform = 'Linux x86_64';
-      break;
-    default:
-      platform = 'Windows';
-  }
-
-  // Detect CPU cores
-  const hardwareConcurrency = os.cpus().length;
-
-  // Detect memory (in GB, rounded to common values)
-  const totalGB = os.totalmem() / (1024 * 1024 * 1024);
-  const deviceMemory = totalGB >= 30 ? 32 : totalGB >= 14 ? 16 : totalGB >= 6 ? 8 : 4;
-
-  return {
-    platform,
-    hardwareConcurrency,
-    deviceMemory,
-  };
-}
-
-// ============================================
 // Smart Preset Selection
 // ============================================
 
 /**
- * Select preset by weight from a list
- */
-function selectByWeight(presets: DevicePreset[]): DevicePreset {
-  const totalWeight = presets.reduce((sum, p) => sum + p.weight, 0);
-  let random = Math.random() * totalWeight;
-
-  for (const preset of presets) {
-    random -= preset.weight;
-    if (random <= 0) {
-      return preset;
-    }
-  }
-
-  return presets[0];
-}
-
-/**
  * Get the most mainstream preset (highest weight)
+ * Re-exported from environment module for backward compatibility
  */
-export function getMostMainstreamPreset(): DevicePreset {
-  return MAINSTREAM_PRESETS.reduce((best, p) => (p.weight > best.weight ? p : best));
-}
-
-/**
- * Select preset by smart device matching
- *
- * Strategy:
- * 1. Detect current device characteristics
- * 2. Filter presets by platform match
- * 3. Further filter by hardware proximity (optional)
- * 4. Select by weight from matched presets
- * 5. Fallback to most mainstream preset
- */
-function selectPresetByDeviceMatch(): DevicePreset {
-  const profile = detectDeviceProfile();
-
-  debugLog('Detected device profile:', profile);
-
-  // Step 1: Filter by platform
-  const platformMatched = MAINSTREAM_PRESETS.filter((p) => p.device.platform === profile.platform);
-
-  if (platformMatched.length === 0) {
-    // No platform match, use most mainstream
-    debugLog('No platform match, using most mainstream preset');
-    return getMostMainstreamPreset();
-  }
-
-  // Step 2: Try to match hardware characteristics (soft match)
-  // Find presets with similar CPU cores (±4) and memory (±8)
-  const hardwareMatched = platformMatched.filter((p) => {
-    const cpuDiff = Math.abs(p.device.hardwareConcurrency - profile.hardwareConcurrency);
-    const memDiff = Math.abs(p.device.deviceMemory - profile.deviceMemory);
-    return cpuDiff <= 4 && memDiff <= 8;
-  });
-
-  if (hardwareMatched.length > 0) {
-    debugLog(
-      `Found ${hardwareMatched.length} hardware-matched presets from ${platformMatched.length} platform-matched`
-    );
-    return selectByWeight(hardwareMatched);
-  }
-
-  // Step 3: Use platform-matched presets
-  debugLog(`Using ${platformMatched.length} platform-matched presets (no hardware match)`);
-  return selectByWeight(platformMatched);
-}
+export { getMostMainstreamPreset } from './environment';
 
 // ============================================
 // Fingerprint Generation
@@ -160,9 +52,37 @@ function selectPresetByDeviceMatch(): DevicePreset {
 
 /**
  * Generate a new fingerprint using smart device matching
+ *
+ * Screen resolution priority:
+ * 1. Real detected screen (if display available and detection succeeds)
+ * 2. Preset screen (fallback)
+ *
+ * Note: Screen detection only happens at fingerprint creation time.
+ * Once saved, the fingerprint is used consistently regardless of
+ * headless/gui mode.
  */
 function generateFingerprintFromPreset(): UserFingerprint {
-  const preset = selectPresetByDeviceMatch();
+  const preset = selectPresetBySmartMatch();
+
+  // Detect real screen resolution (only if display available)
+  // This ensures consistent fingerprint across headless/gui modes
+  let screenWidth = preset.screen.width;
+  let screenHeight = preset.screen.height;
+  let description = preset.description;
+
+  if (hasDisplaySupport()) {
+    const detectedScreen = detectScreenResolution();
+    if (detectedScreen) {
+      screenWidth = detectedScreen.width;
+      screenHeight = detectedScreen.height;
+      description = `${preset.description} + 真实屏幕 ${detectedScreen.width}x${detectedScreen.height}`;
+      debugLog(`Using detected screen: ${screenWidth}x${screenHeight}`);
+    } else {
+      debugLog('Screen detection failed, using preset screen');
+    }
+  } else {
+    debugLog('No display support, using preset screen');
+  }
 
   const fingerprint: UserFingerprint = {
     version: 1,
@@ -182,13 +102,13 @@ function generateFingerprintFromPreset(): UserFingerprint {
       renderer: preset.webgl.renderer,
     },
     screen: {
-      width: preset.screen.width,
-      height: preset.screen.height,
+      width: screenWidth,
+      height: screenHeight,
       colorDepth: preset.screen.colorDepth ?? 24,
     },
     canvasNoiseSeed: Math.floor(Math.random() * 10000000),
     audioNoiseSeed: Math.floor(Math.random() * 10000000),
-    description: preset.description,
+    description,
   };
 
   return fingerprint;
@@ -219,14 +139,14 @@ export async function getUserFingerprint(user: UserName): Promise<UserFingerprin
 
       // Validate version
       if (fingerprint.version === 1) {
-        debugLog(`Loaded existing fingerprint for user: ${user}`);
+        debugLog('Loaded existing fingerprint for user:', user);
         return fingerprint;
       }
 
       // Version mismatch - regenerate
-      debugLog(`Fingerprint version mismatch for user: ${user}, regenerating...`);
+      debugLog('Fingerprint version mismatch, regenerating');
     } catch (error) {
-      debugLog(`Failed to load fingerprint for user: ${user}, regenerating...`, error);
+      debugLog('Failed to load fingerprint:', error);
     }
   }
 
@@ -236,7 +156,7 @@ export async function getUserFingerprint(user: UserName): Promise<UserFingerprin
   // Save to file
   await saveUserFingerprint(user, fingerprint);
 
-  debugLog(`Generated new fingerprint for user: ${user}`, {
+  debugLog('Generated new fingerprint:', {
     description: fingerprint.description,
     platform: fingerprint.device.platform,
   });
@@ -261,7 +181,7 @@ export async function saveUserFingerprint(
   }
 
   await writeFile(fpPath, JSON.stringify(fingerprint, null, 2), 'utf-8');
-  debugLog(`Saved fingerprint to: ${fpPath}`);
+  debugLog();
 }
 
 /**
@@ -280,7 +200,7 @@ export async function regenerateUserFingerprint(user: UserName): Promise<UserFin
   const fingerprint = generateFingerprintFromPreset();
   await saveUserFingerprint(user, fingerprint);
 
-  debugLog(`Regenerated fingerprint for user: ${user}`);
+  debugLog();
 
   return fingerprint;
 }
@@ -312,6 +232,6 @@ export function getDefaultPresetInfo(): {
   return {
     description: preset.description,
     platform: preset.device.platform,
-    screen: `${preset.screen.width}×${preset.screen.height}`,
+    screen: `${preset.screen.width}x${preset.screen.height}`,
   };
 }

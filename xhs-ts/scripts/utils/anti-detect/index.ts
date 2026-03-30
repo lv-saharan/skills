@@ -244,6 +244,7 @@ export async function waitForStable(page: Page, options: { timeout?: number } = 
 export async function checkLoginStatus(page: Page): Promise<boolean> {
   try {
     const currentUrl = page.url();
+    debugLog('checkLoginStatus: currentUrl = ' + currentUrl);
     await page.waitForLoadState('domcontentloaded').catch(() => {});
 
     // RULE 1: Login button/modal visible? → NOT logged in
