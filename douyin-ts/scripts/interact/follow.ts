@@ -11,9 +11,9 @@ import { FOLLOW_SELECTORS } from './selectors';
 import {
   withAuthenticatedAction,
   preparePageForAction,
-  INTERACTION_DELAYS,
+  DEFAULT_INTERACTION_DELAYS,
 } from './shared';
-import { delay, randomDelay, debugLog } from '../utils/helpers';
+import { delay, gaussianDelay, debugLog } from '../utils/helpers';
 import { humanClick, checkLoginStatus } from '../utils/anti-detect';
 import { outputSuccess, outputFromError } from '../utils/output';
 import { extractUserId } from './url-utils';
@@ -211,8 +211,8 @@ export async function executeFollow(options: FollowOptions): Promise<void> {
 
       // Delay between follows (not after last one)
       if (i < urls.length - 1) {
-        const delayMs = delayBetweenFollows ?? INTERACTION_DELAYS.batchInterval;
-        await randomDelay(delayMs, delayMs + 1000);
+        const delayMs = delayBetweenFollows ?? DEFAULT_INTERACTION_DELAYS.batchInterval;
+        await gaussianDelay(DEFAULT_INTERACTION_DELAYS.batchInterval);
       }
     }
 

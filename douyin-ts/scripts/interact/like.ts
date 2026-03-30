@@ -11,10 +11,9 @@ import { LIKE_SELECTORS } from './selectors';
 import {
   withAuthenticatedAction,
   preparePageForAction,
-  INTERACTION_DELAYS,
+  DEFAULT_INTERACTION_DELAYS,
 } from './shared';
-import { DouyinError, DouyinErrorCode } from '../shared';
-import { delay, randomDelay, debugLog } from '../utils/helpers';
+import { delay, gaussianDelay, debugLog } from '../utils/helpers';
 import { humanClick, checkLoginStatus } from '../utils/anti-detect';
 import { outputSuccess, outputFromError } from '../utils/output';
 import { extractVideoId } from './url-utils';
@@ -217,8 +216,8 @@ export async function executeLike(options: LikeOptions): Promise<void> {
 
       // Delay between likes (not after last one)
       if (i < urls.length - 1) {
-        const delayMs = delayBetweenLikes ?? INTERACTION_DELAYS.batchInterval;
-        await randomDelay(delayMs, delayMs + 1000);
+        const delayMs = delayBetweenLikes ?? DEFAULT_INTERACTION_DELAYS.batchInterval;
+        await gaussianDelay(DEFAULT_INTERACTION_DELAYS.batchInterval);
       }
     }
 

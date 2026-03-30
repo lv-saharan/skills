@@ -14,8 +14,8 @@ import type {
   UserSearchResult,
 } from './types';
 import { SEARCH_SELECTORS, SEARCH_URLS } from './selectors';
-import { withAuthenticatedAction, INTERACTION_DELAYS } from './shared';
-import { delay, randomDelay, debugLog } from '../utils/helpers';
+import { withAuthenticatedAction, DEFAULT_INTERACTION_DELAYS } from './shared';
+import { delay, gaussianDelay, debugLog } from '../utils/helpers';
 import { outputSuccess, outputFromError } from '../utils/output';
 import { DouyinError, DouyinErrorCode } from '../shared';
 
@@ -232,7 +232,7 @@ async function performSearch(page: Page, options: SearchOptions): Promise<Search
   // Navigate to search page
   await page.goto(searchUrl, { waitUntil: 'domcontentloaded', timeout: PAGE_LOAD_TIMEOUT });
   await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
-  await randomDelay(INTERACTION_DELAYS.afterNavigation.min, INTERACTION_DELAYS.afterNavigation.max);
+  await gaussianDelay(DEFAULT_INTERACTION_DELAYS.afterNavigation);
 
   // Check for errors
   const pageContent = await page.content();

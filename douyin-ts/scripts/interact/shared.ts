@@ -7,10 +7,15 @@
 
 import type { Page } from 'playwright';
 import type { UserName } from '../user';
-import { withSession } from '../browser';
-import { loadCookies, validateCookies } from '../cookie';
+import {
+  withProfile,
+  randomStealthDelay,
+  type ProfileLaunchOptions,
+  type StealthBehaviorConfig,
+} from '../browser';
+import { resolveUser } from '../user/storage';
 import { DouyinError, DouyinErrorCode, TIMEOUTS } from '../shared';
-import { DY_URLS, delay, randomDelay } from '../utils/helpers';
+import { DY_URLS, gaussianDelay } from '../utils/helpers';
 import { checkLoginStatus, checkCaptcha, simulateReading } from '../utils/anti-detect';
 
 // ============================================
@@ -20,25 +25,61 @@ import { checkLoginStatus, checkCaptcha, simulateReading } from '../utils/anti-d
 /** Page load timeout for interaction operations */
 export const INTERACTION_PAGE_LOAD_TIMEOUT = 20000;
 
-/** Delay constants for interaction operations */
-export const INTERACTION_DELAYS = {
+/**
+ * Default delay constants for interaction operations
+ * These are used as fallback when behavior config is not available
+ */
+export const DEFAULT_INTERACTION_DELAYS = {
   /** Delay after page navigation */
-  afterNavigation: { min: 1500, max: 2500 },
+  afterNavigation: { mean: 2000, stdDev: 400 },
   /** Delay after click action */
-  afterClick: { min: 1000, max: 1500 },
+  afterClick: { mean: 1200, stdDev: 300 },
   /** Default batch operation interval */
-  batchInterval: 2000,
+  batchInterval: { mean: 3000, stdDev: 800 },
 } as const;
+
+/** @deprecated Use DEFAULT_INTERACTION_DELAYS instead */
+export const INTERACTION_DELAYS = DEFAULT_INTERACTION_DELAYS;
+
+/**
+ * Get interaction delays based on behavior config
+ * Uses behavior config if available, otherwise falls back to defaults
+ */
+export function getInteractionDelays(
+  behavior?: StealthBehaviorConfig
+): typeof DEFAULT_INTERACTION_DELAYS {
+  if (!behavior) {
+    return DEFAULT_INTERACTION_DELAYS;
+  }
+
+  // Convert behavior timing to interaction delays format
+  return {
+    afterNavigation: {
+      mean: (behavior.minReadTime + (behavior.maxReadTime - behavior.minReadTime) / 2) as 2000,
+      stdDev: ((behavior.maxReadTime - behavior.minReadTime) / 4) as 400,
+    },
+    afterClick: {
+      mean: (behavior.minActionDelay +
+        (behavior.maxActionDelay - behavior.minActionDelay) / 2) as 1200,
+      stdDev: ((behavior.maxActionDelay - behavior.minActionDelay) / 4) as 300,
+    },
+    batchInterval: {
+      mean: (behavior.minActionDelay +
+        (behavior.maxActionDelay - behavior.minActionDelay) / 2) as 3000,
+      stdDev: ((behavior.maxActionDelay - behavior.minActionDelay) / 4) as 800,
+    },
+  };
+}
 
 // ============================================
 // Session Utilities
 // ============================================
 
 /**
- * Execute an action with authenticated session
+ * Execute an action with authenticated session using Profile architecture
  *
  * This function handles:
- * 1. Loading and validating cookies
+ * 1. Launching profile browser (login state is persisted)
  * 2. Navigating to homepage to verify login
  * 3. Checking login status
  * 4. Executing the provided callback
@@ -51,28 +92,28 @@ export const INTERACTION_DELAYS = {
 export async function withAuthenticatedAction<T>(
   headless: boolean | undefined,
   user: UserName | undefined,
-  callback: (page: Page) => Promise<T>
+  callback: (page: Page, behavior: StealthBehaviorConfig) => Promise<T>
 ): Promise<T> {
-  return withSession(
-    async (session) => {
-      // 1. Load and validate cookies
-      const cookies = await loadCookies(user);
-      validateCookies(cookies);
-      await session.context.addCookies(cookies);
+  const resolvedUser = user ?? resolveUser();
 
-      // 2. Navigate to homepage to establish session
-      await session.page.goto(DY_URLS.home, { timeout: TIMEOUTS.PAGE_LOAD });
-      await delay(3000);
+  return withProfile(
+    resolvedUser,
+    async (page, profileResult) => {
+      const { behavior } = profileResult;
 
-      // 3. Verify login status
-      if (!(await checkLoginStatus(session.page))) {
+      // 1. Navigate to homepage to establish session
+      await page.goto(DY_URLS.home, { timeout: TIMEOUTS.PAGE_LOAD });
+      await randomStealthDelay(behavior, 'read');
+
+      // 2. Verify login status
+      if (!(await checkLoginStatus(page))) {
         throw new DouyinError('未登录，请先执行 "douyin login"', DouyinErrorCode.NOT_LOGGED_IN);
       }
 
-      // 4. Execute the callback with authenticated page
-      return callback(session.page);
+      // 3. Execute the callback with authenticated page and behavior config
+      return callback(page, behavior);
     },
-    { headless: headless ?? false }
+    { headless: headless ?? false } as ProfileLaunchOptions
   );
 }
 
@@ -88,7 +129,7 @@ export async function navigateToPage(page: Page, url: string): Promise<void> {
   await page
     .waitForLoadState('networkidle', { timeout: INTERACTION_PAGE_LOAD_TIMEOUT })
     .catch(() => {});
-  await randomDelay(INTERACTION_DELAYS.afterNavigation.min, INTERACTION_DELAYS.afterNavigation.max);
+  await gaussianDelay(DEFAULT_INTERACTION_DELAYS.afterNavigation);
 }
 
 /**
@@ -159,11 +200,12 @@ export async function executeBatch<T, R>(
   items: T[],
   processItem: (item: T, index: number) => Promise<R>,
   options: {
+    /** Optional delay between items (ms). If not provided, uses Gaussian default. */
     delayBetween?: number;
     onProgress?: (completed: number, total: number) => void;
   } = {}
 ): Promise<R[]> {
-  const { delayBetween = INTERACTION_DELAYS.batchInterval, onProgress } = options;
+  const { onProgress } = options;
   const results: R[] = [];
 
   for (let i = 0; i < items.length; i++) {
@@ -176,7 +218,12 @@ export async function executeBatch<T, R>(
 
     // Delay between items (not after last one)
     if (i < items.length - 1) {
-      await randomDelay(delayBetween, delayBetween + 1000);
+      // Use Gaussian delay for human-like behavior
+      if (options.delayBetween) {
+        await gaussianDelay({ mean: options.delayBetween, stdDev: options.delayBetween * 0.25 });
+      } else {
+        await gaussianDelay(DEFAULT_INTERACTION_DELAYS.batchInterval);
+      }
     }
   }
 

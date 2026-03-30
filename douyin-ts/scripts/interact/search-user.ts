@@ -59,8 +59,8 @@ async function extractUser(page: Page, card: any): Promise<UserSearchResult | nu
         'https://www.douyin.com' + href;
 
       // 2. 提取所有文本内容
-      const allText = el.innerText || '';
-      const lines = allText.split('\n').map(l => l.trim()).filter(l => l);
+      const allText = (el as HTMLElement).innerText || '';
+      const lines = allText.split('\n').map((l: string) => l.trim()).filter(l => l);
 
       // 3. 提取昵称：第一行通常是昵称
       let nickname = lines[0] || '';

@@ -62,8 +62,8 @@ async function extractVideo(page: Page, card: any): Promise<VideoSearchResult | 
         'https://www.douyin.com' + href;
 
       // 2. 获取所有文本行
-      const allText = el.innerText || '';
-      const lines = allText.split('\n').map(l => l.trim()).filter(l => l);
+      const allText = (el as HTMLElement).innerText || '';
+      const lines = allText.split('\n').map((l: string) => l.trim()).filter(l => l);
 
       // 3. 提取时长：匹配 HH:MM:SS 或 MM:SS 格式（通常是单独一行）
       let duration = '';
