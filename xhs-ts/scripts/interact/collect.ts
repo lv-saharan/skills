@@ -9,9 +9,9 @@ import type { Page } from 'playwright';
 import type { CollectOptions, CollectResult } from './types';
 import { COLLECT_SELECTORS } from './selectors';
 import { XhsError, XhsErrorCode, TIMEOUTS } from '../shared';
-import { withSession } from '../browser';
-import { loadCookies, validateCookies } from '../cookie';
-import { config, debugLog, delay, gaussianDelay, XHS_URLS } from '../utils/helpers';
+import { withProfile, randomStealthDelay } from '../browser';
+import { resolveUser } from '../user/storage';
+import { debugLog, delay, gaussianDelay, XHS_URLS } from '../utils/helpers';
 import { humanClick, checkCaptcha, checkLoginStatus, simulateReading } from '../utils/anti-detect';
 import { outputSuccess, outputFromError } from '../utils/output';
 import { extractNoteId } from './like';
@@ -23,14 +23,9 @@ import { extractNoteId } from './like';
 const PAGE_LOAD_TIMEOUT = 20000;
 
 // ============================================
-// Collect Status Detection (SVG use element)
+// Collect Status Detection
 // ============================================
 
-/**
- * 通过 SVG use 元素的 xlink:href 判断收藏状态
- * - #collected = 已收藏
- * - #collect = 未收藏
- */
 async function checkCollectStatus(page: Page): Promise<{ visible: boolean; collected: boolean }> {
   try {
     const wrapper = page.locator(COLLECT_SELECTORS.button).first();
@@ -38,7 +33,6 @@ async function checkCollectStatus(page: Page): Promise<{ visible: boolean; colle
       return { visible: false, collected: false };
     }
 
-    // 检查 SVG use 元素的 href 属性
     const href = await page.evaluate(() => {
       const useEl = document.querySelector('.interact-container .collect-wrapper svg use');
       return useEl ? useEl.getAttribute('xlink:href') || useEl.getAttribute('href') : null;
@@ -69,13 +63,11 @@ async function performCollect(page: Page, url: string): Promise<CollectResult> {
   const noteId = extraction.noteId!;
 
   try {
-    // 1. 导航到页面
     debugLog('导航到: ' + url);
     await page.goto(url, { waitUntil: 'domcontentloaded', timeout: TIMEOUTS.PAGE_LOAD });
     await page.waitForLoadState('networkidle', { timeout: PAGE_LOAD_TIMEOUT }).catch(() => {});
     await delay(1500 + Math.random() * 1000);
 
-    // 2. 检查错误状态（使用项目级 checkLoginStatus）
     if (!(await checkLoginStatus(page))) {
       return { success: false, url, noteId, collected: false, error: '需要登录' };
     }
@@ -88,10 +80,8 @@ async function performCollect(page: Page, url: string): Promise<CollectResult> {
       return { success: false, url, noteId, collected: false, error: '笔记不可访问' };
     }
 
-    // 3. 模拟人类浏览内容
     await simulateReading(page);
 
-    // 4. 检查当前收藏状态
     const status = await checkCollectStatus(page);
     debugLog('状态: visible=' + status.visible + ', collected=' + status.collected);
 
@@ -99,13 +89,11 @@ async function performCollect(page: Page, url: string): Promise<CollectResult> {
       return { success: false, url, noteId, collected: false, error: '收藏按钮未找到' };
     }
 
-    // 已经收藏了，跳过点击，设置 alreadyCollected 标志
     if (status.collected) {
       debugLog('已收藏，跳过');
       return { success: true, url, noteId, collected: true, alreadyCollected: true };
     }
 
-    // 5. 点击收藏按钮（使用项目级 humanClick）
     debugLog('准备点击收藏按钮...');
     const clicked = await humanClick(page, COLLECT_SELECTORS.button, {
       delayBefore: 200,
@@ -118,12 +106,10 @@ async function performCollect(page: Page, url: string): Promise<CollectResult> {
 
     await delay(1000 + Math.random() * 500);
 
-    // 6. 检查是否需要登录（使用项目级 checkLoginStatus）
     if (!(await checkLoginStatus(page))) {
       return { success: false, url, noteId, collected: false, error: '需要登录才能收藏' };
     }
 
-    // 7. 验证结果
     const finalStatus = await checkCollectStatus(page);
     debugLog('最终状态: collected=' + finalStatus.collected);
 
@@ -140,30 +126,25 @@ async function performCollect(page: Page, url: string): Promise<CollectResult> {
 }
 
 // ============================================
-// Main Execute Function (Unified)
+// Main Execute Function
 // ============================================
 
-/**
- * Execute collect operation for one or multiple notes
- * - Single URL: output simple result
- * - Multiple URLs: output batch result with statistics
- */
 export async function executeCollect(options: CollectOptions): Promise<void> {
   const { urls, headless, user, delayBetweenCollects } = options;
   const isSingle = urls.length === 1;
+  const resolvedUser = user ?? resolveUser();
 
-  debugLog('收藏: urls=' + urls.length + ', single=' + isSingle + ', user=' + (user || 'default'));
+  debugLog('收藏: urls=' + urls.length + ', single=' + isSingle + ', user=' + resolvedUser);
 
-  await withSession(
-    async (session) => {
-      const cookies = await loadCookies(user);
-      validateCookies(cookies);
-      await session.context.addCookies(cookies);
+  await withProfile(
+    resolvedUser,
+    async (page, profileResult) => {
+      const { behavior } = profileResult;
 
-      await session.page.goto(XHS_URLS.home, { timeout: TIMEOUTS.PAGE_LOAD });
-      await delay(3000);
+      await page.goto(XHS_URLS.home, { timeout: TIMEOUTS.PAGE_LOAD });
+      await randomStealthDelay(behavior, 'read');
 
-      if (!(await checkLoginStatus(session.page))) {
+      if (!(await checkLoginStatus(page))) {
         throw new XhsError('未登录，请先执行 "xhs login"', XhsErrorCode.NOT_LOGGED_IN);
       }
 
@@ -173,8 +154,8 @@ export async function executeCollect(options: CollectOptions): Promise<void> {
       let failed = 0;
 
       for (let i = 0; i < urls.length; i++) {
-        const result = await performCollect(session.page, urls[i]);
-        result.user = user;
+        const result = await performCollect(page, urls[i]);
+        result.user = resolvedUser;
         results.push(result);
 
         if (result.success) {
@@ -183,14 +164,12 @@ export async function executeCollect(options: CollectOptions): Promise<void> {
           failed++;
         }
 
-        // Delay between collects (not after last one)
         if (i < urls.length - 1) {
           const delayMs = delayBetweenCollects ?? 2000;
           await gaussianDelay({ mean: delayMs, stdDev: delayMs * 0.25 });
         }
       }
 
-      // Output format based on URL count
       if (isSingle) {
         const result = results[0];
         if (!result.success && result.error) {
@@ -206,12 +185,12 @@ export async function executeCollect(options: CollectOptions): Promise<void> {
         }
       } else {
         outputSuccess(
-          { total: urls.length, succeeded, skipped, failed, results, user },
+          { total: urls.length, succeeded, skipped, failed, results, user: resolvedUser },
           'PARSE:results'
         );
       }
     },
-    { headless: headless ?? config.headless }
+    { headless: headless ?? false }
   ).catch((error) => {
     debugLog('收藏出错:', error);
     outputFromError(error);

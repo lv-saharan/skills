@@ -9,9 +9,9 @@ import type { Page } from 'playwright';
 import type { LikeOptions, LikeResult, NoteIdExtraction } from './types';
 import { LIKE_SELECTORS } from './selectors';
 import { XhsError, XhsErrorCode, TIMEOUTS } from '../shared';
-import { withSession } from '../browser';
-import { loadCookies, validateCookies } from '../cookie';
-import { config, debugLog, delay, gaussianDelay, XHS_URLS } from '../utils/helpers';
+import { withProfile, randomStealthDelay } from '../browser';
+import { resolveUser } from '../user/storage';
+import { debugLog, delay, gaussianDelay, XHS_URLS } from '../utils/helpers';
 import { humanClick, checkCaptcha, checkLoginStatus, simulateReading } from '../utils/anti-detect';
 import { outputSuccess, outputFromError } from '../utils/output';
 
@@ -99,7 +99,7 @@ async function performLike(page: Page, url: string): Promise<LikeResult> {
     await page.waitForLoadState('networkidle', { timeout: PAGE_LOAD_TIMEOUT }).catch(() => {});
     await delay(1500 + Math.random() * 1000);
 
-    // 2. 检查错误状态（使用项目级 checkLoginStatus）
+    // 2. 检查错误状态
     if (!(await checkLoginStatus(page))) {
       return { success: false, url, noteId, liked: false, error: '需要登录' };
     }
@@ -123,13 +123,13 @@ async function performLike(page: Page, url: string): Promise<LikeResult> {
       return { success: false, url, noteId, liked: false, error: '点赞按钮未找到' };
     }
 
-    // 已经点赞了，跳过点击，设置 alreadyLiked 标志
+    // 已经点赞了，跳过点击
     if (status.liked) {
       debugLog('已点赞，跳过');
       return { success: true, url, noteId, liked: true, alreadyLiked: true };
     }
 
-    // 5. 点击点赞按钮（使用项目级 humanClick）
+    // 5. 点击点赞按钮
     debugLog('准备点击点赞按钮...');
     const clicked = await humanClick(page, LIKE_SELECTORS.button, {
       delayBefore: 200,
@@ -142,7 +142,7 @@ async function performLike(page: Page, url: string): Promise<LikeResult> {
 
     await delay(1000 + Math.random() * 500);
 
-    // 6. 检查是否需要登录（使用项目级 checkLoginStatus）
+    // 6. 检查是否需要登录
     if (!(await checkLoginStatus(page))) {
       return { success: false, url, noteId, liked: false, error: '需要登录才能点赞' };
     }
@@ -164,30 +164,28 @@ async function performLike(page: Page, url: string): Promise<LikeResult> {
 }
 
 // ============================================
-// Main Execute Function (Unified)
+// Main Execute Function
 // ============================================
 
 /**
  * Execute like operation for one or multiple notes
- * - Single URL: output simple result
- * - Multiple URLs: output batch result with statistics
  */
 export async function executeLike(options: LikeOptions): Promise<void> {
   const { urls, headless, user, delayBetweenLikes } = options;
   const isSingle = urls.length === 1;
+  const resolvedUser = user ?? resolveUser();
 
-  debugLog('点赞: urls=' + urls.length + ', single=' + isSingle + ', user=' + (user || 'default'));
+  debugLog('点赞: urls=' + urls.length + ', single=' + isSingle + ', user=' + resolvedUser);
 
-  await withSession(
-    async (session) => {
-      const cookies = await loadCookies(user);
-      validateCookies(cookies);
-      await session.context.addCookies(cookies);
+  await withProfile(
+    resolvedUser,
+    async (page, profileResult) => {
+      const { behavior } = profileResult;
 
-      await session.page.goto(XHS_URLS.home, { timeout: TIMEOUTS.PAGE_LOAD });
-      await delay(3000);
+      await page.goto(XHS_URLS.home, { timeout: TIMEOUTS.PAGE_LOAD });
+      await randomStealthDelay(behavior, 'read');
 
-      if (!(await checkLoginStatus(session.page))) {
+      if (!(await checkLoginStatus(page))) {
         throw new XhsError('未登录，请先执行 "xhs login"', XhsErrorCode.NOT_LOGGED_IN);
       }
 
@@ -197,8 +195,8 @@ export async function executeLike(options: LikeOptions): Promise<void> {
       let failed = 0;
 
       for (let i = 0; i < urls.length; i++) {
-        const result = await performLike(session.page, urls[i]);
-        result.user = user;
+        const result = await performLike(page, urls[i]);
+        result.user = resolvedUser;
         results.push(result);
 
         if (result.success) {
@@ -207,14 +205,12 @@ export async function executeLike(options: LikeOptions): Promise<void> {
           failed++;
         }
 
-        // Delay between likes (not after last one)
         if (i < urls.length - 1) {
           const delayMs = delayBetweenLikes ?? 2000;
           await gaussianDelay({ mean: delayMs, stdDev: delayMs * 0.25 });
         }
       }
 
-      // Output format based on URL count
       if (isSingle) {
         const result = results[0];
         if (!result.success && result.error) {
@@ -230,12 +226,12 @@ export async function executeLike(options: LikeOptions): Promise<void> {
         }
       } else {
         outputSuccess(
-          { total: urls.length, succeeded, skipped, failed, results, user },
+          { total: urls.length, succeeded, skipped, failed, results, user: resolvedUser },
           'PARSE:results'
         );
       }
     },
-    { headless: headless ?? config.headless }
+    { headless: headless ?? false }
   ).catch((error) => {
     debugLog('点赞出错:', error);
     outputFromError(error);
