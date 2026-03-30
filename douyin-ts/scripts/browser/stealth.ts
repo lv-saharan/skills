@@ -1,16 +1,25 @@
 /**
  * Stealth injection script
+ *
+ * @module browser/stealth
+ * @description Anti-detection script to hide automation fingerprints
+ *
+ * This file re-exports from the modular stealth/ directory.
+ * All functionality is now in scripts/browser/stealth/ modules.
  */
 
-import type { UserFingerprint } from '../user/types';
+// Re-export everything from the modular stealth system
+export {
+  generateStealthScript,
+  generateStealthScriptWithLocation,
+  STEALTH_INJECTION_SCRIPT,
+  DEFAULT_STEALTH_CONFIG,
+  DEFAULT_GEOLOCATION,
+} from './stealth/index';
 
-export function generateStealthScript(fingerprint?: UserFingerprint): string {
-  return `
-Object.defineProperty(navigator, 'webdriver', { get: () => undefined, configurable: true });
-Object.defineProperty(navigator, 'platform', { get: () => 'Win32', configurable: true });
-Object.defineProperty(navigator, 'languages', { get: () => ['zh-CN', 'zh', 'en'], configurable: true });
-window.chrome = window.chrome || { runtime: {}, app: {} };
-`;
-}
-
-export const STEALTH_INJECTION_SCRIPT = generateStealthScript();
+// Re-export types
+export type {
+  StealthModuleConfig,
+  GeolocationConfig,
+  StealthScriptGenerator,
+} from './stealth/types';

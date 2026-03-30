@@ -24,6 +24,19 @@ export {
   validatePreset,
 } from './fingerprint-presets';
 
+// Profile launcher (Task 4: Profile launcher)
+export {
+  launchProfileBrowser,
+  withProfile,
+  getStealthBehavior,
+  randomStealthDelay,
+} from './profile-launcher';
+export type {
+  ProfileLaunchOptions,
+  ProfileBrowserResult,
+  StealthBehaviorConfig,
+} from './profile-launcher';
+
 // Cleanup utilities
 export { setActiveBrowser, getActiveBrowser, forceCleanup } from './cleanup';
 
