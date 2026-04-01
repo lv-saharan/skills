@@ -240,32 +240,13 @@ export async function spawnCDPBrowserDetached(
   let browserProcess;
   let browserPid = 0;
 
-  if (process.platform === 'win32') {
-    // Windows: use 'start' command to launch browser in new process group
-    // This ensures browser survives even when CLI exits
-    const startArgs = [
-      '""', // Window title (required when path has spaces)
-      executablePath,
-      ...args,
-    ];
-    browserProcess = spawn('start', startArgs, {
-      detached: true,
-      stdio: 'ignore',
-      shell: true,
-      windowsHide: config.headless ?? false,
-    });
-    // 'start' command returns immediately, so we don't get the actual browser PID
-    // We'll rely on CDP port check to verify browser is running
-    browserPid = 0;
-  } else {
-    // Unix: use standard detached spawn
-    browserProcess = spawn(executablePath, args, {
-      detached: true, // Important: allows parent process to exit independently
-      stdio: 'ignore', // Don't capture stdout/stderr - prevents parent from waiting
-      windowsHide: true, // Hide window on Windows (for headless)
-    });
-    browserPid = browserProcess.pid || 0;
-  }
+  // Both Windows and Unix: use direct spawn with detached mode
+  // CRITICAL: Do NOT use 'start' command on Windows as it doesn't pass args correctly
+  browserProcess = spawn(executablePath, args, {
+    detached: true, // Important: allows parent process to exit independently
+    stdio: 'ignore', // Don't capture stdout/stderr - prevents parent from waiting
+  });
+  browserPid = browserProcess.pid || 0;
 
   // Unref the process so parent can exit without waiting for child
   browserProcess.unref();
