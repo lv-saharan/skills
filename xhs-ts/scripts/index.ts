@@ -413,6 +413,103 @@ program
 // Browser Management Command
 // ============================================
 
+/**
+ * Stop a detached browser instance via CDP
+ *
+ * This connects to the browser via CDP and closes it,
+ * then clears the saved connection info.
+ */
+async function stopDetachedBrowser(user: string): Promise<{ stopped: boolean; error?: string }> {
+  const { loadBrowserConnection, clearBrowserConnection } = await import('./user/storage');
+  const { connectCDPBrowser, checkCDPConnection } = await import('./browser/cdp/connector');
+
+  const conn = await loadBrowserConnection(user);
+  if (!conn?.cdpPort) {
+    return { stopped: false, error: 'No saved connection found' };
+  }
+
+  // Check if browser is still running
+  const isAlive = await checkCDPConnection(conn.cdpPort);
+  if (!isAlive) {
+    // Browser already dead, just clear the connection
+    await clearBrowserConnection(user);
+    return { stopped: false, error: 'Browser already stopped' };
+  }
+
+  // Connect and close
+  const browser = await connectCDPBrowser(conn.cdpPort);
+  if (!browser) {
+    await clearBrowserConnection(user);
+    return { stopped: false, error: 'Failed to connect to browser' };
+  }
+
+  try {
+    await browser.close();
+    await clearBrowserConnection(user);
+    return { stopped: true };
+  } catch (error) {
+    await clearBrowserConnection(user);
+    return { stopped: false, error: error instanceof Error ? error.message : 'Unknown error' };
+  }
+}
+
+/**
+ * Get status of all saved browser connections
+ *
+ * Loads connections from storage and checks if each is alive.
+ */
+async function getDetachedBrowserStatus(): Promise<{
+  total: number;
+  alive: number;
+  instances: Record<
+    string,
+    {
+      cdpPort: number;
+      pid?: number;
+      lastActivityAt?: string;
+      isAlive: boolean;
+    }
+  >;
+}> {
+  const { loadBrowserConnection, listUsers } = await import('./user/storage');
+  const { checkCDPConnection } = await import('./browser/cdp/connector');
+
+  const users = await listUsers();
+  const instances: Record<
+    string,
+    {
+      cdpPort: number;
+      pid?: number;
+      lastActivityAt?: string;
+      isAlive: boolean;
+    }
+  > = {};
+
+  let alive = 0;
+
+  for (const user of users.users) {
+    const conn = await loadBrowserConnection(user.name);
+    if (conn?.cdpPort) {
+      const isAlive = await checkCDPConnection(conn.cdpPort);
+      instances[user.name] = {
+        cdpPort: conn.cdpPort,
+        pid: conn.pid,
+        lastActivityAt: conn.lastActivityAt,
+        isAlive,
+      };
+      if (isAlive) {
+        alive++;
+      }
+    }
+  }
+
+  return {
+    total: Object.keys(instances).length,
+    alive,
+    instances,
+  };
+}
+
 program
   .command('browser')
   .description('Manage CDP browser instances')
@@ -480,59 +577,97 @@ program
           process.exit(0);
         }
 
-        // For other commands, import full browser module
-        const { browserInstanceManager, healthMonitor } = await import('./browser/cdp');
-        const { loadBrowserConnection, listUsers } = await import('./user/storage');
-
         if (options.stop) {
-          // Stop all instances
-          await forceCleanup();
-          outputSuccess({ stopped: 'all' }, 'RELAY:已关闭所有浏览器实例');
-          return;
-        }
+          // Stop all detached browser instances via CDP
+          const status = await getDetachedBrowserStatus();
+          const results: { user: string; stopped: boolean; error?: string }[] = [];
 
-        if (options.stopUser) {
-          // Stop specific user instance
-          await browserInstanceManager.closeInstance(options.stopUser);
+          for (const [user] of Object.entries(status.instances)) {
+            const result = await stopDetachedBrowser(user);
+            results.push({ user, ...result });
+          }
+
+          const stoppedCount = results.filter((r) => r.stopped).length;
+          const failedCount = results.filter((r) => !r.stopped).length;
+
           outputSuccess(
-            { stopped: options.stopUser },
-            `RELAY:已关闭用户 ${options.stopUser} 的浏览器实例`
+            {
+              stopped: stoppedCount,
+              failed: failedCount,
+              details: results,
+            },
+            `RELAY:已关闭 ${stoppedCount} 个浏览器实例${failedCount > 0 ? `，${failedCount} 个失败或已停止` : ''}`
           );
           return;
         }
 
+        if (options.stopUser) {
+          // Stop specific user's detached browser instance
+          const result = await stopDetachedBrowser(options.stopUser);
+
+          if (result.stopped) {
+            outputSuccess(
+              { stopped: options.stopUser },
+              `RELAY:已关闭用户 ${options.stopUser} 的浏览器实例`
+            );
+          } else {
+            outputSuccess(
+              { user: options.stopUser, error: result.error },
+              `RELAY:用户 ${options.stopUser} 的浏览器实例已停止或不存在`
+            );
+          }
+          return;
+        }
+
         if (options.status) {
-          // Show current instance status
-          const state = browserInstanceManager.getState();
+          // Show status of all saved browser connections (detached instances)
+          const detachedStatus = await getDetachedBrowserStatus();
+
+          // Also check in-memory instances (if any)
+          const { browserInstanceManager, healthMonitor } = await import('./browser/cdp');
+          const inMemoryState = browserInstanceManager.getState();
           const stats = healthMonitor.getStats();
-          outputSuccess({ ...state, stats }, 'PARSE:browserStatus');
+
+          outputSuccess(
+            {
+              detached: detachedStatus,
+              inMemory: inMemoryState,
+              stats,
+            },
+            'PARSE:browserStatus'
+          );
           return;
         }
 
         if (options.list) {
-          // List all saved connections
-          const users = await listUsers();
-          const connections: Record<string, unknown> = {};
+          // List all saved connections (with alive status)
+          const status = await getDetachedBrowserStatus();
 
-          for (const user of users.users) {
-            const conn = await loadBrowserConnection(user.name);
-            if (conn) {
-              connections[user.name] = {
-                cdpPort: conn.cdpPort,
-                pid: conn.pid,
-                lastActivityAt: conn.lastActivityAt,
-              };
-            }
-          }
-
-          outputSuccess({ connections }, 'PARSE:browserConnections');
+          outputSuccess(
+            {
+              total: status.total,
+              alive: status.alive,
+              connections: status.instances,
+            },
+            'PARSE:browserConnections'
+          );
           return;
         }
 
         // Default: show status
-        const state = browserInstanceManager.getState();
+        const detachedStatus = await getDetachedBrowserStatus();
+        const { browserInstanceManager, healthMonitor } = await import('./browser/cdp');
+        const inMemoryState = browserInstanceManager.getState();
         const stats = healthMonitor.getStats();
-        outputSuccess({ ...state, stats }, 'PARSE:browserStatus');
+
+        outputSuccess(
+          {
+            detached: detachedStatus,
+            inMemory: inMemoryState,
+            stats,
+          },
+          'PARSE:browserStatus'
+        );
       } catch (error) {
         debugLog('Browser command error:', error);
         outputFromError(error);

@@ -235,54 +235,234 @@ export async function waitForStable(page: Page, options: { timeout?: number } = 
 }
 
 /**
- * Check if user is logged in
+ * Check if page is an error page (IP risk, etc.)
  *
- * 判断逻辑：
- * - 登录框不存在 && 用户头像出现 = 已登录
- * - 其他情况 = 未登录
+ * 错误页面特征：
+ * - URL 包含 /error 或 error_code 参数
+ * - 显示错误信息如 "IP存在风险"
+ */
+export async function checkErrorPage(
+  page: Page
+): Promise<{ isError: boolean; errorCode?: string; errorMsg?: string }> {
+  try {
+    const currentUrl = page.url();
+
+    // 检测错误页面 URL
+    if (currentUrl.includes('/error') || currentUrl.includes('error_code')) {
+      // 尝试解析错误码和消息
+      const urlObj = new URL(currentUrl);
+      const errorCode = urlObj.searchParams.get('error_code') || undefined;
+      const errorMsg = urlObj.searchParams.get('error_msg') || undefined;
+
+      debugLog('Error page detected', { errorCode, errorMsg, url: currentUrl });
+      return { isError: true, errorCode, errorMsg };
+    }
+
+    return { isError: false };
+  } catch (error) {
+    debugLog('Error checking error page:', error);
+    return { isError: false };
+  }
+}
+
+// ============================================
+// Login Status Detection
+// ============================================
+
+/** Login modal container selector */
+const LOGIN_MODAL_SELECTOR = '.login-container';
+
+/** User component selector (logged in indicator) */
+const USER_COMPONENT_SELECTOR = '.user.side-bar-component';
+
+/** Login button selectors (to trigger login modal) */
+const LOGIN_BUTTON_SELECTORS = ['button.login-btn', '.login-btn'] as const;
+
+/**
+ * Check if user is logged in (pure check, no side effects)
+ *
+ * 检测逻辑（按优先级）：
+ * 1. 错误页面 → false
+ * 2. .login-container 存在 → false（登录弹窗已打开）
+ * 3. .user.side-bar-component 存在 → true（已登录）
+ * 4. 都不存在 → false（可能需要触发登录）
  */
 export async function checkLoginStatus(page: Page): Promise<boolean> {
   try {
     const currentUrl = page.url();
-    debugLog('checkLoginStatus: currentUrl = ' + currentUrl);
+    debugLog('checkLoginStatus: ' + currentUrl);
 
     // Wait for page to be fully loaded
     await page.waitForLoadState('networkidle').catch(() => {});
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    debugLog('Page load complete, checking login status...');
+    await delay(1500);
 
-    // STEP 1: 检查登录按钮是否存在
-    // 如果存在 = 未登录
-    const loginVisible = await page
-      .locator('.login-btn')
-      .first()
-      .isVisible({ timeout: 2000 })
-      .catch(() => false);
-    debugLog(`.login-btn visible: ${loginVisible}`);
-    if (loginVisible) {
-      debugLog('Login button found → NOT logged in');
+    // STEP 1: 检查错误页面
+    const errorResult = await checkErrorPage(page);
+    if (errorResult.isError) {
+      debugLog('Error page detected → NOT logged in');
       return false;
     }
 
-    // STEP 2: 检查用户侧边栏组件是否存在
-    // 如果存在 = 已登录
-    const userSideBarVisible = await page
-      .locator('.user.side-bar-component')
+    // STEP 2: 检查登录弹窗是否已打开
+    // .login-container 存在 = 弹窗已打开 = 未登录
+    const loginModalVisible = await page
+      .locator(LOGIN_MODAL_SELECTOR)
       .first()
       .isVisible({ timeout: 2000 })
       .catch(() => false);
-    debugLog(`.user.side-bar-component visible: ${userSideBarVisible}`);
-    if (userSideBarVisible) {
-      debugLog('User side-bar component found → IS logged in');
+
+    if (loginModalVisible) {
+      debugLog('.login-container found → NOT logged in (modal open)');
+      return false;
+    }
+
+    // STEP 3: 检查用户组件是否存在
+    // .user.side-bar-component 存在 = 已登录
+    const userComponentVisible = await page
+      .locator(USER_COMPONENT_SELECTOR)
+      .first()
+      .isVisible({ timeout: 2000 })
+      .catch(() => false);
+
+    if (userComponentVisible) {
+      debugLog('.user.side-bar-component found → IS logged in');
       return true;
     }
 
-    // 登录框不存在 && 用户头像不存在 = 未登录
-    debugLog('No login indicator and no avatar found → NOT logged in');
+    // STEP 4: 都不存在 → 未登录
+    debugLog('No login modal and no user component → NOT logged in');
     return false;
   } catch (error) {
     debugLog('Error checking login status:', error);
     return false;
+  }
+}
+
+// ============================================
+// Types for ensureLoginStatus
+// ============================================
+
+export interface EnsureLoginStatusResult {
+  /** 是否已登录 */
+  isLoggedIn: boolean;
+  /** 登录弹窗是否已打开 */
+  loginModalOpen?: boolean;
+  /** 是否自动触发了登录弹窗 */
+  triggered?: boolean;
+  /** 错误信息 */
+  error?: string;
+}
+
+// ============================================
+// Ensure Login Status (check + trigger)
+// ============================================
+
+/**
+ * Ensure login status, auto-trigger login modal if needed
+ *
+ * 检测逻辑（按优先级）：
+ * 1. 错误页面 → 返回错误
+ * 2. .login-container 存在 → 未登录，弹窗已打开
+ * 3. .user.side-bar-component 存在 → 已登录
+ * 4. 都不存在 + 登录按钮存在 → 自动触发登录弹窗
+ * 5. 都不存在 + 登录按钮不存在 → 返回错误
+ */
+export async function ensureLoginStatus(
+  page: Page,
+  options?: { timeout?: number }
+): Promise<EnsureLoginStatusResult> {
+  try {
+    const currentUrl = page.url();
+    debugLog('ensureLoginStatus: ' + currentUrl);
+
+    // Wait for page to be fully loaded
+    await page.waitForLoadState('networkidle').catch(() => {});
+    await delay(1500);
+
+    // STEP 1: 检查错误页面
+    const errorResult = await checkErrorPage(page);
+    if (errorResult.isError) {
+      debugLog('Error page detected');
+      return {
+        isLoggedIn: false,
+        error: `错误页面: ${errorResult.errorMsg || errorResult.errorCode || '未知错误'}`,
+      };
+    }
+
+    // STEP 2: 检查登录弹窗是否已打开
+    const loginModalVisible = await page
+      .locator(LOGIN_MODAL_SELECTOR)
+      .first()
+      .isVisible({ timeout: 2000 })
+      .catch(() => false);
+
+    if (loginModalVisible) {
+      debugLog('.login-container found → waiting for scan');
+      return {
+        isLoggedIn: false,
+        loginModalOpen: true,
+      };
+    }
+
+    // STEP 3: 检查用户组件是否存在
+    const userComponentVisible = await page
+      .locator(USER_COMPONENT_SELECTOR)
+      .first()
+      .isVisible({ timeout: 2000 })
+      .catch(() => false);
+
+    if (userComponentVisible) {
+      debugLog('.user.side-bar-component found → logged in');
+      return { isLoggedIn: true };
+    }
+
+    // STEP 4: 都不存在，尝试自动触发登录弹窗
+    debugLog('Auto-triggering login modal...');
+
+    for (const selector of LOGIN_BUTTON_SELECTORS) {
+      const buttonVisible = await page
+        .locator(selector)
+        .first()
+        .isVisible({ timeout: 2000 })
+        .catch(() => false);
+
+      if (buttonVisible) {
+        debugLog(`Clicking login button: ${selector}`);
+
+        const clicked = await humanClick(page, selector, { delayAfter: 2000 });
+
+        if (clicked) {
+          // 等待 .login-container 出现
+          const modalAppeared = await page
+            .locator(LOGIN_MODAL_SELECTOR)
+            .first()
+            .isVisible({ timeout: 5000 })
+            .catch(() => false);
+
+          if (modalAppeared) {
+            debugLog('Login modal triggered successfully');
+            return {
+              isLoggedIn: false,
+              loginModalOpen: true,
+              triggered: true,
+            };
+          }
+        }
+      }
+    }
+
+    // STEP 5: 无法触发登录弹窗
+    debugLog('Cannot trigger login modal');
+    return {
+      isLoggedIn: false,
+      error: '无法触发登录弹窗',
+    };
+  } catch (error) {
+    debugLog('Error ensuring login status:', error);
+    return {
+      isLoggedIn: false,
+      error: error instanceof Error ? error.message : '未知错误',
+    };
   }
 }
 

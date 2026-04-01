@@ -90,7 +90,7 @@ export async function withAuthenticatedAction<T>(
 
       return callback(page, behavior);
     },
-    { headless: headless ?? false } as ProfileLaunchOptions
+    { headless: headless ?? false, autoCreate: true } as ProfileLaunchOptions
   );
 }
 

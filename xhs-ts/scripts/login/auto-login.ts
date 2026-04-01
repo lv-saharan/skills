@@ -13,7 +13,7 @@ import type { Page } from 'playwright';
 import type { UserName } from '../user/types';
 import { TIMEOUTS } from '../shared';
 import { debugLog, delay, waitForCondition } from '../utils/helpers';
-import { humanClick, checkLoginStatus, checkCaptcha } from '../utils/anti-detect';
+import { ensureLoginStatus, checkLoginStatus, checkCaptcha } from '../utils/anti-detect';
 import { outputQrCode } from '../utils/output';
 import { getTmpFilePath } from '../config';
 import { writeFile } from 'fs/promises';
@@ -22,22 +22,8 @@ import { writeFile } from 'fs/promises';
 // Constants
 // ============================================
 
-/** Login button selectors */
-const LOGIN_BUTTON_SELECTORS = [
-  'header button:has-text("登录")',
-  'header a:has-text("登录")',
-  'header button:has-text("登录/注册")',
-  'nav button:has-text("登录")',
-];
-
 /** QR code selectors */
-const QR_SELECTORS = [
-  '.qrcode-img',
-  '.login-qrcode img',
-  '.login-qrcode',
-  '[class*="qrcode"]',
-  'canvas[class*="qr"]',
-];
+const QR_SELECTORS = ['img.qrcode-img', '.qrcode-img'] as const;
 
 /** QR code tab selector */
 const QR_TAB_SELECTOR = '[class*="qrcode-tab"], button:has-text("扫码")';
@@ -75,64 +61,62 @@ export async function ensureLogin(
 ): Promise<EnsureLoginResult> {
   const { user, headless, timeout = TIMEOUTS.LOGIN } = options;
 
-  // Check current login status
-  const isLoggedIn = await checkLoginStatus(page);
-  if (isLoggedIn) {
+  // Use ensureLoginStatus to check and auto-trigger login modal
+  const status = await ensureLoginStatus(page);
+
+  if (status.isLoggedIn) {
     debugLog('User already logged in');
     return { success: true, message: 'Already logged in' };
   }
 
-  debugLog('User not logged in, starting auto-login flow...');
+  // If there's an error (e.g., error page), return it
+  if (status.error) {
+    return { success: false, message: status.error };
+  }
 
-  // headless mode: cannot auto-login, return error
+  // If login modal is not open, headless mode cannot proceed
+  if (!status.loginModalOpen) {
+    if (headless) {
+      debugLog('Headless mode: cannot auto-login, prompting user');
+      return {
+        success: false,
+        message: `Not logged in. Please run: npm run login -- --user ${user}`,
+      };
+    }
+
+    // Try to trigger login modal again
+    const retried = await ensureLoginStatus(page);
+    if (!retried.loginModalOpen) {
+      return {
+        success: false,
+        message: 'Cannot trigger login modal. Please login manually.',
+      };
+    }
+  }
+
+  // headless mode: cannot wait for QR scan
   if (headless) {
-    debugLog('Headless mode: cannot auto-login, prompting user');
     return {
       success: false,
       message: `Not logged in. Please run: npm run login -- --user ${user}`,
     };
   }
 
-  // GUI mode: auto-start login flow
-  return await performAutoLogin(page, { user, timeout });
+  // GUI mode: proceed with QR code detection and wait for scan
+  return await waitForQrScan(page, { user, timeout });
 }
 
 /**
- * Perform automatic login flow (GUI mode only)
- *
- * Steps:
- * 1. Click login button to open modal
- * 2. Switch to QR code tab if needed
- * 3. Wait for user to scan QR code
- * 4. Verify login success
+ * Wait for QR code scan and login completion
  */
-async function performAutoLogin(
+async function waitForQrScan(
   page: Page,
   options: { user: UserName; timeout: number }
 ): Promise<EnsureLoginResult> {
   const { user, timeout } = options;
 
   try {
-    // Step 1: Click login button
-    debugLog('Looking for login button...');
-    let loginButtonClicked = false;
-
-    for (const selector of LOGIN_BUTTON_SELECTORS) {
-      const button = page.locator(selector).first();
-      if (await button.isVisible().catch(() => false)) {
-        debugLog('Found login button: ' + selector);
-        await humanClick(page, selector);
-        loginButtonClicked = true;
-        await delay(1000);
-        break;
-      }
-    }
-
-    if (!loginButtonClicked) {
-      debugLog('Login button not found, might already be on login page');
-    }
-
-    // Step 2: Check for QR code tab and switch if needed
+    // Step 1: Switch to QR code tab if needed
     debugLog('Looking for QR code tab...');
     const qrTab = page.locator(QR_TAB_SELECTOR).first();
     if (await qrTab.isVisible().catch(() => false)) {
@@ -141,20 +125,21 @@ async function performAutoLogin(
       await delay(500);
     }
 
-    // Step 3: Wait for QR code to appear
+    // Step 2: Find and save QR code
     debugLog('Waiting for QR code...');
-    let qrFound = false;
     let qrPath: string | undefined;
 
     for (const selector of QR_SELECTORS) {
       const qrElement = page.locator(selector).first();
       if (await qrElement.isVisible().catch(() => false)) {
         debugLog('QR code found: ' + selector);
-        qrFound = true;
 
-        // Save QR code for display
         try {
-          const buffer = await qrElement.screenshot({ type: 'png' });
+          // Wait for element to be stable before screenshot
+          await qrElement.waitFor({ state: 'visible', timeout: 5000 });
+          await delay(500);
+
+          const buffer = await qrElement.screenshot({ type: 'png', timeout: 10000 });
           qrPath = getTmpFilePath('qr_login', 'png', user);
           await writeFile(qrPath, buffer);
           debugLog('QR code saved to: ' + qrPath);
@@ -168,55 +153,43 @@ async function performAutoLogin(
       }
     }
 
-    if (!qrFound) {
-      return {
-        success: false,
-        message: 'Cannot find QR code. Please login manually.',
-      };
+    if (!qrPath) {
+      debugLog('QR code not found, but modal is open. Waiting for scan...');
     }
 
-    // Step 4: Wait for user to scan QR code
+    // Step 3: Wait for user to scan QR code
     debugLog('Waiting for user to scan QR code...');
 
-    try {
-      await waitForCondition(
-        async () => {
-          // Check for login success indicators
-          const loggedIn = await checkLoginStatus(page);
-          if (loggedIn) {
-            return true;
-          }
-
-          // Check for captcha
-          const hasCaptcha = await checkCaptcha(page);
-          if (hasCaptcha) {
-            debugLog('Captcha detected during login');
-          }
-
-          return false;
-        },
-        {
-          timeout,
-          interval: 1000,
-          timeoutMessage: 'Login timeout - QR code not scanned',
+    await waitForCondition(
+      async () => {
+        // Check for login success
+        const loggedIn = await checkLoginStatus(page);
+        if (loggedIn) {
+          return true;
         }
-      );
 
-      debugLog('Login successful!');
-      return { success: true, message: 'Login successful', qrPath };
-    } catch (error) {
-      debugLog('Login timeout or error:', error);
-      return {
-        success: false,
-        message: 'Login timeout. Please try again.',
-        qrPath,
-      };
-    }
+        // Check for captcha
+        const hasCaptcha = await checkCaptcha(page);
+        if (hasCaptcha) {
+          debugLog('Captcha detected during login');
+        }
+
+        return false;
+      },
+      {
+        timeout,
+        interval: 1000,
+        timeoutMessage: 'Login timeout - QR code not scanned',
+      }
+    );
+
+    debugLog('Login successful!');
+    return { success: true, message: 'Login successful', qrPath };
   } catch (error) {
-    debugLog('Auto-login error:', error);
+    debugLog('Login timeout or error:', error);
     return {
       success: false,
-      message: error instanceof Error ? error.message : 'Login failed',
+      message: 'Login timeout. Please try again.',
     };
   }
 }

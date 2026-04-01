@@ -21,7 +21,7 @@ interface LoginSession {
 import { saveCookies, extractCookies, hasRequiredCookies } from '../cookie';
 import { DY_URLS, getTmpFilePath } from '../config';
 import { debugLog, delay, randomDelay, waitForCondition } from '../utils/helpers';
-import { checkCaptcha, checkLoginStatus } from '../utils/anti-detect';
+import { checkCaptcha } from '../utils/anti-detect';
 import { outputQrCode } from '../utils/output';
 import { writeFile } from 'fs/promises';
 import type { LoginResult } from './types';
@@ -68,12 +68,44 @@ async function findQrImageWithJs(page: Page): Promise<string | null> {
 }
 
 /**
- * 查找二维码容器元素
+ * 检测二维码是否可见（不点击标签，避免重新加载）
+ */
+async function checkQrVisible(page: Page): Promise<boolean> {
+  try {
+    const qrSelector = await findQrImageWithJs(page);
+    if (qrSelector) {
+      const locator = page.locator(qrSelector).first();
+      if (await locator.isVisible({ timeout: 500 }).catch(() => false)) {
+        return true;
+      }
+    }
+    
+    // 备用检测：登录弹窗内的图片
+    const modalSelectors = [
+      '[class*="loginModal"]', '[class*="LoginModal"]', '[class*="login-modal"]',
+    ];
+    
+    for (const selector of modalSelectors) {
+      const modal = page.locator(selector).first();
+      if (await modal.isVisible({ timeout: 300 }).catch(() => false)) {
+        const img = modal.locator('img').first();
+        if (await img.isVisible({ timeout: 300 }).catch(() => false)) {
+          return true;
+        }
+      }
+    }
+  } catch {}
+  
+  return false;
+}
+
+/**
+ * 查找二维码容器元素（用于初始截图，会点击标签）
  */
 async function findQrContainer(page: Page): Promise<Locator | null> {
   debugLog('查找二维码容器...');
   
-  // 首先尝试点击"扫码登录"标签
+  // 点击"扫码登录"标签切换到二维码
   try {
     const qrTab = page.locator('text=扫码登录').first();
     if (await qrTab.isVisible({ timeout: 2000 })) {
@@ -81,7 +113,9 @@ async function findQrContainer(page: Page): Promise<Locator | null> {
       debugLog('点击了"扫码登录"标签');
       await delay(1500);
     }
-  } catch {}
+  } catch {
+    debugLog('未找到"扫码登录"标签');
+  }
   
   const qrSelector = await findQrImageWithJs(page);
   if (qrSelector) {
@@ -122,12 +156,9 @@ async function findQrContainer(page: Page): Promise<Locator | null> {
  */
 async function handleSaveLoginDialog(page: Page): Promise<boolean> {
   try {
-    // 检查是否有"保存登录信息"弹窗
     const saveDialog = page.locator('text=保存登录信息').first();
     if (await saveDialog.isVisible({ timeout: 1000 })) {
       debugLog('检测到"保存登录信息"弹窗，点击保存...');
-      
-      // 点击"保存"按钮
       const saveBtn = page.locator('button:has-text("保存")').first();
       if (await saveBtn.isVisible({ timeout: 1000 })) {
         await saveBtn.click();
@@ -135,8 +166,6 @@ async function handleSaveLoginDialog(page: Page): Promise<boolean> {
         await delay(2000);
         return true;
       }
-      
-      // 或者点击"取消"也可以继续
       const cancelBtn = page.locator('button:has-text("取消")').first();
       if (await cancelBtn.isVisible({ timeout: 1000 })) {
         await cancelBtn.click();
@@ -169,7 +198,6 @@ async function waitForQrImageLoad(page: Page, container: Locator, maxWait: numbe
         }
         return false;
       }
-      
       const img = el.querySelector('img') as HTMLImageElement;
       if (img && img.complete && img.naturalWidth > 0) {
         const src = img.src.toLowerCase();
@@ -243,7 +271,6 @@ export async function waitForQrScan(page: Page, timeout: number, browserClosedRe
       if (browserClosedRef.closed) throw new DouyinError('用户关闭了浏览器窗口，登录已取消。', DouyinErrorCode.LOGIN_FAILED);
       if (page.isClosed()) throw new DouyinError('页面已关闭，登录已取消。', DouyinErrorCode.LOGIN_FAILED);
 
-      // 检查验证码和过期状态
       try {
         if (await checkCaptcha(page)) throw new DouyinError('检测到验证码，请手动完成验证。', DouyinErrorCode.CAPTCHA_REQUIRED);
         if (await isQrCodeExpired(page)) throw new DouyinError('二维码已过期，请刷新重试。', DouyinErrorCode.LOGIN_FAILED);
@@ -252,59 +279,68 @@ export async function waitForQrScan(page: Page, timeout: number, browserClosedRe
         if (errorMsg.includes('Execution context was destroyed') || errorMsg.includes('navigation')) {
           debugLog('检测到页面导航，可能是扫码成功...');
           await delay(2000);
-          // 处理可能的"保存登录信息"弹窗
           await handleSaveLoginDialog(page);
-          try {
-            if (await checkLoginStatus(page)) {
-              debugLog('登录状态验证通过！');
-              return true;
-            }
-          } catch {}
+          const avatarVisible = await page.locator('[class*="avatar"]').first().isVisible().catch(() => false);
+          if (avatarVisible) {
+            debugLog('页面导航后检测到用户头像 → 登录成功！');
+            return true;
+          }
           return false;
         }
         throw e;
       }
 
-      // 尝试处理"保存登录信息"弹窗
-      const dialogHandled = await handleSaveLoginDialog(page);
-      if (dialogHandled) {
-        debugLog('已处理保存登录弹窗，检查登录状态...');
-        await delay(1000);
-        try {
-          if (await checkLoginStatus(page)) {
-            debugLog('登录状态验证通过！');
+      const qrVisible = await checkQrVisible(page);
+      
+      if (!qrVisible) {
+        debugLog('二维码消失！可能扫码成功，等待页面稳定...');
+        await delay(1500);
+        
+        const dialogHandled = await handleSaveLoginDialog(page);
+        if (dialogHandled) {
+          debugLog('已处理保存登录弹窗');
+          await delay(1000);
+        }
+        
+        await page.waitForLoadState('domcontentloaded').catch(() => {});
+        
+        const avatarSelectors = [
+          'header [class*="avatar"]',
+          'nav [class*="avatar"]',
+          '[data-e2e="user-avatar"]',
+          '[class*="userAvatar"]',
+          '[class*="UserAvatar"]',
+          '[class*="avatar-img"]',
+        ];
+        
+        for (const sel of avatarSelectors) {
+          if (await page.locator(sel).first().isVisible().catch(() => false)) {
+            debugLog('用户头像出现 → 登录成功！');
             return true;
           }
-        } catch {}
-      }
-
-      // 直接检查登录状态（可能已经登录成功）
-      try {
-        if (await checkLoginStatus(page)) {
-          debugLog('检测到已登录！');
+        }
+        
+        const modalSelectors = [
+          '[class*="loginModal"]',
+          '[class*="login-modal"]',
+          '[class*="LoginModal"]',
+          '[class*="loginDialog"]',
+        ];
+        
+        let modalVisible = false;
+        for (const sel of modalSelectors) {
+          if (await page.locator(sel).first().isVisible().catch(() => false)) {
+            modalVisible = true;
+            break;
+          }
+        }
+        
+        if (!modalVisible) {
+          debugLog('登录弹窗也消失了 → 登录成功！');
           return true;
         }
-      } catch {}
-
-      // 查找二维码
-      let qrVisible = false;
-      try {
-        const qrContainer = await findQrContainer(page);
-        qrVisible = qrContainer !== null;
-      } catch (e) {
-        const errorMsg = String(e);
-        if (errorMsg.includes('Execution context was destroyed') || errorMsg.includes('navigation')) {
-          debugLog('检测到页面导航，可能是扫码成功...');
-          await delay(2000);
-          await handleSaveLoginDialog(page);
-          try {
-            if (await checkLoginStatus(page)) {
-              debugLog('登录状态验证通过！');
-              return true;
-            }
-          } catch {}
-          return false;
-        }
+        
+        debugLog('二维码消失但弹窗仍在，继续等待...');
       }
 
       if (elapsed > 0 && elapsed % 5 === 0) {
@@ -340,13 +376,35 @@ export async function qrLogin(
 
   const removeDisconnectListener = setupBrowserDisconnectListener(browser, browserClosedRef);
 
+  // 监听 check_qrconnect API 响应
+  page.on('response', async (res) => {
+    const url = res.url();
+    if (url.includes('check_qrconnect')) {
+      try {
+        const body = await res.json();
+        debugLog('[QR-CHECK]', JSON.stringify(body));
+      } catch {
+        debugLog('[QR-CHECK] status:', res.status());
+      }
+    }
+  });
+
   try {
-    // Step 1: 导航到首页
+    // Step 0: 预访问安全 SDK 域名，建立跨域 cookie（解决 CORS 问题）
+    debugLog('预访问安全 SDK 域名...');
+    try {
+      const mssdkPage = await page.context().newPage();
+      await mssdkPage.goto('https://mssdk.bytedance.com/', { waitUntil: 'domcontentloaded', timeout: 10000 }).catch(() => {});
+      await mssdkPage.close();
+      debugLog('安全 SDK 域名访问完成');
+    } catch (e) {
+      debugLog('安全 SDK 域名访问失败（可忽略）:', e);
+    }
+    
     debugLog('导航到首页: ' + DY_URLS.home);
     await page.goto(DY_URLS.home, { waitUntil: 'domcontentloaded', timeout: 30000 });
     await randomDelay(3000, 4000);
 
-    // Step 2: 查找二维码容器
     let qrContainer = await findQrContainer(page);
 
     if (!qrContainer) {
@@ -366,7 +424,6 @@ export async function qrLogin(
     }
 
     if (!qrContainer) {
-      debugLog('登录弹窗可能延迟加载，等待后重试...');
       await delay(2000);
       qrContainer = await findQrContainer(page);
     }
@@ -378,10 +435,8 @@ export async function qrLogin(
       throw new DouyinError('无法找到登录二维码。请检查网络连接或稍后重试。', DouyinErrorCode.LOGIN_FAILED);
     }
 
-    // Step 3: 等待二维码图片加载
     await waitForQrImageLoad(page, qrContainer, 10000);
 
-    // Step 4: 截取二维码图片
     const filePath = getTmpFilePath('qr_login', 'png', user);
     const captured = await captureQrImage(qrContainer, filePath);
     
@@ -399,15 +454,12 @@ export async function qrLogin(
       console.error('二维码已保存到: ' + filePath);
     }
 
-    // Step 5: 等待扫码
     await waitForQrScan(page, timeout, browserClosedRef);
 
-    // Step 6: 导航到首页确认会话
     debugLog('导航到首页确认登录...');
     await page.goto(DY_URLS.home, { waitUntil: 'networkidle', timeout: 30000 }).catch(() => {});
     await delay(1000);
 
-    // Step 7: 提取并保存 cookies
     const cookies = await extractCookies(session.context);
     debugLog('提取到 ' + cookies.length + ' 个 cookies');
 

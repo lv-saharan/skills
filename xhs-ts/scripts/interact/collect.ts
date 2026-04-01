@@ -190,7 +190,7 @@ export async function executeCollect(options: CollectOptions): Promise<void> {
         );
       }
     },
-    { headless: headless ?? false }
+    { headless: headless ?? false, autoCreate: true }
   ).catch((error) => {
     debugLog('收藏出错:', error);
     outputFromError(error);

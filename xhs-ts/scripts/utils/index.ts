@@ -31,9 +31,13 @@ export {
   humanMouseMove,
   checkCaptcha,
   checkLoginStatus,
+  ensureLoginStatus,
   waitForStable,
   simulateReading,
 } from './anti-detect';
+
+// Anti-detect types
+export type { EnsureLoginStatusResult } from './anti-detect';
 
 // Output functions
 export { outputSuccess, outputError, outputQrCode, output, outputFromError } from './output';

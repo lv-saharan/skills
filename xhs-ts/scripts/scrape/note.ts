@@ -490,7 +490,7 @@ export async function executeScrapeNote(options: ScrapeNoteOptions): Promise<voi
         outputSuccess(result, 'PARSE:note');
       }
     },
-    { headless: headless ?? false }
+    { headless: headless ?? false, autoCreate: true }
   ).catch((error) => {
     debugLog('抓取笔记出错:', error);
     outputFromError(error);

@@ -178,7 +178,7 @@ export async function executeSearch(options: SearchOptions): Promise<void> {
       outputSuccess(result, 'PARSE:notes');
       debugLog('Result output complete');
     },
-    { headless: headless ?? false }
+    { headless: headless ?? false, autoCreate: true }
   ).catch((error) => {
     debugLog('Search error:', error);
     outputFromError(error);

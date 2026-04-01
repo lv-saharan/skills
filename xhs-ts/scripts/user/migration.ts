@@ -6,15 +6,9 @@
  */
 
 import { copyFile, readdir, rename, stat, unlink, rmdir } from 'fs/promises';
-import { existsSync, mkdirSync, readFileSync } from 'fs';
+import { existsSync, mkdirSync, readFileSync, statSync } from 'fs';
 import path from 'path';
-import {
-  getUsersDir,
-  getUserDir,
-  getUserTmpDir,
-  saveUsersMeta,
-  loadUsersMetaAsync,
-} from './storage';
+import { getUsersDir, getUserDir, getUserTmpDir, saveUsersMeta } from './storage';
 import type { UsersMeta } from './types';
 import { debugLog } from '../utils/helpers';
 
@@ -233,6 +227,9 @@ export async function migrateToMultiUser(): Promise<void> {
 /**
  * Migrate existing users to Profile architecture
  * Creates user-data/ and meta.json for each user
+ *
+ * Note: In version 3, profiles field is removed from users.json.
+ * This function scans the users/ directory directly to find user directories.
  */
 export async function migrateToProfile(): Promise<void> {
   const usersDir = getUsersDir();
@@ -243,16 +240,19 @@ export async function migrateToProfile(): Promise<void> {
   }
 
   try {
-    const usersMeta = await loadUsersMetaAsync();
+    // Scan users/ directory for user directories
+    // (Version 3 removed profiles field from users.json, so we scan directly)
+    const entries = await readdir(usersDir);
+    const userDirectories = entries.filter((entry) => {
+      const entryPath = path.join(usersDir, entry);
+      // Filter out files (like users.json) and include only directories
+      return existsSync(entryPath) && statSync(entryPath).isDirectory();
+    });
 
-    // Handle version 1 structure
-    if (usersMeta.version < 2) {
-      // Already handled by migrateToMultiUser
-      return;
-    }
+    debugLog(`Found ${userDirectories.length} user directories to migrate`);
 
-    // Migrate each user to Profile structure
-    for (const [userName, profile] of Object.entries(usersMeta.profiles ?? {})) {
+    // Migrate each user directory to Profile structure
+    for (const userName of userDirectories) {
       const userDir = getUserDir(userName);
       const userDataDir = path.resolve(userDir, 'user-data');
       const metaPath = path.resolve(userDir, 'meta.json');
@@ -269,9 +269,9 @@ export async function migrateToProfile(): Promise<void> {
       // Create meta.json if missing
       if (!existsSync(metaPath)) {
         const meta = {
-          createdAt: profile.createdAt || new Date().toISOString(),
-          lastUsedAt: profile.lastUsedAt || new Date().toISOString(),
-          environmentType: profile.environmentType || 'gui-native',
+          createdAt: new Date().toISOString(),
+          lastUsedAt: new Date().toISOString(),
+          environmentType: 'gui-native',
           version: 1,
         };
         await writeFile(metaPath, JSON.stringify(meta, null, 2), 'utf-8');

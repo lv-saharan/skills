@@ -472,7 +472,7 @@ export async function executeScrapeUser(options: ScrapeUserOptions): Promise<voi
         outputSuccess(result, 'PARSE:user');
       }
     },
-    { headless: headless ?? false }
+    { headless: headless ?? false, autoCreate: true }
   ).catch((error) => {
     debugLog('抓取用户出错:', error);
     outputFromError(error);

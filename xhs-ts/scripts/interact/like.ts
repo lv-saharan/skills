@@ -231,7 +231,7 @@ export async function executeLike(options: LikeOptions): Promise<void> {
         );
       }
     },
-    { headless: headless ?? false }
+    { headless: headless ?? false, autoCreate: true }
   ).catch((error) => {
     debugLog('点赞出错:', error);
     outputFromError(error);
