@@ -8,6 +8,10 @@
 // Main functions
 export { executeLogin, checkLogin } from './execute';
 
+// Auto-login flow
+export { ensureLogin } from './auto-login';
+export type { EnsureLoginOptions, EnsureLoginResult } from './auto-login';
+
 // Individual login methods (for advanced usage)
 export { qrLogin, waitForQrScan, captureQrCodeToFile } from './qr';
 export { smsLogin } from './sms';

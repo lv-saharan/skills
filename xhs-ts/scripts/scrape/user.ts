@@ -8,11 +8,12 @@
 import type { Page } from 'playwright';
 import type { ScrapeUserOptions, ScrapeUserResult, UserIdExtraction } from './types';
 import { USER_SELECTORS, ERROR_SELECTORS } from './selectors';
-import { TIMEOUTS } from '../shared';
+import { XhsError, XhsErrorCode, TIMEOUTS } from '../shared';
 import { withProfile, randomStealthDelay } from '../browser';
 import { resolveUser } from '../user/storage';
 import { debugLog, delay, XHS_URLS } from '../utils/helpers';
-import { checkCaptcha, checkLoginStatus, simulateReading, humanScroll } from '../utils/anti-detect';
+import { checkCaptcha, simulateReading, humanScroll } from '../utils/anti-detect';
+import { ensureLogin } from '../login';
 import { outputSuccess, outputFromError } from '../utils/output';
 
 // ============================================
@@ -449,10 +450,15 @@ export async function executeScrapeUser(options: ScrapeUserOptions): Promise<voi
       await page.goto(XHS_URLS.home, { timeout: TIMEOUTS.PAGE_LOAD });
       await randomStealthDelay(behavior, 'read');
 
-      // Check login status (optional for public profiles)
-      const isLoggedIn = await checkLoginStatus(page);
-      if (!isLoggedIn) {
-        debugLog('未登录，可能无法查看完整用户信息');
+      // Ensure login (auto-login if needed)
+      const loginResult = await ensureLogin(page, {
+        user: resolvedUser,
+        headless: headless ?? false,
+        timeout: TIMEOUTS.LOGIN,
+      });
+
+      if (!loginResult.success) {
+        throw new XhsError(loginResult.message || 'Not logged in', XhsErrorCode.NOT_LOGGED_IN);
       }
 
       // Scrape the user

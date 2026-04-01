@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Search command implementation
  *
  * @module search/execute
@@ -15,9 +15,10 @@ import { XhsError, XhsErrorCode } from '../shared';
 import { TIMEOUTS } from '../shared';
 import { withProfile, randomStealthDelay } from '../browser';
 import { resolveUser } from '../user/storage';
-import { XHS_URLS, debugLog, delay } from '../utils/helpers';
-import { checkCaptcha, checkLoginStatus } from '../utils/anti-detect';
+import { debugLog, delay, XHS_URLS } from '../utils/helpers';
+import { checkCaptcha } from '../utils/anti-detect';
 import { outputSuccess, outputFromError } from '../utils/output';
+import { ensureLogin } from '../login/auto-login';
 
 // ============================================
 // Constants
@@ -157,14 +158,15 @@ export async function executeSearch(options: SearchOptions): Promise<void> {
       await page.goto(XHS_URLS.home, { timeout: TIMEOUTS.PAGE_LOAD });
       await randomStealthDelay(behavior, 'read');
 
-      const isLoggedIn = await checkLoginStatus(page);
-      debugLog(`Login status: ${isLoggedIn}`);
+      // Ensure login (auto-login if needed)
+      const loginResult = await ensureLogin(page, {
+        user: resolvedUser,
+        headless: headless ?? false,
+        timeout: TIMEOUTS.LOGIN,
+      });
 
-      if (!isLoggedIn) {
-        throw new XhsError(
-          'Not logged in or session expired. Please run "xhs login" first.',
-          XhsErrorCode.NOT_LOGGED_IN
-        );
+      if (!loginResult.success) {
+        throw new XhsError(loginResult.message || 'Not logged in', XhsErrorCode.NOT_LOGGED_IN);
       }
 
       // Perform search
@@ -180,5 +182,6 @@ export async function executeSearch(options: SearchOptions): Promise<void> {
   ).catch((error) => {
     debugLog('Search error:', error);
     outputFromError(error);
+    process.exit(1);
   });
 }

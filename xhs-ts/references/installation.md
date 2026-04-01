@@ -41,7 +41,7 @@ npm run start -- --help
 The Profile architecture automatically manages session state. Simply run:
 
 ```bash
-npm run start -- login
+npm run login
 ```
 
 This will:
@@ -50,3 +50,20 @@ This will:
 3. Auto-save cookies and localStorage to `users/default/user-data/`
 
 No manual cookie import needed.
+
+**Browser Management:**
+
+Browser instances persist after CLI exits and are reused automatically:
+
+```bash
+# Start browser instance
+npm run browser -- --start
+
+# Check status
+npm run browser -- --status
+
+# Stop all instances
+npm run browser -- --stop
+```
+
+See [Browser Management](#browser-management) for details.

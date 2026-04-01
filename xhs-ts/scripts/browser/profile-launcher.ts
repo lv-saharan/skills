@@ -263,7 +263,7 @@ export async function launchProfileBrowser(
     proxy,
     browserPath,
     browserChannel,
-    timeout = 30000,
+    timeout: _timeout = 30000,
     autoCreate = false,
   } = options;
 
@@ -424,6 +424,29 @@ export async function withProfile<T>(
   callback: (page: Page, result: Omit<ProfileBrowserResult, 'page'>) => Promise<T>,
   options: Omit<ProfileLaunchOptions, 'user'> = {}
 ): Promise<T> {
+  // Check if CDP mode is enabled
+  if (config.useCdp) {
+    // Use CDP mode - import dynamically to avoid circular dependency
+    const { launchProfileCDP } = await import('./profile-launcher-cdp');
+
+    const result = await launchProfileCDP({ ...options, user });
+
+    try {
+      return await callback(result.page, {
+        browser: result.browser,
+        context: result.context,
+        user: result.user,
+        environmentType: result.environmentType,
+        behavior: result.behavior,
+      });
+    } finally {
+      // For CDP mode, close() disconnects without killing browser (keepAlive)
+      await result.browser.close();
+      debugLog(`Disconnected from CDP browser for user: ${result.user}`);
+    }
+  }
+
+  // Original Persistent Context mode
   const result = await launchProfileBrowser({ ...options, user });
 
   try {

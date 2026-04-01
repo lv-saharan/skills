@@ -18,8 +18,9 @@
 | 📌 收藏 | `npm run collect -- "<url>" [urls...]` | ✅ 已实现 | 收藏笔记（支持批量） |
 | 💬 评论 | `npm run comment -- "<url>" "text"` | ✅ 已实现 | 评论笔记 |
 | 👥 关注 | `npm run follow -- "<url>" [urls...]` | ✅ 已实现 | 关注用户（支持批量） |
-| 📊 抓取笔记 | `npm run start -- scrape-note "<url>"` | ✅ 已实现 | 笔记详情数据 |
-| 📊 抓取用户 | `npm run start -- scrape-user "<url>"` | ✅ 已实现 | 用户主页数据 |
+| 📊 抓取笔记 | `npm run scrape-note -- "<url>"` | ✅ 已实现 | 笔记详情数据 |
+| 📊 抓取用户 | `npm run scrape-user -- "<url>"` | ✅ 已实现 | 用户主页数据 |
+| 🌐 浏览器管理 | `npm run browser -- --start` | ✅ 已实现 | CDP 浏览器实例管理 |
 | 🛡️ 风控 | 内置 | — | 随机延迟、轨迹随机化、频率限制 |
 
 ---
@@ -274,10 +275,10 @@ npm run follow -- "url1" "url2" --delay 3000
 
 ```bash
 # 基本抓取
-npm run start -- scrape-note "https://www.xiaohongshu.com/explore/noteId?xsec_token=xxx"
+npm run scrape-note -- "https://www.xiaohongshu.com/explore/noteId?xsec_token=xxx"
 
 # 包含评论
-npm run start -- scrape-note "url" --comments --max-comments 50
+npm run scrape-note -- "url" --comments --max-comments 50
 ```
 
 **输出字段**：`noteId`, `title`, `content`, `images`, `video`, `author`, `stats`, `tags`, `publishTime`, `location`
@@ -286,13 +287,40 @@ npm run start -- scrape-note "url" --comments --max-comments 50
 
 ```bash
 # 基本抓取
-npm run start -- scrape-user "https://www.xiaohongshu.com/user/profile/userId"
+npm run scrape-user -- "https://www.xiaohongshu.com/user/profile/userId"
 
 # 包含最近笔记
-npm run start -- scrape-user "url" --notes --max-notes 24
+npm run scrape-user -- "url" --notes --max-notes 24
 ```
 
 **输出字段**：`userId`, `name`, `avatar`, `bio`, `stats`, `tags`, `recentNotes`
+
+## 浏览器管理
+
+xhs-ts 使用 CDP（Chrome DevTools Protocol）管理浏览器实例，支持多实例、持久化运行、自动回收。
+
+```bash
+# 启动浏览器实例
+npm run browser -- --start
+npm run browser -- --start --user "小号"
+npm run browser -- --start --headless
+
+# 查看实例状态
+npm run browser -- --status
+
+# 列出保存的连接
+npm run browser -- --list
+
+# 关闭实例
+npm run browser -- --stop-user "小号"
+npm run browser -- --stop
+```
+
+**架构说明**：
+- CLI 通过 CDP 连接浏览器实例
+- CLI 退出后浏览器继续运行
+- 实例自动复用（避免重复启动）
+- 30 分钟无活动自动关闭
 
 ---
 

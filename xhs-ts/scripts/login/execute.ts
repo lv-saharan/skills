@@ -5,7 +5,7 @@
  * @description Handle user authentication via QR code or SMS
  */
 
-import { launchProfileBrowser } from '../browser';
+import { withProfile } from '../browser';
 import { TIMEOUTS } from '../shared';
 import { config, debugLog } from '../utils/helpers';
 import { outputSuccess, outputFromError } from '../utils/output';
@@ -43,48 +43,40 @@ export async function executeLogin(options: LoginOptions): Promise<void> {
   }
 
   // Session invalid - proceed with login flow
-  // Note: Profile mode handles cookie persistence automatically
   debugLog('Proceeding with login flow...');
 
-  let profileResult: Awaited<ReturnType<typeof launchProfileBrowser>> | undefined;
+  const isHeadless = headless ?? config.headless;
 
   try {
-    profileResult = await launchProfileBrowser({
-      user: resolvedUser,
-      headless: headless ?? config.headless,
-      autoCreate: true,
-    });
+    await withProfile(
+      resolvedUser,
+      async (page, profileResult) => {
+        const { browser, context } = profileResult;
 
-    const isHeadless = headless ?? config.headless;
-    debugLog('Profile browser launched');
+        // Create session object compatible with BrowserSession interface
+        const session = {
+          page,
+          context,
+          browser,
+        };
 
-    // Create session object compatible with BrowserSession interface
-    const session = {
-      page: profileResult.page,
-      context: profileResult.context,
-      browser: profileResult.browser,
-    };
+        let result: LoginResult;
+        if (method === 'sms') {
+          debugLog('Starting SMS login...');
+          result = await smsLogin(session, timeout, resolvedUser);
+        } else {
+          debugLog('Starting QR code login...');
+          result = await qrLogin(session, timeout, isHeadless, resolvedUser);
+        }
 
-    let result: LoginResult;
-    if (method === 'sms') {
-      debugLog('Starting SMS login...');
-      result = await smsLogin(session, timeout, resolvedUser);
-    } else {
-      debugLog('Starting QR code login...');
-      result = await qrLogin(session, timeout, isHeadless, resolvedUser);
-    }
-
-    debugLog('Login complete, outputting result...');
-    outputSuccess(result, 'RELAY:登录成功');
+        debugLog('Login complete, outputting result...');
+        outputSuccess(result, 'RELAY:登录成功');
+      },
+      { headless: isHeadless, autoCreate: true }
+    );
   } catch (error) {
     debugLog('Login error:', error);
     outputFromError(error);
-  } finally {
-    // Ensure browser is closed
-    if (profileResult?.browser) {
-      await profileResult.browser.close();
-      debugLog('Browser closed after login');
-    }
   }
 }
 

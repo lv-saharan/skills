@@ -24,7 +24,7 @@ export {
   validatePreset,
 } from './fingerprint-presets';
 
-// Profile launcher (Task 4: Profile launcher)
+// Profile launcher (Persistent Context mode)
 export {
   launchProfileBrowser,
   withProfile,
@@ -36,6 +36,16 @@ export type {
   ProfileBrowserResult,
   StealthBehaviorConfig,
 } from './profile-launcher';
+
+// Profile launcher (CDP mode - recommended for multi-command workflows)
+export {
+  launchProfileCDP,
+  withProfileCDP,
+  hasCDPInstance,
+  getCDPPort,
+  closeCDPInstance,
+} from './profile-launcher-cdp';
+export type { ProfileCDPLaunchOptions, ProfileCDPBrowserResult } from './profile-launcher-cdp';
 
 // Cleanup utilities
 export { setActiveBrowser, getActiveBrowser, forceCleanup } from './cleanup';

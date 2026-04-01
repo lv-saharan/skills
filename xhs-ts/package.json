@@ -3,9 +3,6 @@
   "version": "0.0.9",
   "description": "小红书（Xiaohongshu）自动化操作技能，支持搜索、发布、互动、数据抓取",
   "type": "module",
-  "bin": {
-    "xhs": "./scripts/index.ts"
-  },
   "scripts": {
     "start": "tsx scripts/index.ts",
     "help": "tsx scripts/index.ts --help",
@@ -20,6 +17,7 @@
     "comment": "tsx scripts/index.ts comment",
     "follow": "tsx scripts/index.ts follow",
     "scrape": "tsx scripts/index.ts",
+    "browser": "tsx scripts/index.ts browser",
     "install:browser": "npx playwright install chromium",
     "build": "tsc",
     "typecheck": "tsc --noEmit",

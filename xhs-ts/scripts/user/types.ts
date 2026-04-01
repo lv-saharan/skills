@@ -1,4 +1,4 @@
-/**
+﻿/**
  * User module types
  *
  * @module user/types
@@ -159,11 +159,78 @@ export interface UserListResult {
 }
 
 // ============================================
-// User Meta (Task 1 - Profile Architecture)
+// Connection Info (CDP) - NEW
+// ============================================
+
+/**
+ * Browser connection information for CDP mode
+ *
+ * Stored within UserProfileData.connection field.
+ * Only present when CDP browser instance is running.
+ */
+export interface ConnectionInfo {
+  /** CDP debugging port */
+  cdpPort: number;
+  /** Browser process ID (0 on Windows due to 'start' command limitation) */
+  pid?: number;
+  /** WebSocket endpoint URL for CDP connection */
+  wsEndpoint?: string;
+  /** Browser start timestamp (ISO 8601) */
+  startedAt: string;
+  /** Last activity timestamp (ISO 8601) */
+  lastActivityAt: string;
+}
+
+// ============================================
+// Profile Meta (New Unified Structure) - NEW
+// ============================================
+
+/**
+ * Profile metadata - unified structure
+ *
+ * Stores user profile information including creation time,
+ * environment type, and fingerprint source.
+ */
+export interface ProfileMeta {
+  /** User creation timestamp (ISO 8601) */
+  createdAt: string;
+  /** Last used timestamp (ISO 8601) */
+  lastUsedAt: string;
+  /** Environment type when profile was created */
+  environmentType: EnvironmentType;
+  /** Fingerprint source used */
+  fingerprintSource: FingerprintSource;
+  /** Description of preset used (if applicable) */
+  presetDescription?: string;
+}
+
+/**
+ * User Profile Data - unified storage structure (v3) - NEW
+ *
+ * Single file storage for all user profile data.
+ * Stored at: users/{user}/profile.json
+ *
+ * Replaces the previous two-file structure:
+ * - users/{user}/meta.json (Profile metadata)
+ * - users/{user}/connections/meta.json (CDP connection info)
+ */
+export interface UserProfileData {
+  /** Schema version */
+  version: 1;
+  /** Profile metadata */
+  meta: ProfileMeta;
+  /** CDP connection info (optional, only when CDP browser is running) */
+  connection?: ConnectionInfo;
+}
+
+// ============================================
+// User Meta (Legacy - kept for backward compatibility)
 // ============================================
 
 /**
  * User metadata stored in meta.json within each user's profile directory
+ *
+ * @deprecated Use ProfileMeta instead. This type is kept for migration purposes.
  */
 export interface UserMeta {
   /** Meta schema version */
@@ -219,11 +286,14 @@ export interface ProfileStatusInfo {
 }
 
 // ============================================
-// Users Metadata (Version 2 - Profile Architecture)
+// Users Metadata (Version 3 - Simplified)
 // ============================================
 
 /**
  * Profile reference in users.json
+ *
+ * @deprecated In v3, profiles are no longer stored in users.json.
+ * All profile data is in users/{user}/profile.json
  */
 export interface ProfileRef {
   /** Profile creation timestamp */
@@ -235,15 +305,16 @@ export interface ProfileRef {
 }
 
 /**
- * users.json content (version 2)
+ * users.json content (version 3 - simplified)
  *
- * Version 2 adds profile references for the new Profile architecture.
+ * Version 3 removes the profiles field - all profile data
+ * is now stored in users/{user}/profile.json.
  */
 export interface UsersMeta {
   /** Current user name */
   current: UserName;
-  /** Data version for future migrations (now 2) */
+  /** Data version for future migrations (now 3) */
   version: number;
-  /** Profile references for each user */
+  /** Profile references for each user (deprecated, kept for migration) */
   profiles?: Record<UserName, ProfileRef>;
 }

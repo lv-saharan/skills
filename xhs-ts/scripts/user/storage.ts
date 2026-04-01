@@ -1,4 +1,4 @@
-/**
+﻿/**
  * User storage operations
  *
  * @module user/storage
@@ -6,7 +6,7 @@
  */
 
 import { readdir, writeFile, mkdir, stat, readFile, rename, unlink } from 'fs/promises';
-import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from 'fs';
+import { existsSync, readFileSync, writeFileSync } from 'fs';
 import path from 'path';
 import type {
   UserName,
@@ -18,7 +18,7 @@ import type {
   ProfileStatus,
   ProfileStatusInfo,
 } from './types';
-import { hasDisplaySupport, detectEnvironmentType } from './environment';
+import { hasDisplaySupport } from './environment';
 import { getUserFingerprint } from './fingerprint';
 import { debugLog } from '../utils/helpers';
 
@@ -38,11 +38,10 @@ const PROFILE_META_FILE = 'meta.json';
 /** Invalid characters for user name (Windows incompatible) */
 const INVALID_CHARS = /[\\/:\*?"<>|]/;
 
-/** Default users metadata (version 2 - Profile architecture) */
-const DEFAULT_USERS_META_V2: UsersMeta = {
+/** Default users metadata (version 3 - simplified, no profiles) */
+const DEFAULT_USERS_META_V3: UsersMeta = {
   current: 'default',
-  version: 2,
-  profiles: {},
+  version: 3,
 };
 
 // ============================================
@@ -249,49 +248,33 @@ export async function listUsers(): Promise<UserListResult> {
 /**
  * Load users metadata with version migration support
  *
- * Automatically migrates from version 1 to version 2 if needed.
+ * Automatically migrates from version 1/2 to version 3 if needed.
+ * Version 3 removes the profiles field - all profile data is in users/{user}/profile.json
  */
 export function loadUsersMeta(): UsersMeta {
   const metaPath = getUsersMetaPath();
 
   if (!existsSync(metaPath)) {
-    return { ...DEFAULT_USERS_META_V2 };
+    return { ...DEFAULT_USERS_META_V3 };
   }
 
   try {
     const content = readFileSync(metaPath, 'utf-8');
     const meta = JSON.parse(content) as { version?: number; [key: string]: unknown };
 
-    // Version 1 -> 2 migration
-    if (meta.version === 1) {
-      debugLog('Migrating users.json from version 1 to version 2...');
+    // Version 1 or 2 -> 3 migration (simplify: remove profiles)
+    if (!meta.version || meta.version < 3) {
+      debugLog(`Migrating users.json from version ${meta.version || 1} to version 3...`);
 
       const migratedMeta: UsersMeta = {
-        ...DEFAULT_USERS_META_V2,
         current: (meta.current as UserName) || 'default',
-        profiles: {}, // Initialize empty profiles
+        version: 3,
       };
-
-      // Scan existing users and add profile refs
-      if (existsSync(getUsersDir())) {
-        const entries = readdirSync(getUsersDir());
-        for (const entry of entries) {
-          const entryPath = path.join(getUsersDir(), entry);
-          const entryStat = statSync(entryPath);
-          if (entryStat.isDirectory() && !entry.startsWith('.')) {
-            migratedMeta.profiles![entry] = {
-              createdAt: new Date().toISOString(),
-              lastUsedAt: new Date().toISOString(),
-              environmentType: detectEnvironmentType(),
-            };
-          }
-        }
-      }
 
       // Save migrated version synchronously
       try {
         writeFileSync(metaPath, JSON.stringify(migratedMeta, null, 2), 'utf-8');
-        debugLog('Migrated users.json to version 2');
+        debugLog('Migrated users.json to version 3 (removed profiles field)');
       } catch (writeError) {
         debugLog('Failed to save migrated users.json:', writeError);
       }
@@ -299,68 +282,53 @@ export function loadUsersMeta(): UsersMeta {
       return migratedMeta;
     }
 
-    // Already version 2 or higher
+    // Already version 3 or higher
     return {
-      ...DEFAULT_USERS_META_V2,
+      ...DEFAULT_USERS_META_V3,
       ...meta,
     };
   } catch (error) {
     debugLog('Failed to load users.json, using default:', error);
-    return { ...DEFAULT_USERS_META_V2 };
+    return { ...DEFAULT_USERS_META_V3 };
   }
 }
 
 /**
  * Load users metadata asynchronously with version migration support
  *
- * Automatically migrates from version 1 to version 2 if needed.
+ * Automatically migrates from version 1/2 to version 3 if needed.
  * Use this instead of loadUsersMeta() to avoid race conditions.
  */
 export async function loadUsersMetaAsync(): Promise<UsersMeta> {
   const metaPath = getUsersMetaPath();
 
   if (!existsSync(metaPath)) {
-    return { ...DEFAULT_USERS_META_V2 };
+    return { ...DEFAULT_USERS_META_V3 };
   }
 
   try {
     const content = await readFile(metaPath, 'utf-8');
     const meta = JSON.parse(content) as { version?: number; [key: string]: unknown };
 
-    if (meta.version === 1) {
-      debugLog('Migrating users.json from version 1 to version 2...');
+    // Version 1 or 2 -> 3 migration (simplify: remove profiles)
+    if (!meta.version || meta.version < 3) {
+      debugLog(`Migrating users.json from version ${meta.version || 1} to version 3...`);
 
       const migratedMeta: UsersMeta = {
-        ...DEFAULT_USERS_META_V2,
         current: (meta.current as UserName) || 'default',
-        profiles: {},
+        version: 3,
       };
 
-      if (existsSync(getUsersDir())) {
-        const entries = await readdir(getUsersDir());
-        for (const entry of entries) {
-          const entryPath = path.join(getUsersDir(), entry);
-          const entryStat = await stat(entryPath);
-          if (entryStat.isDirectory() && !entry.startsWith('.')) {
-            migratedMeta.profiles![entry] = {
-              createdAt: new Date().toISOString(),
-              lastUsedAt: new Date().toISOString(),
-              environmentType: detectEnvironmentType(),
-            };
-          }
-        }
-      }
-
       await saveUsersMeta(migratedMeta);
-      debugLog('Migrated users.json to version 2');
+      debugLog('Migrated users.json to version 3 (removed profiles field)');
 
       return migratedMeta;
     }
 
-    return { ...DEFAULT_USERS_META_V2, ...meta };
+    return { ...DEFAULT_USERS_META_V3, ...meta };
   } catch (error) {
     debugLog('Failed to load users.json, using default:', error);
-    return { ...DEFAULT_USERS_META_V2 };
+    return { ...DEFAULT_USERS_META_V3 };
   }
 }
 
@@ -532,21 +500,8 @@ export async function createUserProfile(
   await writeFile(metaPath, JSON.stringify(meta, null, 2), 'utf-8');
   debugLog(`Created profile for user: ${user}`);
 
-  // Update users.json profiles reference
-  const usersMeta = loadUsersMeta();
-  if (!usersMeta.profiles) {
-    usersMeta.profiles = {};
-  }
-  usersMeta.profiles[user] = {
-    createdAt: now,
-    lastUsedAt: now,
-    environmentType: environmentType as
-      | 'gui-native'
-      | 'gui-virtual'
-      | 'headless-smart'
-      | 'headless-custom',
-  };
-  await saveUsersMeta(usersMeta);
+  // Note: users.json no longer stores profile data (v3)
+  // All profile data is in users/{user}/profile.json
 }
 
 /**
@@ -632,7 +587,8 @@ export async function loadUserProfile(user: UserName): Promise<UserProfile> {
 /**
  * Update last used timestamp for a user
  *
- * Updates both the profile's meta.json and the users.json profiles reference.
+ * Updates the profile's meta.json only.
+ * Note: users.json no longer stores profile data (v3)
  *
  * @param user - User name
  */
@@ -654,11 +610,94 @@ export async function updateLastUsed(user: UserName): Promise<void> {
       debugLog(`Failed to update lastUsedAt for user: ${user}`, error);
     }
   }
+}
 
-  // Update users.json profiles reference
-  const usersMeta = loadUsersMeta();
-  if (usersMeta.profiles && usersMeta.profiles[user]) {
-    usersMeta.profiles[user].lastUsedAt = now;
-    await saveUsersMeta(usersMeta);
+// ============================================
+// Browser Connection Management (Legacy - uses v3 API internally)
+// ============================================
+
+/**
+ * Browser connection info stored for CDP instance reuse
+ *
+ * @deprecated Use ConnectionInfo from './types' and new API from './storage-v3'
+ */
+export interface BrowserConnectionInfo {
+  cdpPort: number;
+  pid?: number;
+  wsEndpoint?: string;
+  startedAt?: string;
+  lastActivityAt?: string;
+}
+
+/**
+ * Save browser connection info for later reuse
+ *
+ * @deprecated Use saveConnectionInfo from './storage-v3'
+ */
+export async function saveBrowserConnection(
+  user: UserName,
+  info: BrowserConnectionInfo
+): Promise<void> {
+  validateUserName(user);
+
+  // Use new v3 API internally
+  const { saveConnectionInfo } = await import('./storage-v3');
+  await saveConnectionInfo(user, {
+    cdpPort: info.cdpPort,
+    pid: info.pid,
+    wsEndpoint: info.wsEndpoint,
+    startedAt: info.startedAt || new Date().toISOString(),
+    lastActivityAt: info.lastActivityAt || new Date().toISOString(),
+  });
+}
+
+/**
+ * Load browser connection info
+ *
+ * @deprecated Use loadConnectionInfo from './storage-v3'
+ */
+export async function loadBrowserConnection(user: UserName): Promise<BrowserConnectionInfo | null> {
+  validateUserName(user);
+
+  // Use new v3 API internally
+  const { loadConnectionInfo } = await import('./storage-v3');
+  const conn = await loadConnectionInfo(user);
+
+  if (!conn) {
+    return null;
   }
+
+  return {
+    cdpPort: conn.cdpPort,
+    pid: conn.pid,
+    wsEndpoint: conn.wsEndpoint,
+    startedAt: conn.startedAt,
+    lastActivityAt: conn.lastActivityAt,
+  };
+}
+
+/**
+ * Clear browser connection info
+ *
+ * @deprecated Use clearConnectionInfo from './storage-v3'
+ */
+export async function clearBrowserConnection(user: UserName): Promise<void> {
+  validateUserName(user);
+
+  // Use new v3 API internally
+  const { clearConnectionInfo } = await import('./storage-v3');
+  await clearConnectionInfo(user);
+}
+
+/**
+ * Update last activity timestamp for browser connection
+ *
+ * @deprecated Use updateConnectionActivity from './storage-v3'
+ */
+export async function updateLastActivity(user: UserName): Promise<void> {
+  validateUserName(user);
+
+  // Use new v3 API internally
+  const { updateConnectionActivity } = await import('./storage-v3');
+  await updateConnectionActivity(user);
 }

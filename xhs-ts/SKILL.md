@@ -34,10 +34,17 @@ metadata:
 | Collect | `npm run collect -- "<url>" [urls...] [-- --user <name>]` | ✅ Implemented |
 | Comment | `npm run comment -- "<url>" "text"` | ✅ Implemented |
 | Follow | `npm run follow -- "<url>" [urls...]` | ✅ Implemented |
-| Scrape note | `npm run start -- scrape-note "<url>"` | ✅ Implemented |
-| Scrape user | `npm run start -- scrape-user "<url>"` | ✅ Implemented |
+| Scrape note | `npm run scrape-note -- "<url>"` | ✅ Implemented |
+| Scrape user | `npm run scrape-user -- "<url>"` | ✅ Implemented |
+| Browser start | `npm run browser -- --start [--user <name>]` | ✅ Implemented |
+| Browser status | `npm run browser -- --status` | ✅ Implemented |
+| Browser stop | `npm run browser -- --stop` | ✅ Implemented |
 
 > All commands support `--user <name>` for multi-account operations.
+> 
+> **Usage**: `npm run <command> -- [args] -- [options]`
+> 
+> Example: `npm run search -- "美食" -- --limit 10 --user "小号"`
 
 ---
 
@@ -254,10 +261,10 @@ npm run follow -- "url1" "url2" --delay 3000
 
 ```bash
 # Basic scrape
-npm run start -- scrape-note "https://www.xiaohongshu.com/explore/noteId?xsec_token=xxx"
+npm run scrape-note -- "https://www.xiaohongshu.com/explore/noteId?xsec_token=xxx"
 
 # Include comments
-npm run start -- scrape-note "url" --comments --max-comments 50
+npm run scrape-note -- "url" --comments --max-comments 50
 ```
 
 **Output**: `noteId`, `title`, `content`, `images`, `video`, `author`, `stats`, `tags`, `publishTime`, `location`
@@ -266,13 +273,32 @@ npm run start -- scrape-note "url" --comments --max-comments 50
 
 ```bash
 # Basic scrape
-npm run start -- scrape-user "https://www.xiaohongshu.com/user/profile/userId"
+npm run scrape-user -- "https://www.xiaohongshu.com/user/profile/userId"
 
 # Include recent notes
-npm run start -- scrape-user "url" --notes --max-notes 24
+npm run scrape-user -- "url" --notes --max-notes 24
 ```
 
 **Output**: `userId`, `name`, `avatar`, `bio`, `stats`, `tags`, `recentNotes`
+
+### Browser Management
+
+```bash
+# Start browser instance
+npm run browser -- --start
+npm run browser -- --start --user "小号"
+npm run browser -- --start --headless
+
+# Show status
+npm run browser -- --status
+
+# List saved connections
+npm run browser -- --list
+
+# Stop instances
+npm run browser -- --stop-user "小号"
+npm run browser -- --stop
+```
 
 ---
 

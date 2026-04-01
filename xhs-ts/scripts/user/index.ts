@@ -27,6 +27,10 @@ export type {
   ProfileStatus,
   ProfileStatusInfo,
   ProfileRef,
+  // v3 Unified types
+  ProfileMeta,
+  ConnectionInfo,
+  UserProfileData,
 } from './types';
 
 // Storage operations
@@ -56,7 +60,25 @@ export {
   createUserProfile,
   loadUserProfile,
   updateLastUsed,
+  // Legacy Browser Connection (deprecated - use storage-v3 instead)
+  saveBrowserConnection,
+  loadBrowserConnection,
+  clearBrowserConnection,
 } from './storage';
+
+// v3 Unified Storage API (NEW - recommended)
+export {
+  getProfilePath,
+  loadUserProfileData,
+  saveUserProfileData,
+  createUserProfileData,
+  hasProfileData,
+  loadConnectionInfo,
+  saveConnectionInfo,
+  clearConnectionInfo,
+  updateConnectionActivity,
+  updateProfileLastUsed,
+} from './storage-v3';
 
 // Fingerprint operations (includes getMostMainstreamPreset)
 export {

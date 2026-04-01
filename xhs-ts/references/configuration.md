@@ -40,5 +40,25 @@ DEBUG=false
 | `{baseDir}/users/{user}/meta.json` | Profile metadata |
 | `{baseDir}/users/{user}/fingerprint.json` | Device fingerprint |
 | `{baseDir}/users/{user}/tmp/` | Temporary files (QR codes) |
+| `{baseDir}/users/{user}/connections/` | CDP browser connection info |
 | `{baseDir}/users.json` | User metadata (current user, profiles) |
 | `{baseDir}/.env` | Environment configuration |
+
+## Browser Management
+
+Browser instances are managed via CDP (Chrome DevTools Protocol):
+
+| File | Purpose |
+|------|---------|
+| `{baseDir}/users/{user}/connections/meta.json` | CDP connection info (port, PID, timestamps) |
+
+**Commands:**
+
+```bash
+npm run browser -- --start    # Start browser instance
+npm run browser -- --status   # Show instance status
+npm run browser -- --list     # List saved connections
+npm run browser -- --stop     # Stop all instances
+```
+
+See [Browser Management](commands.md#browser-management) for details.

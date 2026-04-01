@@ -410,6 +410,138 @@ program
   });
 
 // ============================================
+// Browser Management Command
+// ============================================
+
+program
+  .command('browser')
+  .description('Manage CDP browser instances')
+  .option('--start', 'Start a browser instance')
+  .option('--stop', 'Stop all CDP browser instances')
+  .option('--stop-user <name>', 'Stop CDP instance for specific user')
+  .option('--status', 'Show browser instance status')
+  .option('--list', 'List all saved browser connections')
+  .option('--user <name>', 'User name for browser instance')
+  .option('--headless', 'Run browser in headless mode')
+  .action(
+    async (options: {
+      start?: boolean;
+      stop?: boolean;
+      stopUser?: string;
+      status?: boolean;
+      list?: boolean;
+      user?: string;
+      headless?: boolean;
+    }) => {
+      try {
+        const resolvedUser = resolveUser(options.user);
+
+        if (options.start) {
+          // For --start, only import what's needed to avoid loading Playwright
+          // This allows CLI to exit cleanly after spawning detached browser
+          const { saveBrowserConnection, getUserDataDir } = await import('./user/storage');
+          const { spawnCDPBrowserDetached } = await import('./browser/cdp/launcher');
+
+          const userDataDir = getUserDataDir(resolvedUser);
+
+          // Spawn browser as detached subprocess (no Playwright connection)
+          const result = await spawnCDPBrowserDetached(
+            {
+              user: resolvedUser,
+              headless: options.headless ?? false,
+            },
+            userDataDir
+          );
+
+          // Save connection info for later reuse
+          await saveBrowserConnection(resolvedUser, {
+            cdpPort: result.cdp.port,
+            pid: result.pid,
+            wsEndpoint: result.cdp.wsEndpoint,
+            startedAt: result.cdp.connectedAt,
+            lastActivityAt: result.cdp.lastActivityAt,
+          });
+
+          outputSuccess(
+            {
+              user: resolvedUser,
+              cdpPort: result.cdp.port,
+              pid: result.pid,
+              headless: options.headless ?? false,
+            },
+            `RELAY:已为用户 ${resolvedUser} 启动浏览器实例 (端口: ${result.cdp.port}, PID: ${result.pid})`
+          );
+
+          // Force immediate exit - browser runs as detached subprocess
+          // Clean up any remaining handles
+          process.stdin?.destroy();
+          process.stdout?.destroy();
+          process.stderr?.destroy();
+          process.exit(0);
+        }
+
+        // For other commands, import full browser module
+        const { browserInstanceManager, healthMonitor } = await import('./browser/cdp');
+        const { loadBrowserConnection, listUsers } = await import('./user/storage');
+
+        if (options.stop) {
+          // Stop all instances
+          await forceCleanup();
+          outputSuccess({ stopped: 'all' }, 'RELAY:已关闭所有浏览器实例');
+          return;
+        }
+
+        if (options.stopUser) {
+          // Stop specific user instance
+          await browserInstanceManager.closeInstance(options.stopUser);
+          outputSuccess(
+            { stopped: options.stopUser },
+            `RELAY:已关闭用户 ${options.stopUser} 的浏览器实例`
+          );
+          return;
+        }
+
+        if (options.status) {
+          // Show current instance status
+          const state = browserInstanceManager.getState();
+          const stats = healthMonitor.getStats();
+          outputSuccess({ ...state, stats }, 'PARSE:browserStatus');
+          return;
+        }
+
+        if (options.list) {
+          // List all saved connections
+          const users = await listUsers();
+          const connections: Record<string, unknown> = {};
+
+          for (const user of users.users) {
+            const conn = await loadBrowserConnection(user.name);
+            if (conn) {
+              connections[user.name] = {
+                cdpPort: conn.cdpPort,
+                pid: conn.pid,
+                lastActivityAt: conn.lastActivityAt,
+              };
+            }
+          }
+
+          outputSuccess({ connections }, 'PARSE:browserConnections');
+          return;
+        }
+
+        // Default: show status
+        const state = browserInstanceManager.getState();
+        const stats = healthMonitor.getStats();
+        outputSuccess({ ...state, stats }, 'PARSE:browserStatus');
+      } catch (error) {
+        debugLog('Browser command error:', error);
+        outputFromError(error);
+        process.exit(1);
+      }
+    }
+  );
+
+// ============================================
 // Error Handling
 // ============================================
 

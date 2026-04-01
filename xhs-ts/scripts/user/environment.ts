@@ -39,10 +39,10 @@ function detectWindowsScreen(): ScreenResolution | null {
   } catch {
     // Fallback: try wmic
     try {
-      const output = execSync(
-        'wmic desktopmonitor get screenheight,screenwidth /value',
-        { encoding: 'utf-8', timeout: 5000 }
-      );
+      const output = execSync('wmic desktopmonitor get screenheight,screenwidth /value', {
+        encoding: 'utf-8',
+        timeout: 5000,
+      });
       const widthMatch = output.match(/ScreenWidth=(\d+)/);
       const heightMatch = output.match(/ScreenHeight=(\d+)/);
       if (widthMatch && heightMatch) {
@@ -349,7 +349,8 @@ export function selectPresetBySmartMatch(): DevicePreset {
   // Step 2: If screen detected, filter by screen resolution (exact match)
   if (screenResolution) {
     const screenMatched = platformMatched.filter(
-      (p) => p.screen.width === screenResolution.width && p.screen.height === screenResolution.height
+      (p) =>
+        p.screen.width === screenResolution.width && p.screen.height === screenResolution.height
     );
 
     if (screenMatched.length > 0) {

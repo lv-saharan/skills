@@ -160,6 +160,7 @@ export const config: AppConfig = {
   debug: parseBoolean(process.env.DEBUG, false),
   loginTimeout: parseInteger(process.env.LOGIN_TIMEOUT, 120000),
   loginMethod: parseLoginMethod(process.env.LOGIN_METHOD),
+  useCdp: parseBoolean(process.env.USE_CDP, true),
 };
 
 // ============================================

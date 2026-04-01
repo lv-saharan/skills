@@ -10,7 +10,7 @@ import { resolveUser } from '../user/storage';
 import { XhsError, XhsErrorCode } from '../shared';
 import { TIMEOUTS } from '../shared';
 import { XHS_URLS, debugLog, randomDelay } from '../utils/helpers';
-import { checkLoginStatus } from '../utils/anti-detect';
+import { ensureLogin } from '../login';
 import { outputSuccess, outputError, outputFromError } from '../utils/output';
 import type { PublishOptions } from './types';
 import { validateMedia, validateContent } from './validation';
@@ -69,14 +69,15 @@ export async function executePublish(options: PublishOptions): Promise<void> {
       });
       await randomStealthDelay(behavior, 'read');
 
-      const isLoggedIn = await checkLoginStatus(page);
-      debugLog(`Login status: ${isLoggedIn}`);
+      // Ensure login (auto-login if needed)
+      const loginResult = await ensureLogin(page, {
+        user: resolvedUser,
+        headless: headless ?? false,
+        timeout: TIMEOUTS.LOGIN,
+      });
 
-      if (!isLoggedIn) {
-        throw new XhsError(
-          'Not logged in or session expired. Please run "xhs login --creator" first.',
-          XhsErrorCode.NOT_LOGGED_IN
-        );
+      if (!loginResult.success) {
+        throw new XhsError(loginResult.message || 'Not logged in', XhsErrorCode.NOT_LOGGED_IN);
       }
 
       // Click publish button on homepage to open creator center

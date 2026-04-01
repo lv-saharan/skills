@@ -7,7 +7,7 @@
 
 import type { UserName } from '../user';
 import { hasProfile } from '../user/storage';
-import { launchProfileBrowser } from '../browser';
+import { withProfile } from '../browser';
 import { XHS_URLS, debugLog, delay } from '../utils/helpers';
 import { checkLoginStatus } from '../utils/anti-detect';
 
@@ -15,7 +15,8 @@ import { checkLoginStatus } from '../utils/anti-detect';
  * Verify if existing cookies represent a valid session using Profile API
  *
  * In Profile mode, cookies are automatically persisted to the user data directory.
- * This function launches a temporary profile browser to verify the session.
+ * This function launches a profile browser to verify the session.
+ * Supports CDP mode for browser instance reuse.
  *
  * @param user - User name (optional)
  * @returns true if valid session exists, false otherwise
@@ -29,34 +30,30 @@ export async function verifyExistingSession(user?: UserName): Promise<boolean> {
     return false;
   }
 
-  // Use Profile API to verify session
-  // The profile browser will automatically load persisted cookies
-  let browser = null;
+  // Use withProfile to support both CDP and Persistent Context modes
   try {
-    const result = await launchProfileBrowser({
-      user,
-      headless: true,
-    });
-    browser = result.browser;
+    const result = await withProfile(
+      user || 'default',
+      async (page) => {
+        // Navigate to home page with persisted cookies
+        await page.goto(XHS_URLS.home, {
+          waitUntil: 'networkidle',
+          timeout: 30000,
+        });
 
-    debugLog('Profile browser launched for verification');
+        // Wait for page to fully render
+        await delay(3000);
 
-    // Navigate to home page with persisted cookies
-    await result.page.goto(XHS_URLS.home, {
-      waitUntil: 'networkidle',
-      timeout: 30000,
-    });
+        // Check login status
+        const isLoggedIn = await checkLoginStatus(page);
+        debugLog(`checkLoginStatus result: ${isLoggedIn}`);
 
-    // Wait for page to fully render
-    await delay(3000);
+        return isLoggedIn;
+      },
+      { headless: true }
+    );
 
-    // Check login status using TWO CORE RULES:
-    // 1. Login button/modal visible? → NOT logged in
-    // 2. User avatar visible? → IS logged in
-    const isLoggedIn = await checkLoginStatus(result.page);
-    debugLog(`checkLoginStatus result: ${isLoggedIn}`);
-
-    if (isLoggedIn) {
+    if (result) {
       debugLog('Already logged in! Session is valid.');
       return true;
     }
@@ -66,9 +63,5 @@ export async function verifyExistingSession(user?: UserName): Promise<boolean> {
   } catch (verifyError) {
     debugLog('Session verification failed:', verifyError);
     return false;
-  } finally {
-    if (browser) {
-      await browser.close();
-    }
   }
 }

@@ -169,11 +169,76 @@ npm run comment -- "<url>" "text" # Comment on a note
 npm run follow -- "<url>"         # Follow a user
 ```
 
-Direct CLI commands (not via npm):
+---
+
+## Browser Management
+
+Manage CDP browser instances with lifecycle control.
 
 ```bash
-tsx scripts/index.ts scrape-note "<url>"  # Scrape note details
-tsx scripts/index.ts scrape-user "<url>"   # Scrape user profile
+# Start browser instance
+npm run browser -- --start
+npm run browser -- --start --user "xiaohao"
+npm run browser -- --start --headless
+
+# Show instance status
+npm run browser -- --status
+
+# List saved connections
+npm run browser -- --list
+
+# Stop instances
+npm run browser -- --stop-user "xiaohao"
+npm run browser -- --stop
+```
+
+**Architecture:**
+- CLI connects to browser via CDP
+- Browser persists after CLI exits
+- Instances are reused automatically
+- Idle timeout: 30 minutes (auto-cleanup)
+
+**Output (status):**
+
+```json
+{
+  "success": true,
+  "data": {
+    "totalInstances": 1,
+    "instancesByUser": {
+      "default": {
+        "instanceId": "instance_123",
+        "cdpPort": 18900,
+        "createdAt": "2026-03-31T05:00:00.000Z",
+        "lastActivity": "2026-03-31T05:30:00.000Z"
+      }
+    },
+    "mainPagesByUser": {},
+    "stats": {
+      "total": 1,
+      "connected": 1,
+      "idle": 0,
+      "active": 1
+    }
+  }
+}
+```
+
+**Output (list):**
+
+```json
+{
+  "success": true,
+  "data": {
+    "connections": {
+      "default": {
+        "cdpPort": 18900,
+        "pid": 12345,
+        "lastActivityAt": "2026-03-31T05:30:00.000Z"
+      }
+    }
+  }
+}
 ```
 
 ---

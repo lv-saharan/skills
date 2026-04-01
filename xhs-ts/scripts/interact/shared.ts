@@ -17,6 +17,7 @@ import { resolveUser } from '../user/storage';
 import { XhsError, XhsErrorCode, TIMEOUTS } from '../shared';
 import { XHS_URLS, gaussianDelay } from '../utils/helpers';
 import { checkLoginStatus, checkCaptcha, simulateReading } from '../utils/anti-detect';
+import { ensureLogin } from '../login';
 
 // ============================================
 // Constants
@@ -76,8 +77,15 @@ export async function withAuthenticatedAction<T>(
       await page.goto(XHS_URLS.home, { timeout: TIMEOUTS.PAGE_LOAD });
       await randomStealthDelay(behavior, 'read');
 
-      if (!(await checkLoginStatus(page))) {
-        throw new XhsError('未登录，请先执行 "xhs login"', XhsErrorCode.NOT_LOGGED_IN);
+      // Ensure login (auto-login if needed)
+      const loginResult = await ensureLogin(page, {
+        user: resolvedUser,
+        headless: headless ?? false,
+        timeout: TIMEOUTS.LOGIN,
+      });
+
+      if (!loginResult.success) {
+        throw new XhsError(loginResult.message || 'Not logged in', XhsErrorCode.NOT_LOGGED_IN);
       }
 
       return callback(page, behavior);
