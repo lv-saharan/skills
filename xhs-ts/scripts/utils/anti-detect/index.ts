@@ -237,101 +237,48 @@ export async function waitForStable(page: Page, options: { timeout?: number } = 
 /**
  * Check if user is logged in
  *
- * TWO CORE RULES:
- * 1. 登录框/登录按钮在吗？ → 在 = 未登录 (return false)
- * 2. 头像出来了吗？ → 在 = 已登录 (return true)
+ * 判断逻辑：
+ * - 登录框不存在 && 用户头像出现 = 已登录
+ * - 其他情况 = 未登录
  */
 export async function checkLoginStatus(page: Page): Promise<boolean> {
   try {
     const currentUrl = page.url();
     debugLog('checkLoginStatus: currentUrl = ' + currentUrl);
-    await page.waitForLoadState('domcontentloaded').catch(() => {});
 
-    // RULE 1: Login button/modal visible? → NOT logged in
-    // Use specific selectors, no timeout (immediate check)
-    const loginButtonSelectors = [
-      'header button:has-text("登录")',
-      'header a:has-text("登录")',
-      'header button:has-text("登录/注册")',
-      'nav button:has-text("登录")',
-    ];
-    for (const sel of loginButtonSelectors) {
-      if (
-        await page
-          .locator(sel)
-          .first()
-          .isVisible()
-          .catch(() => false)
-      ) {
-        debugLog('Login button found → NOT logged in');
-        return false;
-      }
+    // Wait for page to be fully loaded
+    await page.waitForLoadState('networkidle').catch(() => {});
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    debugLog('Page load complete, checking login status...');
+
+    // STEP 1: 检查登录按钮是否存在
+    // 如果存在 = 未登录
+    const loginVisible = await page
+      .locator('.login-btn')
+      .first()
+      .isVisible({ timeout: 2000 })
+      .catch(() => false);
+    debugLog(`.login-btn visible: ${loginVisible}`);
+    if (loginVisible) {
+      debugLog('Login button found → NOT logged in');
+      return false;
     }
 
-    // Check for login modal (specific selectors only, no timeout)
-    const loginModalSelectors = ['.login-modal', '.red-login-modal', '.login-container'];
-    for (const sel of loginModalSelectors) {
-      if (
-        await page
-          .locator(sel)
-          .first()
-          .isVisible()
-          .catch(() => false)
-      ) {
-        debugLog('Login modal found → NOT logged in');
-        return false;
-      }
-    }
-
-    // RULE 2: User avatar in header visible? → IS logged in
-    const avatarSelectors = [
-      'header .user-avatar',
-      'header .avatar-wrapper',
-      'header [class*="userAvatar"]',
-      'nav .user-avatar',
-      '.side-nav .avatar-wrapper',
-    ];
-    for (const sel of avatarSelectors) {
-      if (
-        await page
-          .locator(sel)
-          .first()
-          .isVisible()
-          .catch(() => false)
-      ) {
-        debugLog('User avatar found → IS logged in');
-        return true;
-      }
-    }
-
-    // FALLBACK: Check publish button (only visible when logged in)
-    if (
-      await page
-        .locator('button:has-text("发布")')
-        .first()
-        .isVisible()
-        .catch(() => false)
-    ) {
-      debugLog('Publish button found → IS logged in');
+    // STEP 2: 检查用户侧边栏组件是否存在
+    // 如果存在 = 已登录
+    const userSideBarVisible = await page
+      .locator('.user.side-bar-component')
+      .first()
+      .isVisible({ timeout: 2000 })
+      .catch(() => false);
+    debugLog(`.user.side-bar-component visible: ${userSideBarVisible}`);
+    if (userSideBarVisible) {
+      debugLog('User side-bar component found → IS logged in');
       return true;
     }
 
-    // FALLBACK: URL-based check
-    // If on home/explore/user profile page without login modal/button, likely logged in
-    // NOTE: User profile pages (/user/profile/) don't have standard header elements,
-    // so we rely on URL pattern + absence of login indicators
-    if (
-      currentUrl.includes('xiaohongshu.com') &&
-      (currentUrl.includes('/explore') ||
-        currentUrl.includes('/home') ||
-        currentUrl.includes('/user/profile/') ||
-        currentUrl === 'https://www.xiaohongshu.com/')
-    ) {
-      debugLog('On home/explore/user page without login indicators → IS logged in');
-      return true;
-    }
-
-    debugLog('No login indicators found → NOT logged in');
+    // 登录框不存在 && 用户头像不存在 = 未登录
+    debugLog('No login indicator and no avatar found → NOT logged in');
     return false;
   } catch (error) {
     debugLog('Error checking login status:', error);
