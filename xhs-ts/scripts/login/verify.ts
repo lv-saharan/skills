@@ -31,6 +31,8 @@ export async function verifyExistingSession(user?: UserName): Promise<boolean> {
   }
 
   // Use withProfile to support both CDP and Persistent Context modes
+  // CRITICAL: Use config.headless instead of forcing headless=true
+  // Forcing headless mode triggers anti-bot detection on Xiaohongshu
   try {
     const result = await withProfile(
       user || 'default',
@@ -50,7 +52,7 @@ export async function verifyExistingSession(user?: UserName): Promise<boolean> {
 
         return isLoggedIn;
       },
-      { headless: true }
+      { headless: false }  // Use visible browser to avoid detection
     );
 
     if (result) {

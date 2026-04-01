@@ -207,18 +207,25 @@ export async function spawnCDPBrowserDetached(
   const now = new Date().toISOString();
 
   // Build launch args with user-data-dir and CDP port
+  // CRITICAL: Avoid automation-related flags that trigger anti-bot detection
   const args = [
     `--remote-debugging-port=${port}`,
     `--user-data-dir=${userDataDir}`,
     '--start-maximized',
     '--no-first-run',
     '--no-default-browser-check',
-    '--disable-background-networking',
-    '--disable-sync',
-    '--disable-extensions',
-    '--disable-default-apps',
-    '--disable-translate',
+    // REMOVED: These flags expose automation and trigger anti-bot detection
+    // '--disable-background-networking',
+    // '--disable-sync',
+    // '--disable-extensions',
+    // '--disable-default-apps',
+    // '--disable-translate',
   ];
+
+  // Add headless mode if specified
+  if (config.headless) {
+    args.push('--headless');
+  }
 
   // Add proxy if specified
   if (config.proxy) {
