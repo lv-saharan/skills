@@ -48,6 +48,8 @@ export interface CDPConnectionMeta {
   wsEndpoint?: string;
   /** Browser process ID (if available) */
   pid?: number;
+  /** Headless mode the browser was started with */
+  headless?: boolean;
   /** Connection creation timestamp (ISO 8601) */
   connectedAt: string;
   /** Last activity timestamp (ISO 8601) */

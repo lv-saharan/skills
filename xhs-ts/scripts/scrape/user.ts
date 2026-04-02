@@ -10,7 +10,7 @@ import type { ScrapeUserOptions, ScrapeUserResult, UserIdExtraction } from './ty
 import { USER_SELECTORS, ERROR_SELECTORS } from './selectors';
 import { XhsError, XhsErrorCode, TIMEOUTS } from '../shared';
 import { withProfile, randomStealthDelay } from '../browser';
-import { resolveUser } from '../user/storage';
+import { resolveUser } from '../user';
 import { debugLog, delay, XHS_URLS } from '../utils/helpers';
 import { checkCaptcha, simulateReading, humanScroll } from '../utils/anti-detect';
 import { ensureLogin } from '../login';

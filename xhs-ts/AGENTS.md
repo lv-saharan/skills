@@ -8,16 +8,12 @@
 
 ```bash
 npm install && npm run install:browser  # Install
-npm run start -- <command>              # Run CLI
 npm run typecheck                       # Type check
 npm run lint                            # ESLint check
-npm run lint:fix                        # Auto-fix lint issues
 npm run test                            # Run tests
-npm run test:ui                         # Run tests with UI
-npm run test:debug                      # Debug tests
 ```
 
-> **Pure TypeScript project** - executed via `tsx`, no `dist/` output.
+> **Pure TypeScript** - executed via `tsx`, no `dist/` output.
 
 ---
 
@@ -25,195 +21,164 @@ npm run test:debug                      # Debug tests
 
 ```
 scripts/
-├── index.ts              # CLI 入口
-├── cli/types.ts          # CLI 类型定义
-├── config/               # 配置模块 (index.ts, config.ts, types.ts)
-├── browser/              # 浏览器管理 (index.ts, context.ts, instance.ts, launch.ts, session.ts, profile-launcher.ts, types.ts)
-├── user/                 # 多用户管理 + Profile 架构
-│   ├── index.ts          # 入口：导出 API
-│   ├── storage.ts        # 目录操作、users.json 读写、Profile 管理
-│   ├── migration.ts      # 单用户到多用户迁移
-│   ├── fingerprint.ts    # 设备指纹生成
-│   └── types.ts          # 类型定义
-├── login/                # 登录模块
-│   ├── index.ts          # 入口：导出 API
-│   ├── execute.ts        # 主编排 (<100 行)
-│   ├── qr.ts             # QR 登录
-│   ├── sms.ts            # SMS 登录
-│   ├── verify.ts         # 登录状态验证
-│   └── types.ts          # 类型定义
-├── search/               # 搜索模块 (index.ts, execute.ts, result-extractor.ts, url-builder.ts, types.ts)
-├── publish/              # 发布模块
-│   ├── index.ts, execute.ts, validation.ts, editor.ts, submitter.ts
-│   ├── constants.ts, types.ts, auth-check.ts
-│   └── uploader/         # 上传子模块 (index.ts, upload.ts, upload-wait.ts, tab-switch.ts, login-detection.ts)
-├── interact/             # 互动模块
-│   ├── index.ts          # 入口：导出 API
-│   ├── types.ts          # 类型定义
-│   ├── selectors.ts      # 选择器定义
-│   ├── shared.ts         # 共享工具 (withAuthenticatedAction, preparePageForAction)
-│   ├── url-utils.ts      # URL 提取工具 (extractNoteId, extractUserId)
-│   ├── like.ts           # 点赞
-│   ├── collect.ts        # 收藏
-│   ├── comment.ts        # 评论
-│   └── follow.ts         # 关注
-├── scrape/               # 数据抓取模块
-│   ├── index.ts          # 入口：导出 API
-│   ├── types.ts          # 类型定义
-│   ├── selectors.ts      # 选择器定义
-│   ├── utils.ts          # 工具函数 (createNoteErrorResult, parseCount)
-│   ├── note.ts           # 笔记抓取
-│   └── user.ts           # 用户抓取
-├── shared/               # 共享模块 (types.ts, constants.ts, errors.ts, index.ts)
-└── utils/                # 工具函数
-    ├── index.ts          # 工具导出
-    ├── logging.ts        # 日志工具
-    ├── auth-wait.ts      # waitForCreatorLogin, saveContextCookies
-    ├── helpers/index.ts  # delay, randomDelay, waitForCondition, retry
-    ├── anti-detect/index.ts  # humanClick, checkLoginStatus, checkCaptcha
-    └── output/           # outputSuccess, outputError
+├── browser/      # CDP 浏览器管理 (profile-launcher, cdp/, stealth/)
+├── user/         # 多用户管理 (storage-v3, profile-loader, migration)
+├── login/        # 登录 (qr, sms, auto-login)
+├── search/       # 搜索
+├── publish/      # 发布 (uploader/)
+├── interact/     # 互动 (like, collect, comment, follow)
+├── scrape/       # 抓取 (note, user)
+├── shared/       # 共享类型/常量/错误
+└── utils/        # 工具 (helpers/, anti-detect/, output/)
 ```
+
+> 详细结构：`tree scripts/` 或查看各模块 `index.ts`
 
 ---
 
 ## 核心规范
 
-### 1. 模块设计
+### 模块设计
 
 | 规则 | 要求 |
 |------|------|
-| 目录结构 | 每个功能独立目录，`index.ts` 为入口 |
-| 文件大小 | 单文件 ≤ 500 行，超出按职责拆分 |
-| 函数长度 | 单函数 ≤ 50 行 |
-| 导入数量 | 单文件 ≤ 15 个导入 |
+| 目录结构 | 独立目录，`index.ts` 为入口 |
+| 文件大小 | ≤ 500 行，超出按职责拆分 |
+| 函数长度 | ≤ 50 行 |
+| 导入数量 | ≤ 15 个 |
 
-### 2. Import 模式
+### Import 模式
 
 ```typescript
-// 类型 → 从 types.ts 导入
-import type { BrowserInstance } from '../browser/types';
-
-// 函数 → 从 index.ts 导入
-import { createBrowserInstance } from '../browser';
-
-// 常量 → 从 constants.ts 导入
-import { PAGE_LOAD_TIMEOUT } from './constants';
+// 类型 → types.ts | 函数 → index.ts | 常量 → constants.ts
+import type { X } from './types';
+import { fn } from '../module';
+import { CONST } from './constants';
 ```
 
-### 3. 代码复用
+### 代码复用
 
 | 工具函数 | 用途 |
 |----------|------|
-| `waitForCondition(condition, options)` | **替代所有 while 循环** |
-| `waitForCreatorLogin(page, timeout)` | 创作者中心登录等待 |
-| `saveContextCookies(context)` | Cookie 保存 |
-| `resolveHeadless(override, config)` | headless 解析 |
-| `withAuthenticatedAction(headless, user, callback)` | 统一认证流程 |
-| `preparePageForAction(page, url)` | 页面准备（导航+错误检查+模拟阅读） |
+| `waitForCondition()` | **替代所有 while 循环** |
+| `withAuthenticatedAction()` | 统一认证流程 |
+| `preparePageForAction()` | 页面准备（导航+错误检查+模拟阅读） |
+| `humanMouseMoveBezier()` | 贝塞尔曲线鼠标轨迹 |
+| `humanScrollPhysics()` | 物理滚动模拟 |
 
-**禁止手写 while 循环等待：**
+---
+
+## 禁止项
+
 ```typescript
-// ✅ CORRECT
+// ❌ 类型错误抑制
+as any, @ts-ignore, @ts-expect-error
+
+// ❌ 手写 while 循环
+while (Date.now() - startTime < timeout) { ... }
+// ✅ 使用 waitForCondition()
 await waitForCondition(async () => page.isVisible('#btn'), { timeout: 10000 });
 
-// ❌ WRONG
-while (Date.now() - startTime < timeout) { ... }
-```
+// ❌ 空catch块
+catch (e) {}
 
-### 4. 类型组织
-
-| 类型 | 位置 |
-|------|------|
-| 模块私有类型 | `<module>/types.ts` |
-| 模块公共类型 | `<module>/types.ts` + 通过 index.ts 导出 |
-| 全局共享类型 | `shared/types.ts` |
-
----
-
-## Interact Module Architecture
-
-互动模块（like, collect, comment, follow）采用统一架构：
-
-### 共享工具 (scripts/interact/shared.ts)
-
-```typescript
-// 执行认证操作（处理 Cookie 加载、登录验证）
-await withAuthenticatedAction(headless, user, async (page) => {
-  // 业务逻辑
-});
-
-// 准备页面（导航 + 错误检查 + 模拟阅读）
-const pageError = await preparePageForAction(page, url);
-
-// 延迟常量
-INTERACTION_DELAYS.afterNavigation  // 1500-2500ms
-INTERACTION_DELAYS.afterClick        // 1000-1500ms
-INTERACTION_DELAYS.batchInterval     // 2000ms
-```
-
-### URL 工具 (scripts/interact/url-utils.ts)
-
-```typescript
-// 从 URL 提取笔记 ID
-const result = extractNoteId(url);
-// { success: true, id: "noteId" } | { success: false, error: "..." }
-
-// 从 URL 提取用户 ID
-const result = extractUserId(url);
-```
-
-### 错误检测
-
-评论模块包含错误检测：
-- 手机号绑定要求 (`评论受限: 绑定手机`)
-- 频率限制
-- 需要登录
-
-### 实现模式
-
-```typescript
-// 每个互动命令遵循：
-
-// 1. 从 URL 提取 ID
-const extraction = extractNoteId(url);
-if (!extraction.success) return { success: false, error: extraction.error };
-
-// 2. 准备页面
-const pageError = await preparePageForAction(page, url);
-if (pageError) return { success: false, error: pageError };
-
-// 3. 检查状态 / 执行操作
-const status = await checkStatus(page);
-if (status.alreadyDone) return { success: true, alreadyDone: true };
-
-// 4. 执行操作
-await humanClick(page, SELECTORS.button);
-
-// 5. 验证结果
-const finalStatus = await checkStatus(page);
-return { success: finalStatus.done, ... };
-```
-
----
-
-## Anti-Detection
-
-| 技术 | 实现 |
-|------|------|
-| Minimal Browser Args | 仅 `--start-maximized` |
-| Stealth Script | `context.addInitScript()` |
-| Homepage Entry | 从主页点击进入创作者中心 |
-| Random Delays | `randomDelay(1000, 3000)` |
-
-**关键：禁止直接导航到创作者中心**
-```typescript
-// ❌ WRONG - triggers detection
+// ❌ 直接导航到创作者中心
 await page.goto('https://creator.xiaohongshu.com/publish');
-
-// ✅ CORRECT - simulate real user
+// ✅ 从主页点击进入
 await page.goto('https://www.xiaohongshu.com');
 await page.click('a[href*="creator.xiaohongshu.com"]');
 ```
+
+---
+
+## 关键 API
+
+```typescript
+// 浏览器管理
+import { withProfile } from './browser';
+await withProfile('user', async (page, result) => {
+  const { browser, context, cdpPort, isNewInstance } = result;
+  // ...
+}, { headless: true, keepAlive: true });
+
+// 认证操作
+import { withAuthenticatedAction, preparePageForAction } from './interact/shared';
+await withAuthenticatedAction(headless, user, async (page) => { ... });
+
+// URL 提取
+import { extractNoteId, extractUserId } from './interact/url-utils';
+const { id } = extractNoteId(url);
+
+// 用户管理
+import { resolveUser, listUsers } from './user';
+const user = resolveUser(options.user);  // --user > current > default
+
+// 反检测脚本
+import { generateStealthScript } from './browser/stealth';
+const script = generateStealthScript(fingerprint);
+```
+
+---
+
+## 核心架构
+
+### Browser Module (CDP)
+
+- **进程分离**：detached mode，CLI 退出后浏览器继续运行
+- **实例复用**：跨命令共享浏览器实例
+- **端口分配**：`9222 + hash(user) % 100`
+- **持久化**：`users/{user}/profile.json`
+
+> 详见 [docs/architecture/browser.md](docs/architecture/browser.md)
+
+### Stealth Module
+
+模块化反检测脚本：navigator, screen, webgl, canvas, audio, webrtc 等 15 个模块。
+
+> 详见 [docs/architecture/stealth.md](docs/architecture/stealth.md)
+
+### Multi-User Management
+
+```
+users/
+├── users.json      # { current, version: 3 }
+└── {user}/
+    ├── user-data/  # Playwright context (cookies)
+    └── profile.json # meta + connection
+```
+
+> 详见 [docs/architecture/multi-user.md](docs/architecture/multi-user.md)
+
+---
+
+## Output Format
+
+```json
+// Success
+{ "success": true, "data": { ... }, "toAgent": "PARSE:notes" }
+
+// Error
+{ "error": true, "message": "...", "code": "NOT_LOGGED_IN" }
+
+// QR Code
+{ "type": "qr_login", "qrPath": "/abs/path/to/qr.png" }
+```
+
+---
+
+## Commands Reference
+
+| 命令 | 说明 |
+|------|------|
+| `npm run login` | 扫码/短信登录 |
+| `npm run search -- "<keyword>"` | 搜索笔记 |
+| `npm run publish` | 发布笔记 |
+| `npm run like/collect/comment/follow` | 互动操作 |
+| `npm run scrape-note/user` | 数据抓取 |
+| `npm run browser -- --start/stop/status` | 浏览器管理 |
+| `npm run user` | 用户管理 |
+
+> 完整参数见 [SKILL.md](SKILL.md)
 
 ---
 
@@ -233,138 +198,22 @@ throw new XhsError(message, XhsErrorCode.NOT_LOGGED_IN);
 
 ---
 
-## Output Format
-
-```json
-// Success
-{ "success": true, "data": { ... } }
-
-// Error
-{ "error": true, "message": "...", "code": "ERROR_CODE" }
-
-// QR Code
-{ "type": "qr_login", "qrPath": "/abs/path/to/qr.png" }
-```
-
----
-
-## Commands Reference
-
-| 命令 | 参数 | 说明 |
-|------|------|------|
-| `user` | `--set-current <name>`, `--set-default` | 用户管理 |
-| `login` | `--qr`, `--sms`, `--headless`, `--timeout`, `--user` | 登录 |
-| `search <keyword>` | `--limit`, `--skip`, `--sort`, `--note-type`, `--time-range`, `--scope`, `--location`, `--user` | 搜索 |
-| `publish` | `--title`, `--content`, `--images`, `--video`, `--tags`, `--user` | 发布 |
-| `like [urls...]` | `--delay`, `--headless`, `--user` | 点赞 |
-| `collect [urls...]` | `--delay`, `--headless`, `--user` | 收藏 |
-| `comment <url> <text>` | `--headless`, `--user` | 评论 |
-| `follow [urls...]` | `--delay`, `--headless`, `--user` | 关注 |
-| `scrape-note <url>` | `--comments`, `--max-comments`, `--user` | 抓取笔记 |
-| `scrape-user <url>` | `--notes`, `--max-notes`, `--user` | 抓取用户 |
-
----
-
-## Browser Resource Management (TypeScript 5.2+)
-
-### Modern Pattern with `await using`
-
-```typescript
-import { withProfile } from './browser';
-
-// Pattern 1: Using withProfile helper (recommended)
-await withProfile('my-user', async (page, profileResult) => {
-  const { behavior, context } = profileResult;
-  await page.goto('https://example.com');
-  return await page.title();
-}, { headless: true });
-
-// Pattern 2: Direct launchProfileBrowser
-const result = await launchProfileBrowser({ user: 'my-user' });
-await result.page.goto('https://example.com');
-// Automatic cleanup when result goes out of scope
-```
-
-### Multi-Page Management
-
-```typescript
-await withProfile('my-user', async (page, profileResult) => {
-  const { context } = profileResult;
-  
-  const [newPage] = await Promise.all([
-    context.waitForEvent('page'),
-    page.click('a[href*="creator.xiaohongshu.com"]'),
-  ]);
-  
-  await newPage.goto('...');
-}, { headless: true });
-```
-
----
-
-## Multi-User Management
-
-### Architecture
-
-```
-users/
-├── users.json            # { current: "用户名", version: 2, profiles: {...} }
-├── default/
-│   ├── user-data/        # Playwright 持久化上下文（自动保存 cookies、localStorage）
-│   ├── meta.json         # Profile 元数据
-│   ├── fingerprint.json  # 设备指纹
-│   └── tmp/
-└── {用户名}/
-    ├── user-data/
-    ├── meta.json
-    ├── fingerprint.json
-    └── tmp/
-```
-
-### Key APIs
-
-```typescript
-import {
-  listUsers,           // 获取用户列表
-  setCurrentUser,      // 设置当前用户
-  clearCurrentUser,    // 重置为默认用户
-  resolveUser,         // 解析用户优先级
-  createUserProfile,   // 创建用户 Profile
-  hasProfile,          // 检查 Profile 是否存在
-} from './user';
-
-// 用户解析优先级: --user > users.json current > 'default'
-const user = resolveUser(options.user);
-```
-
-### Migration
-
-首次启动时自动迁移：
-
-1. 创建 `users/default/` 目录
-2. 创建 `user-data/` 目录（Playwright 持久化上下文）
-3. 创建 `meta.json` 和 `fingerprint.json`
-4. 创建 `users.json` (version: 2)
-
----
-
-## Verification
-
-**每次修改后必须执行：**
-```bash
-npm run lint && npm run typecheck
-```
-
----
-
 ## Important Notes
 
-1. **Rate Limiting**: 使用 `randomDelay()` 
-2. **Session Storage**: Playwright persistent context 自动保存（`user-data/`）
-3. **Debug Mode**: `DEBUG=true` in `.env`
-4. **Headless Mode**: 无显示时强制 true
-5. **Pure TypeScript**: 无编译，tsx 直接执行
-6. **Wait Helpers**: 使用 `waitForCondition()`，禁止手写 while
-7. **Anti-Detection**: 最小化浏览器参数 + stealth 脚本
-8. **Node.js**: >= 22.16.0 (required for `using` syntax)
-9. **TypeScript**: >= 5.2 (for `AsyncDisposable` support)
+1. **Rate Limiting**: `randomDelay()` 2-5 秒间隔
+2. **Headless**: Linux 服务器（无 DISPLAY）强制 true
+3. **URL**: 必须包含 `xsec_token` 参数
+4. **Comment**: 需绑定手机号
+5. **Node.js**: >= 22.16.0 (`using` syntax)
+6. **TypeScript**: >= 5.2 (`AsyncDisposable`)
+7. **Debug Mode**: `DEBUG=true` in `.env`
+
+---
+
+## References
+
+- [Browser Architecture](docs/architecture/browser.md)
+- [Stealth Module](docs/architecture/stealth.md)
+- [Multi-User Management](docs/architecture/multi-user.md)
+- [Channel Integration](references/channel-integration.md)
+- [Troubleshooting](references/troubleshooting.md)

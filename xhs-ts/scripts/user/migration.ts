@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Migration logic for multi-user support
  *
  * @module user/migration
@@ -8,7 +8,8 @@
 import { copyFile, readdir, rename, stat, unlink, rmdir } from 'fs/promises';
 import { existsSync, mkdirSync, readFileSync, statSync } from 'fs';
 import path from 'path';
-import { getUsersDir, getUserDir, getUserTmpDir, saveUsersMeta } from './storage';
+import { getUsersDir, getUserDir, getUserTmpDir } from './storage';
+import { saveUsersMeta } from './users-meta';
 import type { UsersMeta } from './types';
 import { debugLog } from '../utils/helpers';
 

@@ -15,13 +15,17 @@ export {
   releasePortForUser,
   checkPortAvailable,
   checkCDPReady,
-  getAllocatedPorts,
   getPortForUser,
-  clearAllPorts,
 } from './port-allocator';
 
 // Launcher
-export { launchCDPBrowser, launchCDPBrowserWithUserData, type LaunchCDPResult } from './launcher';
+export {
+  spawnCDPBrowserDetached,
+  launchCDPBrowser,
+  launchCDPBrowserWithUserData,
+  type LaunchCDPResult,
+  type SpawnCDPResult,
+} from './launcher';
 
 // Connector
 export {
@@ -29,7 +33,6 @@ export {
   connectCDPBrowserViaWS,
   checkCDPConnection,
   getCDPEndpointInfo,
-  tryConnectCDPBrowser,
   buildCDPConnectionMeta,
 } from './connector';
 
@@ -37,24 +40,8 @@ export {
 export {
   injectStealthToContext,
   injectStealthToPage,
-  setupBrowserStealth,
   injectStealthToExistingContexts,
   createStealthContext,
   createStealthPage,
   type StealthInjectionOptions,
 } from './stealth';
-
-// Instance Manager
-export { browserInstanceManager } from './instance-manager';
-
-// Health Monitor
-export { healthMonitor, setupLifecycleHooks } from './health-monitor';
-
-// Command Lifecycle
-export {
-  withMainPage,
-  withCommandPage,
-  withCommandContext,
-  initializeCDPBrowserSystem,
-  shutdownCDPBrowserSystem,
-} from './command-lifecycle';

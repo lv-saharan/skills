@@ -115,44 +115,97 @@ export function buildSearchUrl(options: BuildSearchUrlOptions): string {
   return `${XHS_URLS.home}/search_result?${params.toString()}`;
 }
 
+// ============================================
+// Filter Selectors (for UI interaction)
+// ============================================
+
 /**
- * Get filter selector info for UI interaction
- * Used when filters need to be applied via UI interaction rather than URL
+ * Get sort filter selectors
  *
- * NOTE: These selectors are based on observed DOM structure and may need updates
- * if Xiaohongshu changes their UI. URL parameters are the primary filter mechanism.
+ * @description Sort tabs - button.tab with aria-details attribute
  */
-export function getFilterSelectors() {
+export function getSortSelectors(): Record<SearchSortType, string> {
   return {
-    // Sort tabs - button.tab with aria-details attribute
-    sort: {
-      general: 'button.tab[aria-details="综合"]',
-      time_descending: 'button.tab[aria-details="最新"]',
-      hot: 'button.tab[aria-details="最热"]',
-    },
-    // Note type tabs - div.channel with id
-    noteType: {
-      all: '#all.channel',
-      image: '#image.channel',
-      video: '#video.channel',
-    },
-    // Time range - usually in a dropdown, need to find actual selectors
-    timeRange: {
-      all: '',
-      day: '[data-time-filter="time_filter_1"], button:has-text("一天内")',
-      week: '[data-time-filter="time_filter_2"], button:has-text("一周内")',
-      month: '[data-time-filter="time_filter_3"], button:has-text("一月内")',
-    },
-    // Scope filter
-    scope: {
-      all: '',
-      following: 'button.tab[aria-details="关注"], [data-scope="following"]',
-    },
-    // Location tabs - button.tab with aria-details for location names
-    location: {
-      all: '',
-      nearby: 'button.tab[aria-details="推荐附近"]',
-      city: 'button.tab[aria-details*="市"], button.tab[aria-details*="城"]',
-    },
+    general: 'button.tab[aria-details="综合"]',
+    time_descending: 'button.tab[aria-details="最新"]',
+    hot: 'button.tab[aria-details="最热"]',
+  };
+}
+
+/**
+ * Get note type filter selectors
+ *
+ * @description Note type tabs - div.channel with id
+ */
+export function getNoteTypeSelectors(): Record<SearchNoteType, string> {
+  return {
+    all: '#all.channel',
+    image: '#image.channel',
+    video: '#video.channel',
+  };
+}
+
+/**
+ * Get time range filter selectors
+ *
+ * @description Time range dropdown selectors
+ * NOTE: These selectors may need updates if Xiaohongshu changes their UI
+ */
+export function getTimeRangeSelectors(): Record<SearchTimeRange, string> {
+  return {
+    all: '',
+    day: '[data-time-filter="time_filter_1"], button:has-text("一天内")',
+    week: '[data-time-filter="time_filter_2"], button:has-text("一周内")',
+    month: '[data-time-filter="time_filter_3"], button:has-text("一月内")',
+  };
+}
+
+/**
+ * Get scope filter selectors
+ *
+ * @description Scope filter for following tab
+ */
+export function getScopeSelectors(): Record<SearchScope, string> {
+  return {
+    all: '',
+    following: 'button.tab[aria-details="关注"], [data-scope="following"]',
+  };
+}
+
+/**
+ * Get location filter selectors
+ *
+ * @description Location tabs - button.tab with aria-details for location names
+ */
+export function getLocationSelectors(): Record<SearchLocation, string> {
+  return {
+    all: '',
+    nearby: 'button.tab[aria-details="推荐附近"]',
+    city: 'button.tab[aria-details*="市"], button.tab[aria-details*="城"]',
+  };
+}
+
+/**
+ * Get all filter selectors for UI interaction
+ *
+ * @description Combined filter selectors for all search filters.
+ * URL parameters are the primary filter mechanism; these selectors
+ * are used when filters need to be applied via UI interaction.
+ *
+ * @deprecated Use individual selector functions instead for better tree-shaking
+ */
+export function getFilterSelectors(): {
+  sort: Record<SearchSortType, string>;
+  noteType: Record<SearchNoteType, string>;
+  timeRange: Record<SearchTimeRange, string>;
+  scope: Record<SearchScope, string>;
+  location: Record<SearchLocation, string>;
+} {
+  return {
+    sort: getSortSelectors(),
+    noteType: getNoteTypeSelectors(),
+    timeRange: getTimeRangeSelectors(),
+    scope: getScopeSelectors(),
+    location: getLocationSelectors(),
   };
 }

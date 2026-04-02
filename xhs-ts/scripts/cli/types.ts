@@ -2,164 +2,188 @@
  * CLI Command Options Type Definitions
  *
  * @module cli/types
- * @description Type definitions for CLI command options (raw CLI inputs)
+ * @description Type definitions for CLI command options
+ *
+ * NOTE: Positional arguments (url, urls, text, keyword) are NOT included in these interfaces.
+ * They are passed as separate parameters to action handlers.
  */
 
+// ============================================
+// Base Interface
+// ============================================
+
 /**
- * Login command options (CLI-specific, raw string inputs)
+ * Base command options - common to all commands with options
+ *
+ * NOTE: All boolean fields come from Commander.js flags (e.g., --headless)
+ * They are `true` when flag is present, `undefined` otherwise.
  */
-export interface CliLoginOptions {
-  /** Use QR code login */
-  qr?: boolean;
-  /** Use SMS login */
-  sms?: boolean;
-  /** Login to creator center */
-  creator?: boolean;
-  /** Run in headless mode */
+export interface BaseCommandOptions {
+  /** Run in headless mode (--headless flag) */
   headless?: boolean;
-  /** Login timeout in milliseconds (string from CLI) */
-  timeout?: string;
-  /** User name for multi-user support */
+  /** User name for multi-user support (--user <name>) */
   user?: string;
 }
 
-/**
- * Search command options (CLI-specific, raw string inputs)
- */
-export interface CliSearchOptions {
-  /** Number of results to return (string from CLI, default: 10, max: 100) */
-  limit: string;
-  /** Number of results to skip (string from CLI, default: 0) */
-  skip?: string;
-  /** Sort by: general, time_descending, or hot */
-  sort: 'general' | 'time_descending' | 'hot';
-  /** Note type filter: all, image, or video */
-  noteType?: 'all' | 'image' | 'video';
-  /** Time range filter: all, day, week, or month */
-  timeRange?: 'all' | 'day' | 'week' | 'month';
-  /** Search scope filter: all or following */
-  scope?: 'all' | 'following';
-  /** Location filter: all, nearby, or city */
-  location?: 'all' | 'nearby' | 'city';
-  /** Run in headless mode */
-  headless?: boolean;
-  /** User name for multi-user support */
-  user?: string;
-}
+// ============================================
+// Interact Module Commands
+// ============================================
 
 /**
- * Publish command options (CLI-specific, raw string inputs)
+ * Batch interact command options - for like, collect, follow
+ * These commands operate on multiple URLs with optional delay.
  */
-export interface CliPublishOptions {
-  /** Note title (max 20 chars) */
-  title: string;
-  /** Note content (max 1000 chars) */
-  content: string;
-  /** Image paths, comma separated */
-  images?: string;
-  /** Video path (alternative to images) */
-  video?: string;
-  /** Tags, comma separated */
-  tags?: string;
-  /** Run in headless mode */
-  headless?: boolean;
-  /** User name for multi-user support */
-  user?: string;
-}
-
-/**
- * Interaction command options (like, collect, comment, follow)
- */
-export interface InteractOptions {
-  /** Run in headless mode */
-  headless?: boolean;
-  /** User name for multi-user support */
-  user?: string;
-}
-
-/**
- * Like command options (CLI-specific)
- * Supports single or multiple URLs (space-separated)
- */
-export interface CliLikeOptions {
-  /** Run in headless mode */
-  headless?: boolean;
-  /** User name for multi-user support */
-  user?: string;
-  /** Delay between likes in ms (for multiple URLs) */
+export interface BatchInteractCommandOptions extends BaseCommandOptions {
+  /** Delay between actions in milliseconds (--delay <ms>) */
   delay?: string;
 }
 
-/**
- * Collect command options (CLI-specific)
- * Supports single or multiple URLs (space-separated)
- */
-export interface CliCollectOptions {
-  /** Run in headless mode */
-  headless?: boolean;
-  /** User name for multi-user support */
-  user?: string;
-  /** Delay between collects in ms (for multiple URLs) */
-  delay?: string;
+/** Like command options */
+export interface LikeCommandOptions extends BatchInteractCommandOptions {}
+
+/** Collect command options */
+export interface CollectCommandOptions extends BatchInteractCommandOptions {}
+
+/** Follow command options */
+export interface FollowCommandOptions extends BatchInteractCommandOptions {}
+
+/** Comment command options (single URL, no batch) */
+export interface CommentCommandOptions extends BaseCommandOptions {
+  // url and text are positional arguments, not in options
 }
 
-/**
- * Comment command options (CLI-specific)
- */
-export interface CliCommentOptions {
-  /** Run in headless mode */
-  headless?: boolean;
-  /** User name for multi-user support */
-  user?: string;
-}
+// ============================================
+// Scrape Module Commands
+// ============================================
 
 /**
- * Follow command options (CLI-specific)
- * Supports single or multiple URLs (space-separated)
+ * Scrape note command options
+ * URL is passed as positional argument, not in options.
  */
-export interface CliFollowOptions {
-  /** Run in headless mode */
-  headless?: boolean;
-  /** User name for multi-user support */
-  user?: string;
-  /** Delay between follows in ms (for multiple URLs) */
-  delay?: string;
-}
-
-/**
- * User command options
- */
-export interface CliUserOptions {
-  /** Set current user */
-  setCurrent?: string;
-  /** Set to default user */
-  setDefault?: boolean;
-}
-
-/**
- * Scrape note command options (CLI-specific)
- */
-export interface CliScrapeNoteOptions {
-  /** Run in headless mode */
-  headless?: boolean;
-  /** User name for multi-user support */
-  user?: string;
-  /** Include comments in result */
+export interface ScrapeNoteCommandOptions extends BaseCommandOptions {
+  /** Include comments in result (--comments flag) */
   comments?: boolean;
-  /** Max comments to include */
+  /** Max comments to include (--max-comments <number>) */
   maxComments?: string;
 }
 
 /**
- * Scrape user command options (CLI-specific)
+ * Scrape user command options
+ * URL is passed as positional argument, not in options.
  */
-export interface CliScrapeUserOptions {
-  /** Run in headless mode */
-  headless?: boolean;
-  /** User name for multi-user support */
-  user?: string;
-  /** Include recent notes in result */
+export interface ScrapeUserCommandOptions extends BaseCommandOptions {
+  /** Include recent notes in result (--notes flag) */
   notes?: boolean;
-  /** Max notes to include */
+  /** Max notes to include (--max-notes <number>) */
   maxNotes?: string;
+}
+
+// ============================================
+// Other Commands
+// ============================================
+
+/**
+ * Login command options
+ */
+export interface LoginCommandOptions extends BaseCommandOptions {
+  /** Use QR code login (--qr flag) */
+  qr?: boolean;
+  /** Use SMS login (--sms flag) */
+  sms?: boolean;
+  /** Login to creator center (--creator flag) */
+  creator?: boolean;
+  /** Login timeout in milliseconds (--timeout <ms>) */
+  timeout?: string;
+}
+
+/**
+ * Search command options
+ * Keyword is passed as positional argument, not in options.
+ */
+export interface SearchCommandOptions extends BaseCommandOptions {
+  /** Number of results (--limit <number>) */
+  limit?: string;
+  /** Results to skip (--skip <number>) */
+  skip?: string;
+  /** Sort type (--sort <type>) */
+  sort?: string;
+  /** Note type filter (--note-type <type>) */
+  noteType?: string;
+  /** Time range filter (--time-range <range>) */
+  timeRange?: string;
+  /** Search scope (--scope <scope>) */
+  scope?: string;
+  /** Location filter (--location <location>) */
+  location?: string;
+}
+
+/**
+ * Publish command options
+ */
+export interface PublishCommandOptions extends BaseCommandOptions {
+  /** Note title (--title <title>, required) */
+  title: string;
+  /** Note content (--content <content>, required) */
+  content: string;
+  /** Image paths, comma separated (--images <paths>) */
+  images?: string;
+  /** Video path (--video <path>) */
+  video?: string;
+  /** Tags, comma separated (--tags <tags>) */
+  tags?: string;
+}
+
+/**
+ * Browser command options
+ */
+export interface BrowserCommandOptions extends BaseCommandOptions {
+  /** Start browser instance (--start flag) */
+  start?: boolean;
+  /** Stop all browser instances (--stop flag) */
+  stop?: boolean;
+  /** Stop browser for specific user (--stop-user <name>) */
+  stopUser?: string;
+  /** Show browser status (--status flag) */
+  status?: boolean;
+  /** List saved connections (--list flag) */
+  list?: boolean;
+}
+
+/**
+ * User command options (no base options - standalone)
+ */
+export interface UserCommandOptions {
+  /** Set current user (--set-current <name>) */
+  setCurrent?: string;
+  /** Reset to default user (--set-default flag) */
+  setDefault?: boolean;
+}
+
+// ============================================
+// Helper Functions
+// ============================================
+
+/**
+ * Parse number option with default value
+ */
+export function parseNumberOption(value: string | undefined, defaultValue: number): number {
+  if (value === undefined) {
+    return defaultValue;
+  }
+  const parsed = parseInt(value, 10);
+  return Number.isNaN(parsed) ? defaultValue : parsed;
+}
+
+/**
+ * Resolve headless option: CLI override > config default
+ */
+export function resolveHeadless(cliValue: boolean | undefined, configDefault: boolean): boolean {
+  return cliValue ?? configDefault;
+}
+
+/**
+ * Resolve boolean flag: true if flag is present
+ */
+export function resolveBoolFlag(value: boolean | undefined, defaultValue = false): boolean {
+  return value ?? defaultValue;
 }

@@ -13,7 +13,7 @@ import {
   type ProfileLaunchOptions,
   type StealthBehaviorConfig,
 } from '../browser';
-import { resolveUser } from '../user/storage';
+import { resolveUser } from '../user';
 import { XhsError, XhsErrorCode, TIMEOUTS } from '../shared';
 import { XHS_URLS, gaussianDelay } from '../utils/helpers';
 import { checkLoginStatus, checkCaptcha, simulateReading } from '../utils/anti-detect';

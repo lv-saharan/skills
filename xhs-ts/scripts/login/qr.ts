@@ -7,7 +7,7 @@
 
 import type { Page } from 'playwright';
 import { XhsError, XhsErrorCode } from '../shared';
-import type { BrowserInstance } from '../browser';
+import type { BrowserInstance } from '../browser/types';
 import type { UserName } from '../user';
 import { XHS_URLS, debugLog, delay, randomDelay, waitForCondition } from '../utils/helpers';
 import { humanClick, checkCaptcha, checkErrorPage } from '../utils/anti-detect';
@@ -91,16 +91,6 @@ async function isQrCodeExpired(page: Page): Promise<boolean> {
 
 /**
  * Wait for QR code scan and login completion
- *
- * DETECTION STRATEGY (simple and reliable):
- * Login success = QR code disappeared AND (URL changed OR login modal disappeared)
- *
- * When user scans QR code:
- * 1. QR code disappears from the page
- * 2. Page redirects away from /login
- * 3. Login modal/container disappears
- *
- * Any combination of these indicates successful login.
  */
 export async function waitForQrScan(page: Page, timeout: number): Promise<void> {
   debugLog('Waiting for QR code scan...');
@@ -115,7 +105,6 @@ export async function waitForQrScan(page: Page, timeout: number): Promise<void> 
     async () => {
       const elapsed = Math.floor((Date.now() - startTime) / 1000);
 
-      // Check if page/browser was closed by user
       if (page.isClosed()) {
         throw new XhsError(
           'Browser window closed by user. Login cancelled.',
@@ -123,7 +112,6 @@ export async function waitForQrScan(page: Page, timeout: number): Promise<void> 
         );
       }
 
-      // Check for CAPTCHA
       const hasCaptcha = await checkCaptcha(page);
       if (hasCaptcha) {
         throw new XhsError(
@@ -132,7 +120,6 @@ export async function waitForQrScan(page: Page, timeout: number): Promise<void> 
         );
       }
 
-      // Check for expired QR code
       if (await isQrCodeExpired(page)) {
         throw new XhsError(
           'QR code expired. Please refresh and try again.',
@@ -144,7 +131,6 @@ export async function waitForQrScan(page: Page, timeout: number): Promise<void> 
       const qrVisible = await isAnyVisible(page, QR_SELECTORS);
       const modalVisible = await isAnyVisible(page, LOGIN_MODAL_SELECTORS);
 
-      // Log state changes (only once)
       if (!qrVisible && !loggedQrGone) {
         debugLog('[' + elapsed + 's] QR code disappeared');
         loggedQrGone = true;
@@ -158,8 +144,6 @@ export async function waitForQrScan(page: Page, timeout: number): Promise<void> 
         loggedUrlChanged = true;
       }
 
-      // SUCCESS CONDITIONS:
-      // QR code must be gone, and either URL changed or modal disappeared
       const qrGone = !qrVisible;
       const urlChanged = !currentUrl.includes('/login');
       const modalGone = !modalVisible;
@@ -170,7 +154,6 @@ export async function waitForQrScan(page: Page, timeout: number): Promise<void> 
         debugLog('  - URL changed: ' + urlChanged);
         debugLog('  - Modal gone: ' + modalGone);
 
-        // Wait a moment for page to stabilize
         await delay(1500);
 
         debugLog('Login successful!');
@@ -198,20 +181,12 @@ export async function waitForQrScan(page: Page, timeout: number): Promise<void> 
 
 /**
  * Trigger login modal from home page
- *
- * Strategy: Start from home page for natural behavior
- * 1. Navigate to home page
- * 2. Check for error page (IP risk, etc.)
- * 3. Wait for page to load
- * 4. Check if login modal already visible (auto-popup)
- * 5. If not, click login button to trigger login modal
  */
 async function triggerLoginModal(page: Page): Promise<void> {
   debugLog('Navigating to home page...');
   await page.goto(XHS_URLS.home, { waitUntil: 'domcontentloaded', timeout: 30000 });
   await randomDelay(2000, 3000);
 
-  // STEP 1: 检查是否为错误页面（IP风险等）
   const errorResult = await checkErrorPage(page);
   if (errorResult.isError) {
     throw new XhsError(
@@ -221,21 +196,18 @@ async function triggerLoginModal(page: Page): Promise<void> {
     );
   }
 
-  // STEP 2: 检查登录弹窗是否已经显示（自动弹出）
   const modalVisible = await isAnyVisible(page, LOGIN_MODAL_SELECTORS);
   if (modalVisible) {
     debugLog('Login modal already visible (auto-popup)');
     return;
   }
 
-  // STEP 3: 检查 QR 码是否已经显示（直接跳转到登录页）
   const qrVisible = await isAnyVisible(page, QR_SELECTORS);
   if (qrVisible) {
     debugLog('QR code already visible (redirected to login)');
     return;
   }
 
-  // STEP 4: 点击登录按钮触发登录弹窗
   debugLog('Clicking login button to trigger login modal...');
   for (const selector of LOGIN_BUTTON_SELECTORS) {
     const clicked = await humanClick(page, selector);
@@ -246,7 +218,6 @@ async function triggerLoginModal(page: Page): Promise<void> {
     }
   }
 
-  // Fallback: 直接导航到登录页
   debugLog('No login button found, navigating to login page...');
   await page.goto(XHS_URLS.login, { waitUntil: 'domcontentloaded', timeout: 30000 });
   await randomDelay(1000, 2000);
@@ -263,10 +234,8 @@ export async function qrLogin(
 ): Promise<LoginResult> {
   const { page } = instance;
 
-  // Start from home page (natural behavior)
   await triggerLoginModal(page);
 
-  // Try to find QR code
   let qrFound = false;
   for (const selector of QR_SELECTORS) {
     try {
@@ -280,7 +249,6 @@ export async function qrLogin(
   }
 
   if (!qrFound) {
-    // Try clicking QR tab
     const qrTabClicked = await humanClick(page, 'text=扫码登录, [class*="qrcode"], [class*="qr-"]');
     if (qrTabClicked) {
       debugLog('Clicked QR tab');
@@ -288,7 +256,6 @@ export async function qrLogin(
     }
   }
 
-  // Handle headless mode - save QR to file
   if (isHeadless) {
     debugLog('Headless mode: capturing QR code to file');
     const qrPath = await captureQrCodeToFile(page, user);
@@ -297,10 +264,8 @@ export async function qrLogin(
     console.error('Please scan the QR code with Xiaohongshu app to login.');
   }
 
-  // Wait for scan and login
   await waitForQrScan(page, timeout);
 
-  // Navigate to home page to ensure session is established
   debugLog('Navigating to home page to finalize login...');
   await page.goto(XHS_URLS.home, { waitUntil: 'networkidle', timeout: 30000 }).catch(() => {
     debugLog('Navigation to home page timed out, continuing...');
@@ -308,7 +273,6 @@ export async function qrLogin(
 
   await delay(1000);
 
-  // Profile auto-persists cookies to user-data/ directory
   debugLog('Login successful. Session will auto-persist to profile.');
 
   return {

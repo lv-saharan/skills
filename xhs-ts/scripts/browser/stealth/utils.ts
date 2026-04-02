@@ -1,9 +1,39 @@
-/**
+﻿/**
  * Stealth utilities
  *
  * @module browser/stealth/utils
  * @description Utility functions for stealth scripts
  */
+
+/**
+ * Injection guard script
+ *
+ * Prevents multiple executions of stealth script in the same page context.
+ * This is necessary because:
+ * 1. Each CLI command runs in a new Node.js process
+ * 2. WeakSet in Node.js cannot track across processes
+ * 3. Playwright creates new JS objects for each CDP connection
+ *
+ * Solution: Check in browser context (not Node.js) if already injected.
+ */
+export function getInjectionGuardScript(): string {
+  return `
+// Injection guard - prevent duplicate execution
+if (window.__XHS_STEALTH_INJECTED__) {
+  // Already injected, skip
+} else {
+  window.__XHS_STEALTH_INJECTED__ = true;
+`;
+}
+
+/**
+ * Injection guard closing bracket
+ */
+export function getInjectionGuardCloseScript(): string {
+  return `
+} // End injection guard
+`;
+}
 
 /**
  * Polyfill script for __name
@@ -51,8 +81,9 @@ export function getSourceURLScript(): string {
 }
 
 /**
- * Combine multiple scripts into one
+ * Combine multiple scripts into one with injection guard
  */
 export function combineScripts(...scripts: string[]): string {
-  return scripts.filter(Boolean).join('\n\n');
+  const content = scripts.filter(Boolean).join('\n\n');
+  return getInjectionGuardScript() + '\n' + content + '\n' + getInjectionGuardCloseScript();
 }

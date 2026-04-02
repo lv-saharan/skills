@@ -21,7 +21,6 @@ export type {
   ScrapeNoteVideo,
   ScrapeNoteComment,
   NoteIdExtraction,
-  CliScrapeNoteOptions,
 } from './types';
 
 // ============================================
@@ -38,7 +37,6 @@ export type {
   ScrapeUserStats,
   ScrapeUserRecentNote,
   UserIdExtraction,
-  CliScrapeUserOptions,
 } from './types';
 
 // ============================================

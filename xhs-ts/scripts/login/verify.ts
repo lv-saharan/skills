@@ -52,7 +52,7 @@ export async function verifyExistingSession(user?: UserName): Promise<boolean> {
 
         return isLoggedIn;
       },
-      { headless: false }  // Use visible browser to avoid detection
+      { headless: false } // Use visible browser to avoid detection
     );
 
     if (result) {

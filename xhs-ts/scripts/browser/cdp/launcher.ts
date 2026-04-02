@@ -19,6 +19,7 @@ import {
   type BrowserInstanceConfig,
 } from './types';
 import { allocatePort, checkCDPReady } from './port-allocator';
+import { debugLog, waitForCondition } from '../../utils/helpers';
 
 // ============================================
 // Types
@@ -47,9 +48,6 @@ export interface SpawnCDPResult {
 
 /**
  * Fetch CDP WebSocket endpoint
- *
- * @param port - CDP port
- * @returns WebSocket endpoint URL
  */
 export async function fetchWSEndpoint(port: number): Promise<string | undefined> {
   try {
@@ -66,9 +64,6 @@ export async function fetchWSEndpoint(port: number): Promise<string | undefined>
 
 /**
  * Get browser PID via CDP (limited, as CDP doesn't expose PID directly)
- *
- * @param port - CDP port
- * @returns Browser PID or undefined
  */
 export async function fetchBrowserPid(port: number): Promise<number | undefined> {
   try {
@@ -83,6 +78,25 @@ export async function fetchBrowserPid(port: number): Promise<number | undefined>
   return undefined;
 }
 
+/**
+ * Wait for CDP endpoint to be ready
+ *
+ * Uses waitForCondition to avoid manual while loops.
+ * Returns true if ready, false if timeout.
+ */
+async function waitForCDPReady(port: number, timeout: number): Promise<boolean> {
+  try {
+    await waitForCondition(async () => checkCDPReady(port, 1000), {
+      timeout,
+      interval: 500,
+      timeoutMessage: `CDP endpoint not ready on port ${port}`,
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 // ============================================
 // Browser Executable Finder
 // ============================================
@@ -92,9 +106,6 @@ export async function fetchBrowserPid(port: number): Promise<number | undefined>
  *
  * Searches Playwright's browser cache without loading Playwright.
  * This keeps Node.js handles free for CLI to exit.
- *
- * @param config - Browser configuration
- * @returns Browser executable path
  */
 export async function findBrowserExecutablePath(
   config: Partial<BrowserInstanceConfig>
@@ -105,44 +116,30 @@ export async function findBrowserExecutablePath(
   }
 
   // Try to find Playwright's chromium in browser cache manually
-  // We do NOT use chromium.executablePath() as it loads Playwright
   const cacheDirs = [
-    // Windows - most common
     path.join(process.env.LOCALAPPDATA || '', 'ms-playwright'),
-    // Windows - alternative
     path.join(process.env.USERPROFILE || '', '.cache', 'ms-playwright'),
-    // macOS
     path.join(process.env.HOME || '', '.cache', 'ms-playwright'),
-    // Linux
     path.join(
       process.env.XDG_CACHE_HOME || path.join(process.env.HOME || '', '.cache'),
       'ms-playwright'
     ),
-    // Global npm cache
     path.join(process.env.npm_config_cache || '', 'ms-playwright'),
   ];
 
   for (const cacheDir of cacheDirs) {
     if (fs.existsSync(cacheDir)) {
       try {
-        // List all directories and find chromium
         const entries = fs.readdirSync(cacheDir, { withFileTypes: true });
         const chromiumDirs = entries
           .filter((e) => e.isDirectory() && e.name.startsWith('chromium'))
           .map((e) => e.name);
 
         for (const chromiumDir of chromiumDirs) {
-          // Windows: chrome.exe in chromium-xxx/chrome-win64/ or chromium-xxx/
-          // macOS: chrome inside chromium-xxx/chrome-mac/Chromium.app/Contents/MacOS/
-          // Linux: chrome inside chromium-xxx/chrome-linux/
           const possiblePaths = [
-            // Windows with chrome-win64 subdirectory
             path.join(cacheDir, chromiumDir, 'chrome-win64', 'chrome.exe'),
-            // Windows direct
             path.join(cacheDir, chromiumDir, 'chrome.exe'),
-            // Linux
             path.join(cacheDir, chromiumDir, 'chrome-linux', 'chrome'),
-            // macOS
             path.join(
               cacheDir,
               chromiumDir,
@@ -166,7 +163,6 @@ export async function findBrowserExecutablePath(
     }
   }
 
-  // Throw error if not found
   throw new Error(
     'Chromium browser not found. Please install Playwright browsers with: npm run install:browser'
   );
@@ -181,23 +177,11 @@ export async function findBrowserExecutablePath(
  *
  * This launches the browser WITHOUT connecting via Playwright.
  * The browser runs as an independent process, allowing the CLI to exit immediately.
- * Later commands can connect via CDP when needed.
- *
- * Key features:
- * - Browser process is detached (parent can exit)
- * - No Playwright WebSocket connection (pure subprocess spawn)
- * - Browser persists across CLI invocations
- * - CLI can exit immediately after spawning
- *
- * @param config - Browser instance configuration
- * @param userDataDir - User data directory path for cookie persistence
- * @returns Spawn result with CDP metadata
  */
 export async function spawnCDPBrowserDetached(
   config: BrowserInstanceConfig,
   userDataDir: string
 ): Promise<SpawnCDPResult> {
-  // Allocate port
   const portResult = await allocatePort(config.user);
   if (!portResult.success || !portResult.port) {
     throw new Error(portResult.error || 'Failed to allocate CDP port');
@@ -206,83 +190,58 @@ export async function spawnCDPBrowserDetached(
   const port = portResult.port;
   const now = new Date().toISOString();
 
-  // Build launch args with user-data-dir and CDP port
-  // CRITICAL: Avoid automation-related flags that trigger anti-bot detection
   const args = [
     `--remote-debugging-port=${port}`,
     `--user-data-dir=${userDataDir}`,
     '--start-maximized',
     '--no-first-run',
     '--no-default-browser-check',
-    // REMOVED: These flags expose automation and trigger anti-bot detection
-    // '--disable-background-networking',
-    // '--disable-sync',
-    // '--disable-extensions',
-    // '--disable-default-apps',
-    // '--disable-translate',
   ];
 
-  // Add headless mode if specified
   if (config.headless) {
     args.push('--headless');
   }
 
-  // Add proxy if specified
   if (config.proxy) {
     args.push(`--proxy-server=${config.proxy}`);
   }
 
-  // Find browser executable (without loading Playwright)
   const executablePath = await findBrowserExecutablePath(config);
 
-  // Spawn browser as detached process
-  // On Windows, use 'start' command to ensure process survives parent exit
-  let browserProcess;
-  let browserPid = 0;
-
-  // Both Windows and Unix: use direct spawn with detached mode
-  // CRITICAL: Do NOT use 'start' command on Windows as it doesn't pass args correctly
-  browserProcess = spawn(executablePath, args, {
-    detached: true, // Important: allows parent process to exit independently
-    stdio: 'ignore', // Don't capture stdout/stderr - prevents parent from waiting
+  debugLog(`[spawnCDPBrowserDetached] Spawning browser with config:`, {
+    headless: config.headless,
+    hasProxy: !!config.proxy,
+    args: args.join(' '),
   });
-  browserPid = browserProcess.pid || 0;
 
-  // Unref the process so parent can exit without waiting for child
+  const browserProcess = spawn(executablePath, args, {
+    detached: true,
+    stdio: 'ignore',
+  });
+  const browserPid = browserProcess.pid || 0;
+
   browserProcess.unref();
 
-  // Wait for CDP to be ready
-  const readyTimeout = DEFAULT_CDP_READY_TIMEOUT;
-  const startTime = Date.now();
-  let isReady = false;
-
-  while (Date.now() - startTime < readyTimeout) {
-    isReady = await checkCDPReady(port, 1000);
-    if (isReady) {
-      break;
-    }
-    await new Promise((resolve) => setTimeout(resolve, 500));
-  }
+  // Wait for CDP to be ready using waitForCondition
+  const isReady = await waitForCDPReady(port, DEFAULT_CDP_READY_TIMEOUT);
 
   if (!isReady) {
-    // Try to kill the process if it started
     try {
       process.kill(browserPid);
     } catch {
       // Ignore kill errors
     }
-    throw new Error(`CDP endpoint not ready within ${readyTimeout}ms on port ${port}`);
+    throw new Error(`CDP endpoint not ready within ${DEFAULT_CDP_READY_TIMEOUT}ms on port ${port}`);
   }
 
-  // Fetch WebSocket endpoint
   const wsEndpoint = await fetchWSEndpoint(port);
 
-  // Build CDP metadata
   const cdp: CDPConnectionMeta = {
     port,
     endpointUrl: `http://127.0.0.1:${port}`,
     wsEndpoint,
     pid: browserPid,
+    headless: config.headless ?? false,
     connectedAt: now,
     lastActivityAt: now,
   };
@@ -299,16 +258,10 @@ export async function spawnCDPBrowserDetached(
  *
  * This connects to the browser via Playwright, which maintains WebSocket connections.
  * Use this when you need to control the browser directly from CLI.
- * Note: CLI will not exit until browser is closed or connection is released.
- *
- * @param config - Browser instance configuration
- * @returns Launch result with browser and CDP metadata
  */
 export async function launchCDPBrowser(config: BrowserInstanceConfig): Promise<LaunchCDPResult> {
-  // Lazy import Playwright to avoid keeping handles alive for spawnCDPBrowserDetached users
   const { chromium } = await import('playwright');
 
-  // Allocate port
   const portResult = await allocatePort(config.user);
   if (!portResult.success || !portResult.port) {
     throw new Error(portResult.error || 'Failed to allocate CDP port');
@@ -317,7 +270,6 @@ export async function launchCDPBrowser(config: BrowserInstanceConfig): Promise<L
   const port = portResult.port;
   const now = new Date().toISOString();
 
-  // Build launch args
   const args = [
     `--remote-debugging-port=${port}`,
     '--start-maximized',
@@ -325,12 +277,10 @@ export async function launchCDPBrowser(config: BrowserInstanceConfig): Promise<L
     '--no-default-browser-check',
   ];
 
-  // Add proxy if specified
   if (config.proxy) {
     args.push(`--proxy-server=${config.proxy}`);
   }
 
-  // Launch browser
   const browser = await chromium.launch({
     headless: config.headless ?? false,
     args,
@@ -338,29 +288,16 @@ export async function launchCDPBrowser(config: BrowserInstanceConfig): Promise<L
     channel: config.browserChannel,
   });
 
-  // Wait for CDP to be ready
-  const readyTimeout = DEFAULT_CDP_READY_TIMEOUT;
-  const startTime = Date.now();
-  let isReady = false;
-
-  while (Date.now() - startTime < readyTimeout) {
-    isReady = await checkCDPReady(port, 1000);
-    if (isReady) {
-      break;
-    }
-    // Small delay before retrying
-    await new Promise((resolve) => setTimeout(resolve, 500));
-  }
+  // Wait for CDP to be ready using waitForCondition
+  const isReady = await waitForCDPReady(port, DEFAULT_CDP_READY_TIMEOUT);
 
   if (!isReady) {
     await browser.close();
-    throw new Error(`CDP endpoint not ready within ${readyTimeout}ms on port ${port}`);
+    throw new Error(`CDP endpoint not ready within ${DEFAULT_CDP_READY_TIMEOUT}ms on port ${port}`);
   }
 
-  // Fetch WebSocket endpoint
   const wsEndpoint = await fetchWSEndpoint(port);
 
-  // Build CDP metadata
   const cdp: CDPConnectionMeta = {
     port,
     endpointUrl: `http://127.0.0.1:${port}`,
@@ -378,19 +315,13 @@ export async function launchCDPBrowser(config: BrowserInstanceConfig): Promise<L
  *
  * This connects to the browser via Playwright with persistent user data.
  * Use this when you need to control the browser directly with cookie persistence.
- *
- * @param config - Browser instance configuration
- * @param userDataDir - User data directory path
- * @returns Launch result with browser and CDP metadata
  */
 export async function launchCDPBrowserWithUserData(
   config: BrowserInstanceConfig,
   userDataDir: string
 ): Promise<LaunchCDPResult> {
-  // Lazy import Playwright to avoid keeping handles alive for spawnCDPBrowserDetached users
   const { chromium } = await import('playwright');
 
-  // Allocate port
   const portResult = await allocatePort(config.user);
   if (!portResult.success || !portResult.port) {
     throw new Error(portResult.error || 'Failed to allocate CDP port');
@@ -399,7 +330,6 @@ export async function launchCDPBrowserWithUserData(
   const port = portResult.port;
   const now = new Date().toISOString();
 
-  // Build launch args with user-data-dir
   const args = [
     `--remote-debugging-port=${port}`,
     `--user-data-dir=${userDataDir}`,
@@ -408,12 +338,10 @@ export async function launchCDPBrowserWithUserData(
     '--no-default-browser-check',
   ];
 
-  // Add proxy if specified
   if (config.proxy) {
     args.push(`--proxy-server=${config.proxy}`);
   }
 
-  // Launch browser via Playwright
   const browser = await chromium.launch({
     headless: config.headless ?? false,
     args,
@@ -421,28 +349,16 @@ export async function launchCDPBrowserWithUserData(
     channel: config.browserChannel,
   });
 
-  // Wait for CDP to be ready
-  const readyTimeout = DEFAULT_CDP_READY_TIMEOUT;
-  const startTime = Date.now();
-  let isReady = false;
-
-  while (Date.now() - startTime < readyTimeout) {
-    isReady = await checkCDPReady(port, 1000);
-    if (isReady) {
-      break;
-    }
-    await new Promise((resolve) => setTimeout(resolve, 500));
-  }
+  // Wait for CDP to be ready using waitForCondition
+  const isReady = await waitForCDPReady(port, DEFAULT_CDP_READY_TIMEOUT);
 
   if (!isReady) {
     await browser.close();
-    throw new Error(`CDP endpoint not ready within ${readyTimeout}ms on port ${port}`);
+    throw new Error(`CDP endpoint not ready within ${DEFAULT_CDP_READY_TIMEOUT}ms on port ${port}`);
   }
 
-  // Fetch WebSocket endpoint
   const wsEndpoint = await fetchWSEndpoint(port);
 
-  // Build CDP metadata
   const cdp: CDPConnectionMeta = {
     port,
     endpointUrl: `http://127.0.0.1:${port}`,

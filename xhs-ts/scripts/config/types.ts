@@ -18,7 +18,6 @@ import type { LoginMethod } from '../shared';
  * - DEBUG: Enable debug logging (default: false)
  * - LOGIN_TIMEOUT: Login timeout in milliseconds (default: 120000)
  * - LOGIN_METHOD: Login method 'qr' or 'sms' (default: 'qr')
- * - USE_CDP: Use CDP mode for browser connection (default: true)
  */
 export interface AppConfig {
   /** Proxy URL */
@@ -35,6 +34,4 @@ export interface AppConfig {
   loginTimeout: number;
   /** Default login method */
   loginMethod: LoginMethod;
-  /** Use CDP mode for browser connection (keep browser alive between commands) */
-  useCdp: boolean;
 }

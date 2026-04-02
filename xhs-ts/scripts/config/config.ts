@@ -16,7 +16,6 @@ import type { UserName } from '../user';
 // Environment Loading
 // ============================================
 
-// Load environment variables from .env file
 dotenv.config();
 
 // ============================================
@@ -29,12 +28,10 @@ dotenv.config();
 function hasDisplaySupport(): boolean {
   const platform = process.platform;
 
-  // Linux: check for DISPLAY or WAYLAND_DISPLAY
   if (platform === 'linux') {
     return !!(process.env.DISPLAY || process.env.WAYLAND_DISPLAY);
   }
 
-  // Windows and macOS typically have display support
   return true;
 }
 
@@ -103,7 +100,6 @@ export function getUsersDir(): string {
 
 /**
  * Get tmp directory path for a specific user
- * @param user - User name (optional, uses default if not specified)
  */
 export function getTmpDir(user?: UserName): string {
   const userName = user || 'default';
@@ -137,9 +133,6 @@ export function generateFileName(category: string, ext: string): string {
 
 /**
  * Get full path for a file in tmp directory
- * @param category - File category (e.g., 'qr_login')
- * @param ext - File extension (e.g., 'png')
- * @param user - User name (optional)
  */
 export function getTmpFilePath(category: string, ext: string, user?: UserName): string {
   return path.resolve(getTmpDir(user), generateFileName(category, ext));
@@ -160,7 +153,6 @@ export const config: AppConfig = {
   debug: parseBoolean(process.env.DEBUG, false),
   loginTimeout: parseInteger(process.env.LOGIN_TIMEOUT, 120000),
   loginMethod: parseLoginMethod(process.env.LOGIN_METHOD),
-  useCdp: parseBoolean(process.env.USE_CDP, true),
 };
 
 // ============================================

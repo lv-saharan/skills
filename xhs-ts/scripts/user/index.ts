@@ -1,4 +1,4 @@
-﻿/**
+/**
  * User module entry point
  *
  * @module user
@@ -17,7 +17,6 @@ export type {
   BrowserConfig,
   ScreenConfig,
   DevicePlatform,
-  // New Profile types (Task 1)
   EnvironmentType,
   FingerprintSource,
   DeviceProfile,
@@ -27,13 +26,12 @@ export type {
   ProfileStatus,
   ProfileStatusInfo,
   ProfileRef,
-  // v3 Unified types
   ProfileMeta,
   ConnectionInfo,
   UserProfileData,
 } from './types';
 
-// Storage operations
+// Storage operations (directory and basic operations)
 export {
   getUsersDir,
   getUserDir,
@@ -47,6 +45,12 @@ export {
   getProfileStatus,
   createUserDir,
   listUsers,
+  createUserProfile,
+  updateLastUsed,
+} from './storage';
+
+// Users metadata operations (users.json)
+export {
   loadUsersMeta,
   loadUsersMetaAsync,
   saveUsersMeta,
@@ -56,17 +60,12 @@ export {
   clearCurrentUser,
   resolveUser,
   resolveUserAsync,
-  // Profile operations
-  createUserProfile,
-  loadUserProfile,
-  updateLastUsed,
-  // Legacy Browser Connection (deprecated - use storage-v3 instead)
-  saveBrowserConnection,
-  loadBrowserConnection,
-  clearBrowserConnection,
-} from './storage';
+} from './users-meta';
 
-// v3 Unified Storage API (NEW - recommended)
+// Profile loading
+export { loadUserProfile } from './profile-loader';
+
+// v3 Unified Storage API (recommended for CDP connections)
 export {
   getProfilePath,
   loadUserProfileData,
@@ -91,7 +90,7 @@ export {
   getDefaultPresetInfo,
 } from './fingerprint';
 
-// Environment detection (Task 2)
+// Environment detection
 export {
   hasDisplaySupport,
   detectDeviceProfile,
@@ -99,8 +98,6 @@ export {
   detectEnvironment,
   selectPresetBySmartMatch,
   getMostMainstreamPresetInfo,
-  generateEnvironmentFingerprint,
-  generateFingerprint,
 } from './environment';
 
 // Migration

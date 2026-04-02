@@ -369,7 +369,7 @@ export interface EnsureLoginStatusResult {
  */
 export async function ensureLoginStatus(
   page: Page,
-  options?: { timeout?: number }
+  _options?: { timeout?: number }
 ): Promise<EnsureLoginStatusResult> {
   try {
     const currentUrl = page.url();

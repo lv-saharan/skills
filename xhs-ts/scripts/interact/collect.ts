@@ -10,7 +10,7 @@ import type { CollectOptions, CollectResult } from './types';
 import { COLLECT_SELECTORS } from './selectors';
 import { XhsError, XhsErrorCode, TIMEOUTS } from '../shared';
 import { withProfile, randomStealthDelay } from '../browser';
-import { resolveUser } from '../user/storage';
+import { resolveUser } from '../user';
 import { debugLog, delay, gaussianDelay, XHS_URLS } from '../utils/helpers';
 import { humanClick, checkCaptcha, checkLoginStatus, simulateReading } from '../utils/anti-detect';
 import { outputSuccess, outputFromError } from '../utils/output';

@@ -77,7 +77,7 @@ export async function extractSearchResults(
           return parseInt(t.replace(/[^0-9]/g, ''), 10) || 0;
         };
 
-        const extractInfo = (el: Element) => {
+        const extractInfo = (el: Element): { noteId: string; xsecToken: string } => {
           const links = el.querySelectorAll('a');
           let noteId = '';
           let xsecToken = '';

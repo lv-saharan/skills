@@ -13,7 +13,7 @@
 | 🔐 登录 | `npm run login` | ✅ 已实现 | 扫码/短信登录，Cookie 管理 |
 | 🔍 搜索 | `npm run search -- "<keyword>"` | ✅ 已实现 | 关键词搜索，多维度筛选 |
 | 📝 发布 | `npm run publish -- [options]` | ✅ 已实现 | 图文/视频笔记发布 |
-| 👤 多用户 | `npm run user` | ✅ 已实现 | 多账号管理 |
+| 👤 多用户 | `npm run user` | ✅ 已实现 | 多账号管理，独立 Profile |
 | 👍 点赞 | `npm run like -- "<url>" [urls...]` | ✅ 已实现 | 点赞笔记（支持批量） |
 | 📌 收藏 | `npm run collect -- "<url>" [urls...]` | ✅ 已实现 | 收藏笔记（支持批量） |
 | 💬 评论 | `npm run comment -- "<url>" "text"` | ✅ 已实现 | 评论笔记 |
@@ -21,7 +21,7 @@
 | 📊 抓取笔记 | `npm run scrape-note -- "<url>"` | ✅ 已实现 | 笔记详情数据 |
 | 📊 抓取用户 | `npm run scrape-user -- "<url>"` | ✅ 已实现 | 用户主页数据 |
 | 🌐 浏览器管理 | `npm run browser -- --start` | ✅ 已实现 | CDP 浏览器实例管理 |
-| 🛡️ 风控 | 内置 | — | 随机延迟、轨迹随机化、频率限制 |
+| 🛡️ 反检测 | 内置 | — | 模块化 stealth 脚本、人类行为模拟 |
 
 ---
 
@@ -127,20 +127,23 @@ xhs-ts 支持多账号管理，每个用户拥有独立的 Cookie 和临时文�
 **目录结构：**
 
 ```
-xhs-ts/
-├── users/                    # 多用户目录
-│   ├── users.json            # 用户元数据
-│   ├── default/              # 默认用户
-│   │   ├── user-data/        # Playwright 持久化上下文（自动保存 cookies、localStorage）
-│   │   ├── meta.json         # Profile 元数据
-│   │   ├── fingerprint.json  # 设备指纹
-│   │   └── tmp/              # 临时文件
-│   └── 小号/                 # 用户"小号"
-│       ├── user-data/
-│       ├── meta.json
-│       ├── fingerprint.json
-│       └── tmp/
+users/
+├── users.json            # { current: "用户名", version: 3 }
+├── default/              # 默认用户
+│   ├── user-data/        # Playwright 持久化上下文（自动保存 cookies、localStorage）
+│   ├── profile.json      # 统一 Profile 数据（meta + connection）
+│   ├── fingerprint.json  # 设备指纹
+│   └── tmp/              # 临时文件（QR 码等）
+└── 小号/                 # 用户"小号"
+    ├── user-data/
+    ├── profile.json
+    ├── fingerprint.json
+    └── tmp/
 ```
+
+**版本 3 变更**：
+- `meta.json` 合并入 `profile.json`
+- 连接信息存储在 `profile.json` 的 `connection` 字段
 
 **用户选择优先级：**
 
@@ -324,6 +327,22 @@ npm run browser -- --stop
 
 ---
 
+## 反检测机制
+
+xhs-ts 内置多层反检测防护：
+
+| 技术 | 说明 |
+|------|------|
+| **模块化 Stealth 脚本** | 15 个独立模块：navigator、screen、webgl、canvas、audio、webrtc 等 |
+| **设备指纹伪装** | UserAgent、Viewport、WebGL、Canvas 噪声 |
+| **人类行为模拟** | 贝塞尔曲线鼠标轨迹、物理滚动、随机延迟 |
+| **时区/语言一致性** | 确保指纹参数与行为匹配 |
+| **WebRTC 防护** | 阻止真实 IP 泄露 |
+
+> 详见 [反检测模块文档](docs/architecture/stealth.md)
+
+---
+
 ## 输出格式
 
 所有命令输出 JSON 到 stdout。`toAgent` 字段提供**可执行的指令**。
@@ -356,7 +375,12 @@ xhs-ts/
 ├── AGENTS.md             # 开发指南
 ├── package.json          # 依赖配置
 ├── tsconfig.json         # TypeScript 配置
-├── references/           # 详细文档
+├── docs/                 # 开发文档
+│   └── architecture/     # 架构详细说明
+│       ├── browser.md    # CDP 浏览器架构
+│       ├── stealth.md    # 反检测模块
+│       └── multi-user.md # 多用户架构
+├── references/           # 用户文档
 │   ├── installation.md
 │   ├── configuration.md
 │   ├── commands.md
@@ -364,35 +388,19 @@ xhs-ts/
 │   └── troubleshooting.md
 ├── scripts/              # 源代码
 │   ├── index.ts          # CLI 入口
-│   ├── cli/types.ts      # CLI 类型定义
 │   ├── config/           # 配置模块
-│   ├── browser/          # 浏览器管理
-│   ├── cookie/           # Cookie 管理
+│   ├── browser/          # 浏览器管理 (CDP)
+│   │   ├── cdp/          # CDP 核心模块
+│   │   └── stealth/      # 模块化反检测脚本
 │   ├── user/             # 多用户管理
 │   ├── login/            # 登录模块
 │   ├── search/           # 搜索模块
 │   ├── publish/          # 发布模块
-│   ├── interact/         # 互动模块
-│   │   ├── index.ts
-│   │   ├── types.ts
-│   │   ├── selectors.ts
-│   │   ├── shared.ts     # 共享工具
-│   │   ├── url-utils.ts  # URL 提取
-│   │   ├── like.ts
-│   │   ├── collect.ts
-│   │   ├── comment.ts
-│   │   └── follow.ts
+│   ├── interact/         # 互动模块 (like, collect, comment, follow)
 │   ├── scrape/           # 数据抓取模块
-│   │   ├── index.ts
-│   │   ├── types.ts
-│   │   ├── selectors.ts
-│   │   ├── utils.ts
-│   │   ├── note.ts
-│   │   └── user.ts
 │   ├── shared/           # 共享模块
 │   └── utils/            # 工具函数
-├── users/                # 多用户目录
-└── tests/                # 测试文件
+└── users/                # 多用户目录
 ```
 
 ---
@@ -422,11 +430,18 @@ xhs-ts/
 
 ## 相关文档
 
+### 用户文档
 - [安装指南](references/installation.md)
 - [配置说明](references/configuration.md)
 - [命令参考](references/commands.md)
 - [Channel 集成](references/channel-integration.md)
 - [故障排除](references/troubleshooting.md)
+
+### 开发文档
+- [浏览器架构](docs/architecture/browser.md) — CDP 实例管理
+- [反检测模块](docs/architecture/stealth.md) — 15 个 stealth 模块
+- [多用户架构](docs/architecture/multi-user.md) — Profile 存储设计
+- [开发指南](AGENTS.md) — 核心规范与 API
 
 ---
 

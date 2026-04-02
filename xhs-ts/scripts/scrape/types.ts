@@ -244,31 +244,3 @@ export interface UserIdExtraction {
   /** Error message if failed */
   error?: string;
 }
-
-// ============================================
-// CLI Types
-// ============================================
-
-/** CLI options for scrape-note command */
-export interface CliScrapeNoteOptions {
-  /** Headless mode */
-  headless?: boolean;
-  /** User name */
-  user?: string;
-  /** Include comments */
-  comments?: boolean;
-  /** Max comments */
-  maxComments?: string;
-}
-
-/** CLI options for scrape-user command */
-export interface CliScrapeUserOptions {
-  /** Headless mode */
-  headless?: boolean;
-  /** User name */
-  user?: string;
-  /** Include recent notes */
-  notes?: boolean;
-  /** Max notes */
-  maxNotes?: string;
-}

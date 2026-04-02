@@ -1,8 +1,14 @@
-/**
+﻿/**
  * CDP Stealth Injection
  *
  * @module browser/cdp/stealth
  * @description Stealth script injection for CDP-connected browsers
+ *
+ * NOTE: Duplicate injection prevention is handled in browser context
+ * via window.__XHS_STEALTH_INJECTED__ flag in stealth/utils.ts.
+ * Node.js-side tracking (WeakSet) is ineffective because:
+ * 1. Each CLI command runs in a new Node.js process
+ * 2. Playwright creates new JS objects for each CDP connection
  */
 
 import type { Browser, BrowserContext, Page } from 'playwright';
@@ -13,13 +19,8 @@ import { generateStealthScript } from '../stealth';
 // Types
 // ============================================
 
-/**
- * Stealth injection options
- */
 export interface StealthInjectionOptions {
-  /** User fingerprint for stealth script generation */
   fingerprint: UserFingerprint;
-  /** Whether to enable stealth (default: true) */
   enabled?: boolean;
 }
 
@@ -30,8 +31,8 @@ export interface StealthInjectionOptions {
 /**
  * Inject stealth script into a browser context
  *
- * @param context - Browser context
- * @param fingerprint - User fingerprint
+ * The script includes its own duplicate prevention via
+ * window.__XHS_STEALTH_INJECTED__ check in browser context.
  */
 export async function injectStealthToContext(
   context: BrowserContext,
@@ -43,54 +44,15 @@ export async function injectStealthToContext(
 
 /**
  * Inject stealth script into a page
- *
- * For pages created outside of a context with init script,
- * we inject directly into the page via addInitScript on the context.
- *
- * @param page - Page to inject
- * @param fingerprint - User fingerprint
  */
 export async function injectStealthToPage(page: Page, fingerprint: UserFingerprint): Promise<void> {
   const script = generateStealthScript(fingerprint);
   const context = page.context();
-
-  // Use context's addInitScript which affects the page
   await context.addInitScript(script);
 }
 
 /**
- * Setup stealth injection for a browser
- *
- * This sets up automatic stealth injection for all new contexts
- * created by the browser.
- *
- * @param browser - Browser instance
- * @param fingerprint - User fingerprint
- * @returns Cleanup function to remove listeners
- */
-export function setupBrowserStealth(_browser: Browser, _fingerprint: UserFingerprint): () => void {
-  const handlers: Array<() => void> = [];
-
-  // Note: Playwright doesn't expose a 'context' event on Browser
-  // For CDP-connected browsers, contexts are usually pre-existing
-  // We need to handle stealth injection at the instance manager level
-
-  // Return cleanup function
-  return () => {
-    for (const handler of handlers) {
-      handler();
-    }
-  };
-}
-
-/**
  * Inject stealth into all existing contexts of a browser
- *
- * For CDP-connected browsers, contexts may already exist.
- * This function injects stealth into all existing contexts.
- *
- * @param browser - Browser instance
- * @param fingerprint - User fingerprint
  */
 export async function injectStealthToExistingContexts(
   browser: Browser,
@@ -102,8 +64,6 @@ export async function injectStealthToExistingContexts(
     try {
       await injectStealthToContext(context, fingerprint);
     } catch {
-      // Context may not accept init script after pages are created
-      // Try injecting into existing pages instead
       const pages = context.pages();
       for (const page of pages) {
         try {
@@ -118,45 +78,23 @@ export async function injectStealthToExistingContexts(
 
 /**
  * Create a stealth-injected context
- *
- * Creates a new context with stealth pre-injected.
- *
- * @param browser - Browser instance
- * @param fingerprint - User fingerprint
- * @returns Browser context with stealth injected
  */
 export async function createStealthContext(
   browser: Browser,
   fingerprint: UserFingerprint
 ): Promise<BrowserContext> {
   const context = await browser.newContext();
-
-  try {
-    await injectStealthToContext(context, fingerprint);
-  } catch {
-    // If init script fails, try to create a new page with stealth
-    const page = await context.newPage();
-    await injectStealthToPage(page, fingerprint);
-  }
-
+  await injectStealthToContext(context, fingerprint);
   return context;
 }
 
 /**
  * Create a stealth-injected page
- *
- * Creates a new page with stealth pre-injected.
- * Uses the browser's default context or creates a new one.
- *
- * @param browser - Browser instance
- * @param fingerprint - User fingerprint
- * @returns Page with stealth injected
  */
 export async function createStealthPage(
   browser: Browser,
   fingerprint: UserFingerprint
 ): Promise<Page> {
-  // Try to use existing context
   const contexts = browser.contexts();
   let context: BrowserContext;
 
@@ -168,9 +106,5 @@ export async function createStealthPage(
   }
 
   const page = await context.newPage();
-
-  // Also inject into page directly for safety
-  await injectStealthToPage(page, fingerprint);
-
   return page;
 }

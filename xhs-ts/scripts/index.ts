@@ -7,34 +7,30 @@
  */
 
 import { Command } from 'commander';
-import type {
-  CliLoginOptions,
-  CliSearchOptions,
-  CliPublishOptions,
-  CliUserOptions,
-  CliLikeOptions,
-  CliCollectOptions,
-  CliCommentOptions,
-  CliFollowOptions,
-  CliScrapeNoteOptions,
-  CliScrapeUserOptions,
-} from './cli/types';
-import { executeLogin } from './login';
-import { executeSearch } from './search';
-import { executePublish } from './publish';
-import { executeLike, executeCollect, executeComment, executeFollow } from './interact';
-import { executeScrapeNote, executeScrapeUser } from './scrape';
 import { ensureMigrated, listUsers, setCurrentUser, clearCurrentUser, resolveUser } from './user';
 import { config, debugLog } from './utils/helpers';
 import { outputSuccess, outputError } from './utils/output';
-import { forceCleanup } from './browser';
 import { XhsErrorCode } from './shared';
+import { handleBrowserCommand } from './browser/commands';
+import type {
+  UserCommandOptions,
+  LoginCommandOptions,
+  SearchCommandOptions,
+  PublishCommandOptions,
+  LikeCommandOptions,
+  CollectCommandOptions,
+  CommentCommandOptions,
+  FollowCommandOptions,
+  ScrapeNoteCommandOptions,
+  ScrapeUserCommandOptions,
+  BrowserCommandOptions,
+} from './cli/types';
+import { parseNumberOption, resolveHeadless, resolveBoolFlag } from './cli/types';
 
 // ============================================
-// Startup: Run Migration
+// Startup
 // ============================================
 
-// Ensure multi-user structure exists before any command
 await ensureMigrated();
 
 // ============================================
@@ -42,8 +38,7 @@ await ensureMigrated();
 // ============================================
 
 const program = new Command();
-
-program.name('xhs').description('Xiaohongshu automation CLI').version('0.0.2');
+program.name('xhs').description('Xiaohongshu automation CLI').version('0.1.0');
 
 // ============================================
 // User Command
@@ -54,13 +49,13 @@ program
   .description('Manage users')
   .option('--set-current <name>', 'Set current user')
   .option('--set-default', 'Reset to default user')
-  .action(async (options: CliUserOptions) => {
+  .action(async (options: UserCommandOptions) => {
     try {
       if (options.setCurrent) {
         await setCurrentUser(options.setCurrent);
         outputSuccess(
           { current: options.setCurrent },
-          `RELAY:已切换到用户 "${options.setCurrent}"`
+          'RELAY:已切换到用户 "' + options.setCurrent + '"'
         );
         return;
       }
@@ -71,7 +66,6 @@ program
         return;
       }
 
-      // Default: list users
       const result = await listUsers();
       outputSuccess(result, 'PARSE:users');
     } catch (error) {
@@ -89,24 +83,18 @@ program
   .description('Login to Xiaohongshu and save cookies')
   .option('--qr', 'Use QR code login (default)')
   .option('--sms', 'Use SMS login')
-  .option('--headless', 'Run in headless mode (output QR as JSON)')
+  .option('--headless', 'Run in headless mode')
   .option('--timeout <ms>', 'Login timeout in milliseconds')
-  .option('--user <name>', 'User name for multi-user support')
-  .action(async (options: CliLoginOptions) => {
-    // CLI args override .env defaults
-    const method = options.sms ? 'sms' : options.qr ? 'qr' : config.loginMethod;
-    const headless = options.headless !== undefined ? options.headless : config.headless;
-    const user = resolveUser(options.user);
+  .option('--user <name>', 'User name')
+  .action(async (options: LoginCommandOptions) => {
+    const { executeLogin } = await import('./login');
+    const method = options.sms ? 'sms' : 'qr';
     const timeout = options.timeout ? parseInt(options.timeout, 10) : config.loginTimeout;
-
-    debugLog(
-      `Login command: method=${method}, headless=${headless}, timeout=${timeout}, user=${user}`
-    );
 
     await executeLogin({
       method,
-      headless,
-      user,
+      headless: resolveHeadless(options.headless, config.headless),
+      user: resolveUser(options.user),
       timeout,
     });
   });
@@ -118,36 +106,24 @@ program
 program
   .command('search <keyword>')
   .description('Search notes by keyword')
-  .option('--limit <number>', 'Number of results (default: 10, max: 100)', '10')
-  .option('--skip <number>', 'Number of results to skip (default: 0)', '0')
-  .option('--sort <type>', 'Sort by: general, time_descending, or hot', 'general')
-  .option('--note-type <type>', 'Note type: all, image, or video', 'all')
-  .option('--time-range <range>', 'Time range: all, day, week, or month', 'all')
-  .option('--scope <scope>', 'Search scope: all or following', 'all')
-  .option('--location <location>', 'Location: all, nearby, or city', 'all')
+  .option('--limit <number>', 'Number of results', '10')
+  .option('--skip <number>', 'Results to skip', '0')
+  .option('--sort <type>', 'Sort by: general, time_descending, hot', 'general')
+  .option('--note-type <type>', 'Note type: all, image, video', 'all')
+  .option('--time-range <range>', 'Time range: all, day, week, month', 'all')
   .option('--headless', 'Run in headless mode')
-  .option('--user <name>', 'User name for multi-user support')
-  .action(async (keyword: string, options: CliSearchOptions) => {
-    const limit = parseInt(options.limit, 10);
-    const skip = options.skip ? parseInt(options.skip, 10) : 0;
-    const headless = options.headless !== undefined ? options.headless : config.headless;
-    const user = resolveUser(options.user);
-
-    debugLog(
-      `Search: keyword="${keyword}", limit=${limit}, skip=${skip}, user=${user}, options=${JSON.stringify(options)}`
-    );
-
+  .option('--user <name>', 'User name')
+  .action(async (keyword: string, options: SearchCommandOptions) => {
+    const { executeSearch } = await import('./search');
     await executeSearch({
       keyword,
-      skip,
-      limit,
-      sort: options.sort,
-      noteType: options.noteType,
-      timeRange: options.timeRange,
-      scope: options.scope,
-      location: options.location,
-      headless,
-      user,
+      skip: parseNumberOption(options.skip, 0),
+      limit: parseNumberOption(options.limit, 10),
+      sort: options.sort as 'general' | 'time_descending' | 'hot',
+      noteType: options.noteType as 'all' | 'image' | 'video',
+      timeRange: options.timeRange as 'all' | 'day' | 'week' | 'month',
+      headless: resolveHeadless(options.headless, config.headless),
+      user: resolveUser(options.user),
     });
   });
 
@@ -157,41 +133,28 @@ program
 
 program
   .command('publish')
-  .description('Publish a new note (image or video)')
-  .requiredOption('--title <title>', 'Note title (max 20 chars)')
-  .requiredOption('--content <content>', 'Note content (max 1000 chars)')
-  .requiredOption('--images <paths>', 'Image paths, comma separated (1-9 images)')
-  .option('--video <path>', 'Video path (alternative to images, max 500MB)')
-  .option('--tags <tags>', 'Tags, comma separated (max 10 tags)')
+  .description('Publish a new note')
+  .requiredOption('--title <title>', 'Note title')
+  .requiredOption('--content <content>', 'Note content')
+  .requiredOption('--images <paths>', 'Image paths (comma separated)')
+  .option('--video <path>', 'Video path')
+  .option('--tags <tags>', 'Tags (comma separated)')
   .option('--headless', 'Run in headless mode')
-  .option('--user <name>', 'User name for multi-user support')
-  .action(async (options: CliPublishOptions) => {
-    // Parse media paths
-    let mediaPaths: string[] = [];
-
-    if (options.video) {
-      mediaPaths = [options.video];
-    } else if (options.images) {
-      mediaPaths = options.images.split(',').map((p: string) => p.trim());
-    }
-
-    // Parse tags
-    const tags = options.tags ? options.tags.split(',').map((t: string) => t.trim()) : undefined;
-
-    const headless = options.headless !== undefined ? options.headless : config.headless;
-    const user = resolveUser(options.user);
-
-    debugLog(
-      `Publish: title="${options.title}", media=${mediaPaths.length}, tags=${tags?.length || 0}, headless=${headless}`
-    );
+  .option('--user <name>', 'User name')
+  .action(async (options: PublishCommandOptions) => {
+    const { executePublish } = await import('./publish');
+    const mediaPaths = options.video
+      ? [options.video]
+      : options.images!.split(',').map((p) => p.trim());
+    const tags = options.tags ? options.tags.split(',').map((t) => t.trim()) : undefined;
 
     await executePublish({
       title: options.title,
       content: options.content,
       mediaPaths,
       tags,
-      headless,
-      user,
+      headless: resolveHeadless(options.headless, config.headless),
+      user: resolveUser(options.user),
     });
   });
 
@@ -201,36 +164,21 @@ program
 
 program
   .command('like [urls...]')
-  .description('Like one or multiple notes (URLs separated by space)')
+  .description('Like notes')
   .option('--headless', 'Run in headless mode')
-  .option('--user <name>', 'User name for multi-user support')
-  .option('--delay <ms>', 'Delay between likes in milliseconds (default: 2000)', '2000')
-  .action(async (urls: string[], options: CliLikeOptions) => {
-    if (!urls || urls.length === 0) {
-      outputError('请提供至少一个笔记URL', XhsErrorCode.NOT_FOUND);
+  .option('--user <name>', 'User name')
+  .option('--delay <ms>', 'Delay between likes', '2000')
+  .action(async (urls: string[], options: LikeCommandOptions) => {
+    if (!urls?.length) {
+      outputError('请提供至少一个笔记 URL', XhsErrorCode.NOT_FOUND);
       process.exit(1);
     }
-
-    const headless = options.headless !== undefined ? options.headless : config.headless;
-    const user = resolveUser(options.user);
-    const delayBetweenLikes = options.delay ? parseInt(options.delay, 10) : 2000;
-
-    debugLog(
-      'Like: urls=' +
-        urls.length +
-        ', headless=' +
-        headless +
-        ', user=' +
-        user +
-        ', delay=' +
-        delayBetweenLikes
-    );
-
+    const { executeLike } = await import('./interact');
     await executeLike({
       urls,
-      headless,
-      user,
-      delayBetweenLikes,
+      headless: resolveHeadless(options.headless, config.headless),
+      user: resolveUser(options.user),
+      delayBetweenLikes: parseNumberOption(options.delay, 2000),
     });
   });
 
@@ -240,36 +188,21 @@ program
 
 program
   .command('collect [urls...]')
-  .description('Collect (bookmark) one or multiple notes (URLs separated by space)')
+  .description('Collect (bookmark) notes')
   .option('--headless', 'Run in headless mode')
-  .option('--user <name>', 'User name for multi-user support')
-  .option('--delay <ms>', 'Delay between collects in milliseconds (default: 2000)', '2000')
-  .action(async (urls: string[], options: CliCollectOptions) => {
-    if (!urls || urls.length === 0) {
-      outputError('请提供至少一个笔记URL', XhsErrorCode.NOT_FOUND);
+  .option('--user <name>', 'User name')
+  .option('--delay <ms>', 'Delay between collects', '2000')
+  .action(async (urls: string[], options: CollectCommandOptions) => {
+    if (!urls?.length) {
+      outputError('请提供至少一个笔记 URL', XhsErrorCode.NOT_FOUND);
       process.exit(1);
     }
-
-    const headless = options.headless !== undefined ? options.headless : config.headless;
-    const user = resolveUser(options.user);
-    const delayBetweenCollects = options.delay ? parseInt(options.delay, 10) : 2000;
-
-    debugLog(
-      'Collect: urls=' +
-        urls.length +
-        ', headless=' +
-        headless +
-        ', user=' +
-        user +
-        ', delay=' +
-        delayBetweenCollects
-    );
-
+    const { executeCollect } = await import('./interact');
     await executeCollect({
       urls,
-      headless,
-      user,
-      delayBetweenCollects,
+      headless: resolveHeadless(options.headless, config.headless),
+      user: resolveUser(options.user),
+      delayBetweenCollects: parseNumberOption(options.delay, 2000),
     });
   });
 
@@ -281,57 +214,38 @@ program
   .command('comment <url> <text>')
   .description('Comment on a note')
   .option('--headless', 'Run in headless mode')
-  .option('--user <name>', 'User name for multi-user support')
-  .action(async (url: string, text: string, options: CliCommentOptions) => {
-    const headless = options.headless !== undefined ? options.headless : config.headless;
-    const user = resolveUser(options.user);
-
-    debugLog('Comment: url=' + url + ', text=' + text + ', user=' + user);
-
+  .option('--user <name>', 'User name')
+  .action(async (url: string, text: string, options: CommentCommandOptions) => {
+    const { executeComment } = await import('./interact');
     await executeComment({
       url,
       text,
-      headless,
-      user,
+      headless: resolveHeadless(options.headless, config.headless),
+      user: resolveUser(options.user),
     });
   });
 
 // ============================================
-// Follow Command (Placeholder)
+// Follow Command
 // ============================================
 
 program
   .command('follow [urls...]')
-  .description('Follow one or multiple users (User profile URLs separated by space)')
+  .description('Follow users')
   .option('--headless', 'Run in headless mode')
-  .option('--user <name>', 'User name for multi-user support')
-  .option('--delay <ms>', 'Delay between follows in milliseconds (default: 2000)', '2000')
-  .action(async (urls: string[], options: CliFollowOptions) => {
-    if (!urls || urls.length === 0) {
-      outputError('请提供至少一个用户主页URL', XhsErrorCode.NOT_FOUND);
+  .option('--user <name>', 'User name')
+  .option('--delay <ms>', 'Delay between follows', '2000')
+  .action(async (urls: string[], options: FollowCommandOptions) => {
+    if (!urls?.length) {
+      outputError('请提供至少一个用户主页 URL', XhsErrorCode.NOT_FOUND);
       process.exit(1);
     }
-
-    const headless = options.headless !== undefined ? options.headless : config.headless;
-    const user = resolveUser(options.user);
-    const delayBetweenFollows = options.delay ? parseInt(options.delay, 10) : 2000;
-
-    debugLog(
-      'Follow: urls=' +
-        urls.length +
-        ', headless=' +
-        headless +
-        ', user=' +
-        user +
-        ', delay=' +
-        delayBetweenFollows
-    );
-
+    const { executeFollow } = await import('./interact');
     await executeFollow({
       urls,
-      headless,
-      user,
-      delayBetweenFollows,
+      headless: resolveHeadless(options.headless, config.headless),
+      user: resolveUser(options.user),
+      delayBetweenFollows: parseNumberOption(options.delay, 2000),
     });
   });
 
@@ -341,34 +255,19 @@ program
 
 program
   .command('scrape-note <url>')
-  .description('Scrape note details from a note URL')
+  .description('Scrape note details')
   .option('--headless', 'Run in headless mode')
-  .option('--user <name>', 'User name for multi-user support')
-  .option('--comments', 'Include comments in result (default: false)')
-  .option('--max-comments <number>', 'Max comments to include (default: 20, max: 100)', '20')
-  .action(async (url: string, options: CliScrapeNoteOptions) => {
-    const headless = options.headless !== undefined ? options.headless : config.headless;
-    const user = resolveUser(options.user);
-    const includeComments = options.comments ?? false;
-    const maxComments = options.maxComments ? parseInt(options.maxComments, 10) : 20;
-
-    debugLog(
-      'Scrape-note: url=' +
-        url +
-        ', headless=' +
-        headless +
-        ', user=' +
-        user +
-        ', includeComments=' +
-        includeComments
-    );
-
+  .option('--user <name>', 'User name')
+  .option('--comments', 'Include comments')
+  .option('--max-comments <number>', 'Max comments', '20')
+  .action(async (url: string, options: ScrapeNoteCommandOptions) => {
+    const { executeScrapeNote } = await import('./scrape');
     await executeScrapeNote({
       url,
-      headless,
-      user,
-      includeComments,
-      maxComments,
+      headless: resolveHeadless(options.headless, config.headless),
+      user: resolveUser(options.user),
+      includeComments: resolveBoolFlag(options.comments, false),
+      maxComments: parseNumberOption(options.maxComments, 20),
     });
   });
 
@@ -378,303 +277,47 @@ program
 
 program
   .command('scrape-user <url>')
-  .description('Scrape user profile from a user profile URL')
+  .description('Scrape user profile')
   .option('--headless', 'Run in headless mode')
-  .option('--user <name>', 'User name for multi-user support')
-  .option('--notes', 'Include recent notes in result (default: false)')
-  .option('--max-notes <number>', 'Max notes to include (default: 12, max: 50)', '12')
-  .action(async (url: string, options: CliScrapeUserOptions) => {
-    const headless = options.headless !== undefined ? options.headless : config.headless;
-    const user = resolveUser(options.user);
-    const includeNotes = options.notes ?? false;
-    const maxNotes = options.maxNotes ? parseInt(options.maxNotes, 10) : 12;
-
-    debugLog(
-      'Scrape-user: url=' +
-        url +
-        ', headless=' +
-        headless +
-        ', user=' +
-        user +
-        ', includeNotes=' +
-        includeNotes
-    );
-
+  .option('--user <name>', 'User name')
+  .option('--notes', 'Include notes')
+  .option('--max-notes <number>', 'Max notes', '12')
+  .action(async (url: string, options: ScrapeUserCommandOptions) => {
+    const { executeScrapeUser } = await import('./scrape');
     await executeScrapeUser({
       url,
-      headless,
-      user,
-      includeNotes,
-      maxNotes,
+      headless: resolveHeadless(options.headless, config.headless),
+      user: resolveUser(options.user),
+      includeNotes: resolveBoolFlag(options.notes, false),
+      maxNotes: parseNumberOption(options.maxNotes, 12),
     });
   });
 
 // ============================================
-// Browser Management Command
+// Browser Command
 // ============================================
-
-/**
- * Stop a detached browser instance via CDP
- *
- * This connects to the browser via CDP and closes it,
- * then clears the saved connection info.
- */
-async function stopDetachedBrowser(user: string): Promise<{ stopped: boolean; error?: string }> {
-  const { loadBrowserConnection, clearBrowserConnection } = await import('./user/storage');
-  const { connectCDPBrowser, checkCDPConnection } = await import('./browser/cdp/connector');
-
-  const conn = await loadBrowserConnection(user);
-  if (!conn?.cdpPort) {
-    return { stopped: false, error: 'No saved connection found' };
-  }
-
-  // Check if browser is still running
-  const isAlive = await checkCDPConnection(conn.cdpPort);
-  if (!isAlive) {
-    // Browser already dead, just clear the connection
-    await clearBrowserConnection(user);
-    return { stopped: false, error: 'Browser already stopped' };
-  }
-
-  // Connect and close
-  const browser = await connectCDPBrowser(conn.cdpPort);
-  if (!browser) {
-    await clearBrowserConnection(user);
-    return { stopped: false, error: 'Failed to connect to browser' };
-  }
-
-  try {
-    await browser.close();
-    await clearBrowserConnection(user);
-    return { stopped: true };
-  } catch (error) {
-    await clearBrowserConnection(user);
-    return { stopped: false, error: error instanceof Error ? error.message : 'Unknown error' };
-  }
-}
-
-/**
- * Get status of all saved browser connections
- *
- * Loads connections from storage and checks if each is alive.
- */
-async function getDetachedBrowserStatus(): Promise<{
-  total: number;
-  alive: number;
-  instances: Record<
-    string,
-    {
-      cdpPort: number;
-      pid?: number;
-      lastActivityAt?: string;
-      isAlive: boolean;
-    }
-  >;
-}> {
-  const { loadBrowserConnection, listUsers } = await import('./user/storage');
-  const { checkCDPConnection } = await import('./browser/cdp/connector');
-
-  const users = await listUsers();
-  const instances: Record<
-    string,
-    {
-      cdpPort: number;
-      pid?: number;
-      lastActivityAt?: string;
-      isAlive: boolean;
-    }
-  > = {};
-
-  let alive = 0;
-
-  for (const user of users.users) {
-    const conn = await loadBrowserConnection(user.name);
-    if (conn?.cdpPort) {
-      const isAlive = await checkCDPConnection(conn.cdpPort);
-      instances[user.name] = {
-        cdpPort: conn.cdpPort,
-        pid: conn.pid,
-        lastActivityAt: conn.lastActivityAt,
-        isAlive,
-      };
-      if (isAlive) {
-        alive++;
-      }
-    }
-  }
-
-  return {
-    total: Object.keys(instances).length,
-    alive,
-    instances,
-  };
-}
 
 program
   .command('browser')
   .description('Manage CDP browser instances')
   .option('--start', 'Start a browser instance')
-  .option('--stop', 'Stop all CDP browser instances')
-  .option('--stop-user <name>', 'Stop CDP instance for specific user')
-  .option('--status', 'Show browser instance status')
-  .option('--list', 'List all saved browser connections')
-  .option('--user <name>', 'User name for browser instance')
-  .option('--headless', 'Run browser in headless mode')
-  .action(
-    async (options: {
-      start?: boolean;
-      stop?: boolean;
-      stopUser?: string;
-      status?: boolean;
-      list?: boolean;
-      user?: string;
-      headless?: boolean;
-    }) => {
-      try {
-        const resolvedUser = resolveUser(options.user);
-
-        if (options.start) {
-          // For --start, only import what's needed to avoid loading Playwright
-          // This allows CLI to exit cleanly after spawning detached browser
-          const { saveBrowserConnection, getUserDataDir } = await import('./user/storage');
-          const { spawnCDPBrowserDetached } = await import('./browser/cdp/launcher');
-
-          const userDataDir = getUserDataDir(resolvedUser);
-
-          // Spawn browser as detached subprocess (no Playwright connection)
-          const result = await spawnCDPBrowserDetached(
-            {
-              user: resolvedUser,
-              headless: options.headless ?? false,
-            },
-            userDataDir
-          );
-
-          // Save connection info for later reuse
-          await saveBrowserConnection(resolvedUser, {
-            cdpPort: result.cdp.port,
-            pid: result.pid,
-            wsEndpoint: result.cdp.wsEndpoint,
-            startedAt: result.cdp.connectedAt,
-            lastActivityAt: result.cdp.lastActivityAt,
-          });
-
-          outputSuccess(
-            {
-              user: resolvedUser,
-              cdpPort: result.cdp.port,
-              pid: result.pid,
-              headless: options.headless ?? false,
-            },
-            `RELAY:已为用户 ${resolvedUser} 启动浏览器实例 (端口: ${result.cdp.port}, PID: ${result.pid})`
-          );
-
-          // Force immediate exit - browser runs as detached subprocess
-          // Clean up any remaining handles
-          process.stdin?.destroy();
-          process.stdout?.destroy();
-          process.stderr?.destroy();
-          process.exit(0);
-        }
-
-        if (options.stop) {
-          // Stop all detached browser instances via CDP
-          const status = await getDetachedBrowserStatus();
-          const results: { user: string; stopped: boolean; error?: string }[] = [];
-
-          for (const [user] of Object.entries(status.instances)) {
-            const result = await stopDetachedBrowser(user);
-            results.push({ user, ...result });
-          }
-
-          const stoppedCount = results.filter((r) => r.stopped).length;
-          const failedCount = results.filter((r) => !r.stopped).length;
-
-          outputSuccess(
-            {
-              stopped: stoppedCount,
-              failed: failedCount,
-              details: results,
-            },
-            `RELAY:已关闭 ${stoppedCount} 个浏览器实例${failedCount > 0 ? `，${failedCount} 个失败或已停止` : ''}`
-          );
-          return;
-        }
-
-        if (options.stopUser) {
-          // Stop specific user's detached browser instance
-          const result = await stopDetachedBrowser(options.stopUser);
-
-          if (result.stopped) {
-            outputSuccess(
-              { stopped: options.stopUser },
-              `RELAY:已关闭用户 ${options.stopUser} 的浏览器实例`
-            );
-          } else {
-            outputSuccess(
-              { user: options.stopUser, error: result.error },
-              `RELAY:用户 ${options.stopUser} 的浏览器实例已停止或不存在`
-            );
-          }
-          return;
-        }
-
-        if (options.status) {
-          // Show status of all saved browser connections (detached instances)
-          const detachedStatus = await getDetachedBrowserStatus();
-
-          // Also check in-memory instances (if any)
-          const { browserInstanceManager, healthMonitor } = await import('./browser/cdp');
-          const inMemoryState = browserInstanceManager.getState();
-          const stats = healthMonitor.getStats();
-
-          outputSuccess(
-            {
-              detached: detachedStatus,
-              inMemory: inMemoryState,
-              stats,
-            },
-            'PARSE:browserStatus'
-          );
-          return;
-        }
-
-        if (options.list) {
-          // List all saved connections (with alive status)
-          const status = await getDetachedBrowserStatus();
-
-          outputSuccess(
-            {
-              total: status.total,
-              alive: status.alive,
-              connections: status.instances,
-            },
-            'PARSE:browserConnections'
-          );
-          return;
-        }
-
-        // Default: show status
-        const detachedStatus = await getDetachedBrowserStatus();
-        const { browserInstanceManager, healthMonitor } = await import('./browser/cdp');
-        const inMemoryState = browserInstanceManager.getState();
-        const stats = healthMonitor.getStats();
-
-        outputSuccess(
-          {
-            detached: detachedStatus,
-            inMemory: inMemoryState,
-            stats,
-          },
-          'PARSE:browserStatus'
-        );
-      } catch (error) {
-        debugLog('Browser command error:', error);
-        outputFromError(error);
-        process.exit(1);
-      }
-    }
-  );
+  .option('--stop', 'Stop all browser instances')
+  .option('--stop-user <name>', 'Stop browser for specific user')
+  .option('--status', 'Show browser status')
+  .option('--list', 'List saved connections')
+  .option('--user <name>', 'User name')
+  .option('--headless', 'Run in headless mode')
+  .action(async (options: BrowserCommandOptions) => {
+    await handleBrowserCommand({
+      start: options.start,
+      stop: options.stop,
+      stopUser: options.stopUser,
+      status: options.status,
+      list: options.list,
+      user: options.user,
+      headless: resolveHeadless(options.headless, config.headless),
+    });
+  });
 
 // ============================================
 // Error Handling
@@ -682,31 +325,23 @@ program
 
 program.exitOverride();
 
-process.on('uncaughtException', async (error) => {
-  // Commander throws CommanderError for help/version display - these are normal, not errors
+process.on('uncaughtException', (error) => {
   if (error instanceof Error && 'code' in error) {
     const commanderError = error as Error & { code: string; exitCode?: number };
     const normalCodes = ['commander.help', 'commander.version', 'commander.helpDisplayed'];
     if (normalCodes.includes(commanderError.code)) {
-      // Normal help/version display - exit cleanly
       process.exit(commanderError.exitCode ?? 0);
     }
   }
 
   debugLog('Uncaught exception:', error);
-  outputError(
-    error.message || 'Unknown error',
-    XhsErrorCode.BROWSER_ERROR,
-    config.debug ? error.stack : undefined
-  );
-  await forceCleanup();
+  outputError(error.message || 'Unknown error', XhsErrorCode.BROWSER_ERROR);
   process.exit(1);
 });
 
-process.on('unhandledRejection', async (reason) => {
+process.on('unhandledRejection', (reason) => {
   debugLog('Unhandled rejection:', reason);
   outputError(String(reason), XhsErrorCode.BROWSER_ERROR);
-  await forceCleanup();
   process.exit(1);
 });
 

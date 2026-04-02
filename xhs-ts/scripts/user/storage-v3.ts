@@ -309,7 +309,7 @@ async function migrateLegacyProfile(user: UserName): Promise<UserProfileData> {
   let meta: ProfileMeta;
   if (existsSync(legacyMetaPath)) {
     const content = await readFile(legacyMetaPath, 'utf-8');
-    const legacyMeta = JSON.parse(content);
+    const legacyMeta = JSON.parse(content) as ProfileMeta;
     meta = {
       createdAt: legacyMeta.createdAt || new Date().toISOString(),
       lastUsedAt: legacyMeta.lastUsedAt || new Date().toISOString(),
@@ -331,7 +331,7 @@ async function migrateLegacyProfile(user: UserName): Promise<UserProfileData> {
   if (existsSync(legacyConnPath)) {
     try {
       const content = await readFile(legacyConnPath, 'utf-8');
-      const legacyConn = JSON.parse(content);
+      const legacyConn = JSON.parse(content) as ConnectionInfo;
       connection = {
         cdpPort: legacyConn.cdpPort,
         pid: legacyConn.pid,

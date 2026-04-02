@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Search command implementation
  *
  * @module search/execute
@@ -14,7 +14,7 @@ import { hoverNotesForTokens, loadMoreResults, NOTES_PER_SCROLL } from './extrac
 import { XhsError, XhsErrorCode } from '../shared';
 import { TIMEOUTS } from '../shared';
 import { withProfile, randomStealthDelay } from '../browser';
-import { resolveUser } from '../user/storage';
+import { resolveUser } from '../user';
 import { debugLog, delay, XHS_URLS } from '../utils/helpers';
 import { checkCaptcha } from '../utils/anti-detect';
 import { outputSuccess, outputFromError } from '../utils/output';

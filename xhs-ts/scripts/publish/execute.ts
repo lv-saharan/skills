@@ -6,7 +6,7 @@
  */
 
 import { withProfile, randomStealthDelay } from '../browser';
-import { resolveUser } from '../user/storage';
+import { resolveUser } from '../user';
 import { XhsError, XhsErrorCode } from '../shared';
 import { TIMEOUTS } from '../shared';
 import { XHS_URLS, debugLog, randomDelay } from '../utils/helpers';

@@ -5,7 +5,7 @@
  * @description SMS authentication flow
  */
 
-import type { BrowserInstance } from '../browser';
+import type { BrowserInstance } from '../browser/types';
 import type { UserName } from '../user';
 import { XhsError, XhsErrorCode } from '../shared';
 import { XHS_URLS, debugLog, delay, randomDelay, waitForCondition } from '../utils/helpers';
@@ -18,7 +18,6 @@ import type { LoginResult } from './types';
 export async function smsLogin(
   instance: BrowserInstance,
   timeout: number,
-
   user?: UserName
 ): Promise<LoginResult> {
   const { page } = instance;
@@ -26,7 +25,6 @@ export async function smsLogin(
   await page.goto(XHS_URLS.login);
   await randomDelay(1000, 2000);
 
-  // Click SMS tab
   const smsTabClicked = await humanClick(page, 'text=手机登录, text=短信登录, [class*="sms"]');
   if (!smsTabClicked) {
     throw new XhsError('Cannot find SMS login option', XhsErrorCode.LOGIN_FAILED);
@@ -35,10 +33,8 @@ export async function smsLogin(
   await delay(1000);
   console.error('Please complete SMS login in the browser window.');
 
-  // Wait for login completion
   await waitForCondition(
     async () => {
-      // Check if browser was closed
       if (page.isClosed()) {
         throw new XhsError(
           'Browser window closed by user. Login cancelled.',
@@ -46,7 +42,6 @@ export async function smsLogin(
         );
       }
 
-      // Check if redirected from login page
       const currentUrl = page.url();
       if (!currentUrl.includes('/login') && currentUrl.includes('xiaohongshu.com')) {
         debugLog('Redirected from login page, checking login status...');
@@ -69,7 +64,6 @@ export async function smsLogin(
     }
   );
 
-  // Profile auto-persists cookies to user-data/ directory
   debugLog('Login successful. Session will auto-persist to profile.');
 
   return {

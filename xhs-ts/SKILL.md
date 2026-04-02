@@ -1,14 +1,15 @@
 ---
 name: xhs-ts
 description: |
-  Automate Xiaohongshu (小红书/Red) — search notes, publish content, interact (like/collect/comment/follow), scrape data, manage multiple accounts.
-  Use when user mentions 小红书, xhs, Xiaohongshu, Red, 小红书账号, 笔记发布, 搜索笔记, 
-  小红书数据, 红书, RedNote, 小红书运营, 小红书自动化, or wants to login/search/publish/interact/scrape on Xiaohongshu.
-  Supports content creation, competitive monitoring, multi-account management, and data extraction.
+  Automate Xiaohongshu (小红书/Red) operations — search notes, publish content,
+  interact (like/collect/comment/follow), scrape data, manage multiple accounts.
+  Use when user mentions 小红书, xhs, Xiaohongshu, Red, 红书, RedNote, or wants
+  to login, search, publish, interact, scrape, or manage multiple Xiaohongshu accounts.
 license: MIT
 compatibility: opencode
 metadata:
   version: "0.0.9"
+  homepage: "https://github.com/lv-saharan/skills/tree/main/xhs-ts"
   openclaw:
     emoji: "📕"
     requires:
@@ -126,7 +127,7 @@ ACTION[:TARGET][:HINT]
 
 ### Channel-Specific Formatting
 
-> **详细格式和发送流程见 [@references/channel-integration.md](references/channel-integration.md)**
+> **详细格式和发送流程见 [references/channel-integration.md](references/channel-integration.md)**
 
 | 渠道 | 格式 | 关键要点 |
 |------|------|----------|
@@ -176,7 +177,7 @@ npm run search -- "美食探店" --limit 10 --sort hot --note-type image --time-
 npm run search -- "美食探店" --scope following
 ```
 
-> **Output formatting**: For sending results to Feishu/WeChat, see [@references/channel-integration.md](references/channel-integration.md)
+> **Output formatting**: For sending results to Feishu/WeChat, see [references/channel-integration.md](references/channel-integration.md)
 
 | Parameter | Values | Default |
 |-----------|--------|---------|

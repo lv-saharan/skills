@@ -175,6 +175,8 @@ export interface ConnectionInfo {
   pid?: number;
   /** WebSocket endpoint URL for CDP connection */
   wsEndpoint?: string;
+  /** Headless mode the browser was started with */
+  headless?: boolean;
   /** Browser start timestamp (ISO 8601) */
   startedAt: string;
   /** Last activity timestamp (ISO 8601) */
