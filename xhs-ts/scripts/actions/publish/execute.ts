@@ -6,7 +6,7 @@
  */
 
 import { withSession, type SessionContext } from '../shared/session';
-import { XhsError, XhsErrorCode } from '../../config/errors';
+import { SkillError, SkillErrorCode } from '../../config/errors';
 import {
   debugLog,
   randomDelay,
@@ -50,9 +50,9 @@ export async function executePublish(options: PublishOptions): Promise<void> {
         debugLog('Validating media files...');
         const mediaValidation = validateMedia(mediaPaths);
         if (!mediaValidation.valid) {
-          throw new XhsError(
+          throw new SkillError(
             mediaValidation.error || 'Media validation failed',
-            XhsErrorCode.VALIDATION_ERROR
+            SkillErrorCode.VALIDATION_ERROR
           );
         }
         debugLog(`Media validation passed: type=${mediaValidation.type}`);
@@ -64,15 +64,15 @@ export async function executePublish(options: PublishOptions): Promise<void> {
         const publishPage = await clickPublishButtonOnHomepage(page, context);
 
         if (!publishPage) {
-          throw new XhsError('Failed to open creator center', XhsErrorCode.BROWSER_ERROR);
+          throw new SkillError('Failed to open creator center', SkillErrorCode.BROWSER_ERROR);
         }
 
         // Check if redirected to login page
         const currentUrl = publishPage.url();
         if (currentUrl.includes('login')) {
-          throw new XhsError(
+          throw new SkillError(
             'Creator center login required. Please run "xhs login --creator" first.',
-            XhsErrorCode.NOT_LOGGED_IN
+            SkillErrorCode.NOT_LOGGED_IN
           );
         }
 
@@ -108,7 +108,7 @@ export async function executePublish(options: PublishOptions): Promise<void> {
         if (result.success) {
           outputSuccess(result, 'RELAY:发布成功');
         } else {
-          outputError(result.message, XhsErrorCode.PUBLISH_FAILED);
+          outputError(result.message, SkillErrorCode.PUBLISH_FAILED);
         }
         debugLog('Result output complete');
       },

@@ -5,7 +5,7 @@
  * @description Standardized JSON output formatting for all CLI commands (platform-agnostic)
  */
 
-import type { SuccessResponse, ErrorResponse, CliOutput, QrCodeOutput } from './types';
+import type { SuccessResponse, ErrorResponse, QrCodeOutput } from './types';
 
 /**
  * Output success response as JSON to stdout
@@ -47,17 +47,6 @@ export function outputError(message: string, code: string, details?: unknown): v
     ...(details !== undefined && { details }),
   };
   console.error(JSON.stringify(response, null, 2));
-}
-
-/**
- * Output CLI response to appropriate stream
- */
-export function output<T>(result: CliOutput<T>): void {
-  if ('success' in result) {
-    console.log(JSON.stringify(result, null, 2));
-  } else {
-    console.error(JSON.stringify(result, null, 2));
-  }
 }
 
 /**

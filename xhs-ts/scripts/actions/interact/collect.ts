@@ -8,7 +8,7 @@
 import type { Page } from 'playwright';
 import type { CollectOptions, CollectResult } from './types';
 import { COLLECT_SELECTORS } from './selectors';
-import { TIMEOUTS } from '../../config';
+import { timeouts } from '../../config';
 import { debugLog, delay, gaussianDelay } from '../../core/utils';
 import {
   humanClick,
@@ -63,8 +63,8 @@ async function performCollect(page: Page, url: string): Promise<CollectResult> {
 
   try {
     debugLog('导航到: ' + url);
-    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: TIMEOUTS.PAGE_LOAD });
-    await page.waitForLoadState('networkidle', { timeout: TIMEOUTS.NETWORK_IDLE }).catch(() => {});
+    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: timeouts.pageLoad });
+    await page.waitForLoadState('networkidle', { timeout: timeouts.networkIdle }).catch(() => {});
     await delay(1500 + Math.random() * 1000);
 
     if (!(await checkLoginStatus(page))) {

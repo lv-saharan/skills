@@ -8,11 +8,6 @@
 import type { UserFingerprint } from '../../fingerprint/types';
 
 /**
- * Stealth script generator function type
- */
-export type StealthScriptGenerator = (fp: UserFingerprint) => string;
-
-/**
  * Stealth module configuration
  */
 export interface StealthModuleConfig {
@@ -45,25 +40,6 @@ export interface StealthModuleConfig {
 }
 
 /**
- * Default stealth module configuration (all enabled)
- */
-export const DEFAULT_STEALTH_CONFIG: StealthModuleConfig = {
-  navigator: true,
-  screen: true,
-  webgl: true,
-  canvas: true,
-  audio: true,
-  chrome: true,
-  webrtc: true,
-  media: true,
-  timezone: true,
-  font: true,
-  battery: true,
-  geolocation: true,
-  performance: true,
-};
-
-/**
  * Geolocation configuration
  */
 export interface GeolocationConfig {
@@ -82,19 +58,6 @@ export interface GeolocationConfig {
   /** Speed in m/s (optional) */
   speed?: number | null;
 }
-
-/**
- * Default geolocation (Shanghai, China)
- */
-export const DEFAULT_GEOLOCATION: GeolocationConfig = {
-  latitude: 31.2304,
-  longitude: 121.4737,
-  accuracy: 100,
-  altitude: null,
-  altitudeAccuracy: null,
-  heading: null,
-  speed: null,
-};
 
 // Re-export UserFingerprint for convenience
 export type { UserFingerprint };

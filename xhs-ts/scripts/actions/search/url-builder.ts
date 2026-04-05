@@ -12,7 +12,7 @@ import type {
   SearchScope,
   SearchLocation,
 } from './types';
-import { XHS_URLS } from '../../config';
+import { urls } from '../../config';
 
 // ============================================
 // Filter Value Mappings
@@ -112,7 +112,7 @@ export function buildSearchUrl(options: BuildSearchUrlOptions): string {
     params.set('location', LOCATION_MAP[location]);
   }
 
-  return `${XHS_URLS.home}/search_result?${params.toString()}`;
+  return `${urls.home}/search_result?${params.toString()}`;
 }
 
 // ============================================

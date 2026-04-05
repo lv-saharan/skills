@@ -221,6 +221,34 @@ throw new XhsError(message, XhsErrorCode.NOT_LOGGED_IN);
 
 ---
 
+## Module Dependencies
+
+模块依赖层次（严格单向）：
+
+```
+cli ──────► actions ──────► (user, config, core)
+                 │               │
+                 └───────────────┘
+                         │
+                         ▼
+                      core
+```
+
+**分层规则**：
+- `cli` → 只依赖 `actions`
+- `actions` → 可依赖 `user`, `config`, `core`
+- `user` → 只依赖 `core`
+- `config` → 只依赖 `core/error`（无业务逻辑）
+- `core` → 无外部依赖（平台无关）
+
+**关键原则**：
+- 上层可依赖下层，下层不可依赖上层
+- `config` 模块只包含配置数据，不包含业务逻辑
+- Session 相关函数（`withSession`, `ensureLoginStatus`, `checkErrorPage`）在 `actions/shared/session.ts`
+- 禁止循环依赖
+
+---
+
 ## References
 
 - [Browser Architecture](docs/architecture/browser.md)

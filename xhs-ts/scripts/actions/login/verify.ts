@@ -7,8 +7,9 @@
 
 import type { UserName } from '../../user';
 import { hasProfile } from '../../user/storage';
-import { withProfile } from '../../core/browser';
-import { XHS_URLS, debugLog } from '../../config';
+import { withProfile } from '../shared/browser-launcher';
+import { urls } from '../../config';
+import { debugLog } from '../../core/utils';
 import { checkLoginStatus } from '../../core/anti-detect';
 
 /**
@@ -38,7 +39,7 @@ export async function verifyExistingSession(user?: UserName): Promise<boolean> {
       user || 'default',
       async (page) => {
         // Navigate to home page with persisted cookies
-        await page.goto(XHS_URLS.home, {
+        await page.goto(urls.home, {
           waitUntil: 'networkidle',
           timeout: 30000,
         });

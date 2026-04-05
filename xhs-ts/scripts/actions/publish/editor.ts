@@ -6,8 +6,8 @@
  */
 
 import type { Page } from 'playwright';
-import { XhsError, XhsErrorCode } from '../../config';
-import { debugLog, delay, randomDelay } from '../../config';
+import { SkillError, SkillErrorCode } from '../../config';
+import { debugLog, delay, randomDelay } from '../../core/utils';
 import { SELECTORS } from './constants';
 
 // ============================================
@@ -79,7 +79,7 @@ export async function fillTitle(page: Page, title: string): Promise<void> {
     }, title);
 
     if (!filled) {
-      throw new XhsError('Title input not found', XhsErrorCode.NOT_FOUND);
+      throw new SkillError('Title input not found', SkillErrorCode.NOT_FOUND);
     }
     debugLog('Title filled using evaluate fallback');
   }
@@ -156,7 +156,7 @@ export async function fillContent(page: Page, content: string): Promise<void> {
     }, content);
 
     if (!filled) {
-      throw new XhsError('Content input not found', XhsErrorCode.NOT_FOUND);
+      throw new SkillError('Content input not found', SkillErrorCode.NOT_FOUND);
     }
     debugLog('Content filled using evaluate fallback');
   }

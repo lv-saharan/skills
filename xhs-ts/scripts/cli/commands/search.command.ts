@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Search Command
  *
  * @module cli/commands/search.command
@@ -7,7 +7,7 @@
 import type { Command } from 'commander';
 import { resolveUser } from '../../user';
 import { config } from '../../config';
-import { parseNumberOption, resolveHeadless } from '../types';
+import { parseNumberOption, resolveHeadless } from '../utils';
 import type { SearchCommandOptions } from '../types';
 
 export function registerSearchCommand(program: Command): void {
@@ -39,3 +39,4 @@ export function registerSearchCommand(program: Command): void {
       });
     });
 }
+

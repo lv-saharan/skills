@@ -49,8 +49,8 @@ try {
   }
 } catch (e) {}
 
-// devicePixelRatio (standard display = 1)
-Object.defineProperty(window, 'devicePixelRatio', { get: () => 1, configurable: true });
+// devicePixelRatio (from fingerprint, default to 1 for backward compatibility)
+Object.defineProperty(window, 'devicePixelRatio', { get: () => ${fp.screen.devicePixelRatio || 1}, configurable: true });
 
 // CSS Media Queries consistency
 (function() {

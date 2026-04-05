@@ -12,7 +12,7 @@ import { SEARCH_CONTAINER_SELECTOR, NOTE_ITEM_SELECTOR, navigateToSearch } from 
 import { extractSearchResults } from './result-extractor';
 import { hoverNotesForTokens, loadMoreResults, NOTES_PER_SCROLL } from './extraction';
 import { withSession, type SessionContext } from '../shared/session';
-import { XhsError, XhsErrorCode } from '../../config/errors';
+import { SkillError, SkillErrorCode } from '../../config/errors';
 import { debugLog, delay, outputSuccess, outputFromError } from '../../core/utils';
 import { checkCaptcha } from '../../core/anti-detect';
 
@@ -55,9 +55,9 @@ async function performSearch(
   // Check for captcha
   const hasCaptcha = await checkCaptcha(page);
   if (hasCaptcha) {
-    throw new XhsError(
+    throw new SkillError(
       'CAPTCHA detected during search. Please try again later.',
-      XhsErrorCode.CAPTCHA_REQUIRED
+      SkillErrorCode.CAPTCHA_REQUIRED
     );
   }
 

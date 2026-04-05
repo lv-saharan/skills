@@ -17,10 +17,6 @@ HEADLESS=
 # Browser path (optional, uses Playwright's built-in by default)
 BROWSER_PATH=
 
-# Login config
-LOGIN_METHOD=qr        # Login method: qr or sms
-LOGIN_TIMEOUT=120000   # Login timeout (ms)
-
 # Debug mode
 DEBUG=false
 ```

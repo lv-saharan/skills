@@ -1,16 +1,16 @@
-/**
+﻿/**
  * Platform errors
  *
  * @module config/errors
- * @description Xiaohongshu error definitions
+ * @description Skill error definitions
  */
 
 import { createPlatformError, type StandardErrorCode } from '../core/error';
 
 /**
- * Xiaohongshu error codes
+ * Skill error codes
  */
-export const XhsErrorCode = {
+export const SkillErrorCode = {
   NOT_LOGGED_IN: 'NOT_LOGGED_IN',
   RATE_LIMITED: 'RATE_LIMITED',
   NOT_FOUND: 'NOT_FOUND',
@@ -24,18 +24,18 @@ export const XhsErrorCode = {
   INTERNAL_ERROR: 'INTERNAL_ERROR',
 } as const satisfies StandardErrorCode;
 
-export type XhsErrorCodeType = (typeof XhsErrorCode)[keyof typeof XhsErrorCode];
+export type SkillErrorCodeType = (typeof SkillErrorCode)[keyof typeof SkillErrorCode];
 
 /**
- * Xiaohongshu error class
+ * Skill error class
  *
  * @example
- * ```typescript
- * throw new XhsError('Login required', XhsErrorCode.NOT_LOGGED_IN);
- * throw new XhsError('Network failed', XhsErrorCode.NETWORK_ERROR, { originalError: err });
- * ```
+ * `	ypescript
+ * throw new SkillError('Login required', SkillErrorCode.NOT_LOGGED_IN);
+ * throw new SkillError('Network failed', SkillErrorCode.NETWORK_ERROR, { originalError: err });
+ * `
  */
-export const XhsError = createPlatformError({
-  name: 'XhsError',
-  codes: XhsErrorCode,
+export const SkillError = createPlatformError({
+  name: 'SkillError',
+  codes: SkillErrorCode,
 });

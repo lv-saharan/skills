@@ -7,15 +7,8 @@
 
 import type { BrowserInstance } from '../../core/browser/types';
 import type { UserName } from '../../user';
-import { XhsError, XhsErrorCode } from '../../config';
-import {
-  XHS_URLS,
-  debugLog,
-  delay,
-  randomDelay,
-  waitForCondition,
-  isPlatformUrl,
-} from '../../config';
+import { SkillError, SkillErrorCode, urls, isPlatformUrl } from '../../config';
+import { debugLog, delay, randomDelay, waitForCondition } from '../../core/utils';
 import { humanClick, checkLoginStatus } from '../../core/anti-detect';
 import type { LoginResult } from './types';
 
@@ -29,12 +22,12 @@ export async function smsLogin(
 ): Promise<LoginResult> {
   const { page } = instance;
 
-  await page.goto(XHS_URLS.login);
+  await page.goto(urls.login);
   await randomDelay(1000, 2000);
 
   const smsTabClicked = await humanClick(page, 'text=手机登录, text=短信登录, [class*="sms"]');
   if (!smsTabClicked) {
-    throw new XhsError('Cannot find SMS login option', XhsErrorCode.LOGIN_FAILED);
+    throw new SkillError('Cannot find SMS login option', SkillErrorCode.LOGIN_FAILED);
   }
 
   await delay(1000);
@@ -43,9 +36,9 @@ export async function smsLogin(
   await waitForCondition(
     async () => {
       if (page.isClosed()) {
-        throw new XhsError(
+        throw new SkillError(
           'Browser window closed by user. Login cancelled.',
-          XhsErrorCode.LOGIN_FAILED
+          SkillErrorCode.LOGIN_FAILED
         );
       }
 

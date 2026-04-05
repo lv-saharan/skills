@@ -10,7 +10,12 @@ import { readFile, writeFile, mkdir } from 'fs/promises';
 import path from 'path';
 import type { UserName, UserFingerprint } from './types';
 import { getUserDir } from './storage';
-import { MAINSTREAM_PRESETS } from '../core/browser/fingerprint-presets';
+// NOTE: getProjectRoot import removed to eliminate circular dependency
+import {
+  loadDevicePresets,
+  selectPresetByWeight,
+  generateFingerprintFromPreset,
+} from '../core/fingerprint';
 import { debugLog } from '../core/utils';
 
 // ============================================
@@ -36,57 +41,15 @@ function getFingerprintPath(user: UserName): string {
 // ============================================
 
 /**
- * Select preset by weight from a list
- */
-function selectByWeight(): (typeof MAINSTREAM_PRESETS)[number] {
-  const totalWeight = MAINSTREAM_PRESETS.reduce((sum, p) => sum + p.weight, 0);
-  let random = Math.random() * totalWeight;
-
-  for (const preset of MAINSTREAM_PRESETS) {
-    random -= preset.weight;
-    if (random <= 0) {
-      return preset;
-    }
-  }
-
-  // Return highest weight preset as fallback
-  return MAINSTREAM_PRESETS.reduce((best, p) => (p.weight > best.weight ? p : best));
-}
-
-/**
  * Generate a new fingerprint using weighted preset selection
  */
-function generateFingerprint(): UserFingerprint {
-  const preset = selectByWeight();
-
-  const fingerprint: UserFingerprint = {
-    version: 1,
-    createdAt: new Date().toISOString(),
-    device: {
-      platform: preset.device.platform,
-      hardwareConcurrency: preset.device.hardwareConcurrency,
-      deviceMemory: preset.device.deviceMemory,
-    },
-    browser: {
-      userAgent: preset.browser.userAgent,
-      vendor: preset.browser.vendor,
-      languages: [...preset.browser.languages],
-    },
-    webgl: {
-      vendor: preset.webgl.vendor,
-      renderer: preset.webgl.renderer,
-    },
-    screen: {
-      width: preset.screen.width,
-      height: preset.screen.height,
-      colorDepth: preset.screen.colorDepth ?? 24,
-    },
-    canvasNoiseSeed: Math.floor(Math.random() * 10000000),
-    audioNoiseSeed: Math.floor(Math.random() * 10000000),
-    description: preset.description,
-  };
-
-  return fingerprint;
+async function generateFingerprint(): Promise<UserFingerprint> {
+  const presets = await loadDevicePresets(process.cwd());
+  const preset = selectPresetByWeight(presets);
+  if (!preset) {
+    throw new Error('No presets available');
+  }
+  return generateFingerprintFromPreset(preset);
 }
 
 // ============================================
@@ -126,7 +89,7 @@ export async function getUserFingerprint(user: UserName): Promise<UserFingerprin
   }
 
   // Generate new fingerprint
-  const fingerprint = generateFingerprint();
+  const fingerprint = await generateFingerprint();
 
   // Ensure user directory exists
   const userDir = getUserDir(user);

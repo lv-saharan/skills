@@ -11,12 +11,13 @@
 
 import type { Page } from 'playwright';
 import type { UserName } from '../../user/types';
-import { TIMEOUTS, QR_SELECTORS, QR_TAB_SELECTOR } from '../../config';
-import { debugLog, delay, waitForCondition } from '../../config';
+import { timeouts } from '../../config';
+import { QR_SELECTORS, QR_TAB_SELECTOR } from './selectors';
+import { debugLog, delay, waitForCondition } from '../../core/utils';
 import { checkLoginStatus, checkCaptcha } from '../../core/anti-detect';
-import { ensureLoginStatus } from '../../config';
+import { ensureLoginStatus } from '../shared/session';
 import { outputQrCode } from '../../core/utils/output';
-import { getTmpFilePath } from '../../config';
+import { getTmpFilePath } from '../../core/utils';
 import { writeFile } from 'fs/promises';
 
 // ============================================
@@ -50,7 +51,7 @@ export async function ensureLogin(
   page: Page,
   options: EnsureLoginOptions
 ): Promise<EnsureLoginResult> {
-  const { user, headless, timeout = TIMEOUTS.LOGIN } = options;
+  const { user, headless, timeout = timeouts.login } = options;
 
   // Use ensureLoginStatus to check and auto-trigger login modal
   const status = await ensureLoginStatus(page);

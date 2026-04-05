@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Geolocation stealth module
  *
  * @module browser/stealth/geolocation
@@ -6,7 +6,7 @@
  */
 
 import type { GeolocationConfig } from './types';
-import { DEFAULT_GEOLOCATION } from './types';
+import { DEFAULT_GEOLOCATION } from './constants';
 
 /**
  * Generate Geolocation mock script
@@ -89,3 +89,4 @@ export function generateGeolocationScript(config: GeolocationConfig = DEFAULT_GE
 })();
 `;
 }
+

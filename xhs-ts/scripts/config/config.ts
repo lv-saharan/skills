@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Global configuration management
  *
  * @module config/config
@@ -6,11 +6,8 @@
  */
 
 import dotenv from 'dotenv';
-import path from 'path';
-import { existsSync, mkdirSync } from 'fs';
+import { existsSync } from 'fs';
 import type { AppConfig } from './types';
-import type { LoginMethod } from './types';
-import type { UserName } from '../user';
 
 // ============================================
 // Environment Loading
@@ -19,7 +16,7 @@ import type { UserName } from '../user';
 dotenv.config();
 
 // ============================================
-// Configuration Parsing
+// Configuration Parsing (Internal)
 // ============================================
 
 /**
@@ -50,16 +47,6 @@ function parseHeadless(value: string | undefined): boolean {
 }
 
 /**
- * Parse login method from environment
- */
-function parseLoginMethod(value: string | undefined): LoginMethod {
-  if (value === 'sms') {
-    return 'sms';
-  }
-  return 'qr';
-}
-
-/**
  * Parse boolean from environment
  */
 function parseBoolean(value: string | undefined, defaultValue: boolean = true): boolean {
@@ -67,75 +54,6 @@ function parseBoolean(value: string | undefined, defaultValue: boolean = true): 
     return defaultValue;
   }
   return value !== 'false';
-}
-
-/**
- * Parse integer from environment with default
- */
-function parseInteger(value: string | undefined, defaultValue: number): number {
-  if (value === undefined || value === '') {
-    return defaultValue;
-  }
-  const parsed = parseInt(value, 10);
-  return isNaN(parsed) ? defaultValue : parsed;
-}
-
-// ============================================
-// Directory Configuration
-// ============================================
-
-/**
- * Get project root directory
- */
-export function getProjectRoot(): string {
-  return process.cwd();
-}
-
-/**
- * Get users directory path
- */
-export function getUsersDir(): string {
-  return path.resolve(getProjectRoot(), 'users');
-}
-
-/**
- * Get tmp directory path for a specific user
- */
-export function getTmpDir(user?: UserName): string {
-  const userName = user || 'default';
-  const tmpDir = path.resolve(getUsersDir(), userName, 'tmp');
-  if (!existsSync(tmpDir)) {
-    mkdirSync(tmpDir, { recursive: true });
-  }
-  return tmpDir;
-}
-
-/**
- * Generate timestamp string for file naming
- */
-export function generateTimestamp(): string {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  const day = String(now.getDate()).padStart(2, '0');
-  const hours = String(now.getHours()).padStart(2, '0');
-  const minutes = String(now.getMinutes()).padStart(2, '0');
-  const seconds = String(now.getSeconds()).padStart(2, '0');
-  return `${year}${month}${day}_${hours}${minutes}${seconds}`;
-}
-
-/**
- * Generate file name with category and timestamp
- */
-export function generateFileName(category: string, ext: string): string {
-  return `${category}_${generateTimestamp()}.${ext}`;
-}
-
-/**
- * Get full path for a file in tmp directory
- */
-export function getTmpFilePath(category: string, ext: string, user?: UserName): string {
-  return path.resolve(getTmpDir(user), generateFileName(category, ext));
 }
 
 // ============================================
@@ -151,8 +69,6 @@ export const config: AppConfig = {
   browserPath: process.env.BROWSER_PATH || undefined,
   browserChannel: process.env.BROWSER_CHANNEL || undefined,
   debug: parseBoolean(process.env.DEBUG, false),
-  loginTimeout: parseInteger(process.env.LOGIN_TIMEOUT, 120000),
-  loginMethod: parseLoginMethod(process.env.LOGIN_METHOD),
 };
 
 // ============================================
@@ -168,6 +84,6 @@ export function validateConfig(): void {
   }
 
   if (config.browserPath && !existsSync(config.browserPath)) {
-    console.error(`[WARN] Browser path specified but file not found: ${config.browserPath}`);
+    console.error('[WARN] Browser path specified but file not found: ' + config.browserPath);
   }
 }

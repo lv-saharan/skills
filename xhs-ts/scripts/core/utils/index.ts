@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Utils module entry
  *
  * @module core/utils
@@ -11,11 +11,11 @@ export { delay, randomDelay, gaussianDelay } from './delay';
 // Waiting
 export { waitForCondition, type WaitForConditionOptions } from './wait';
 
-// Retry
-export { retry } from './retry';
-
 // Logging
 export { debugLog } from './logging';
+
+// Path utilities
+export { generateTimestamp, getTmpDir, getTmpFilePath } from './path';
 
 // Output
 export { outputSuccess, outputError, outputQrCode, outputFromError } from './output';

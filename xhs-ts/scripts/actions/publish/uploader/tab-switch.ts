@@ -5,9 +5,9 @@
  * @description Switch between image and video upload tabs
  */
 
-import { getTmpFilePath } from '../../../config';
+import { getTmpFilePath } from '../../../core/utils';
 import type { Page } from 'playwright';
-import { XhsError, XhsErrorCode } from '../../../config';
+import { SkillError, SkillErrorCode } from '../../../config';
 import { delay, debugLog } from '../../../core/utils';
 import type { PublishMediaType } from '../types';
 
@@ -121,14 +121,17 @@ export async function switchToUploadTab(page: Page, mediaType: PublishMediaType)
 
       // If no upload buttons found at all, the page might be different
       if (imageBtnCount === 0 && videoBtnCount === 0) {
-        throw new XhsError(
+        throw new SkillError(
           `No upload buttons found. The publish page structure may have changed or requires login.`,
-          XhsErrorCode.NOT_FOUND
+          SkillErrorCode.NOT_FOUND
         );
       }
 
       // We're on the wrong tab but can't switch
-      throw new XhsError(`Failed to find ${tabText} tab on publish page`, XhsErrorCode.NOT_FOUND);
+      throw new SkillError(
+        `Failed to find ${tabText} tab on publish page`,
+        SkillErrorCode.NOT_FOUND
+      );
     }
 
     // Wait for the tab content to load - wait for the upload button to be visible

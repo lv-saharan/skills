@@ -14,9 +14,8 @@ import type {
   SearchLocation,
 } from './types';
 import { buildSearchUrl, getFilterSelectors } from './url-builder';
-import { XhsError, XhsErrorCode } from '../../config';
-import { TIMEOUTS } from '../../config';
-import { XHS_URLS, debugLog, delay, randomDelay } from '../../config';
+import { SkillError, SkillErrorCode, timeouts, urls } from '../../config';
+import { debugLog, delay, randomDelay } from '../../core/utils';
 import { humanClick } from '../../core/anti-detect';
 
 // ============================================
@@ -141,9 +140,9 @@ export async function searchViaHomepage(page: Page, keyword: string): Promise<vo
   debugLog('Attempting search via homepage search bar...');
 
   // Navigate to homepage
-  await page.goto(XHS_URLS.home, {
+  await page.goto(urls.home, {
     waitUntil: 'domcontentloaded',
-    timeout: TIMEOUTS.PAGE_LOAD,
+    timeout: timeouts.pageLoad,
   });
   await delay(2000);
 
@@ -164,9 +163,9 @@ export async function searchViaHomepage(page: Page, keyword: string): Promise<vo
   }
 
   if (!searchInput) {
-    throw new XhsError(
+    throw new SkillError(
       'Cannot find search input on homepage. The page structure may have changed.',
-      XhsErrorCode.NOT_FOUND
+      SkillErrorCode.NOT_FOUND
     );
   }
 
@@ -319,7 +318,7 @@ export async function navigateToSearch(
 
   await page.goto(searchUrl, {
     waitUntil: 'domcontentloaded',
-    timeout: TIMEOUTS.PAGE_LOAD,
+    timeout: timeouts.pageLoad,
   });
 
   // Check if we were redirected to verification page
@@ -334,9 +333,9 @@ export async function navigateToSearch(
     // Check if we now have search results
     const hasResults = await hasSearchResults(page);
     if (!hasResults) {
-      throw new XhsError(
+      throw new SkillError(
         'Homepage search fallback failed. Cannot access search results.',
-        XhsErrorCode.NOT_FOUND
+        SkillErrorCode.NOT_FOUND
       );
     }
 

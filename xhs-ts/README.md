@@ -73,10 +73,6 @@ HEADLESS=
 # 浏览器路径（可选，默认使用 Playwright 内置）
 BROWSER_PATH=
 
-# 登录配置
-LOGIN_METHOD=qr        # 登录方式：qr 或 sms
-LOGIN_TIMEOUT=120000   # 登录超时（毫秒）
-
 # 调试模式
 DEBUG=false
 ```

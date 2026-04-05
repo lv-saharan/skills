@@ -6,10 +6,10 @@
  */
 
 import { resolve } from 'path';
-import { getTmpFilePath } from '../../../config';
+import { getTmpFilePath } from '../../../core/utils';
 import type { Page } from 'playwright';
-import { XhsError, XhsErrorCode } from '../../../config';
-import { TIMEOUTS } from '../../../config';
+import { SkillError, SkillErrorCode } from '../../../config';
+import { timeouts } from '../../../config';
 import { delay, debugLog, randomDelay } from '../../../core/utils';
 import type { PublishMediaType } from '../types';
 import { SELECTORS } from '../constants';
@@ -51,16 +51,16 @@ async function performUpload(
     debugLog(`Button counts - Image: ${imageBtnCount}, Video: ${videoBtnCount}`);
 
     if (mediaType === 'image' && imageBtnCount === 0 && videoBtnCount > 0) {
-      throw new XhsError(
+      throw new SkillError(
         'Image upload button not found. You may be on the video tab. Please switch to the image tab first.',
-        XhsErrorCode.NOT_FOUND
+        SkillErrorCode.NOT_FOUND
       );
     }
 
     if (mediaType === 'video' && videoBtnCount === 0 && imageBtnCount > 0) {
-      throw new XhsError(
+      throw new SkillError(
         'Video upload button not found. You may be on the image tab. Please switch to the video tab first.',
-        XhsErrorCode.NOT_FOUND
+        SkillErrorCode.NOT_FOUND
       );
     }
 
@@ -73,9 +73,9 @@ async function performUpload(
       debugLog(`Setting files via input (fallback): ${resolvedPaths.join(', ')}`);
       await fileInput.first().setInputFiles(resolvedPaths);
     } else {
-      throw new XhsError(
+      throw new SkillError(
         'Upload input not found. The publish page may have changed.',
-        XhsErrorCode.NOT_FOUND
+        SkillErrorCode.NOT_FOUND
       );
     }
   } else {
@@ -177,7 +177,7 @@ export async function uploadMedia(
         console.log('上传完成后，按 Enter 键继续 (120秒超时)...\n');
 
         // Wait for user to press Enter with timeout
-        const MANUAL_UPLOAD_TIMEOUT = TIMEOUTS.LOGIN; // 2 minutes
+        const MANUAL_UPLOAD_TIMEOUT = timeouts.login; // 2 minutes
         await Promise.race([
           new Promise<void>((resolve) => {
             process.stdin.once('data', () => {
@@ -186,7 +186,7 @@ export async function uploadMedia(
           }),
           new Promise<void>((_, reject) => {
             setTimeout(() => {
-              reject(new XhsError('Manual upload timeout', XhsErrorCode.NETWORK_ERROR));
+              reject(new SkillError('Manual upload timeout', SkillErrorCode.NETWORK_ERROR));
             }, MANUAL_UPLOAD_TIMEOUT);
           }),
         ]).catch((err) => {
@@ -212,5 +212,5 @@ export async function uploadMedia(
     }
   }
 
-  throw new XhsError(`Upload failed after ${MAX_RETRIES} retries`, XhsErrorCode.NETWORK_ERROR);
+  throw new SkillError(`Upload failed after ${MAX_RETRIES} retries`, SkillErrorCode.NETWORK_ERROR);
 }

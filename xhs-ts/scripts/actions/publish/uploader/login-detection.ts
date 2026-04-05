@@ -6,8 +6,8 @@
  */
 
 import type { Page } from 'playwright';
-import { XhsError, XhsErrorCode } from '../../../config';
-import { TIMEOUTS } from '../../../config';
+import { SkillError, SkillErrorCode } from '../../../config';
+import { timeouts } from '../../../config';
 import { debugLog } from '../../../core/utils';
 
 /**
@@ -95,18 +95,18 @@ export async function waitForUserLogin(page: Page): Promise<void> {
   try {
     // Wait for URL to match publish page
     await page.waitForURL('**/creator.xiaohongshu.com/publish**', {
-      timeout: TIMEOUTS.LOGIN,
+      timeout: timeouts.login,
     });
     // Then wait for upload button to appear
     await page.locator('button:has-text("上传图片")').waitFor({
-      timeout: TIMEOUTS.LOGIN,
+      timeout: timeouts.login,
     });
     debugLog('User logged in successfully, back to publish page');
     console.log('✅ Login successful! Continuing with publish...\n');
   } catch {
-    throw new XhsError(
+    throw new SkillError(
       'Login timeout. Please try again with fresh cookies.',
-      XhsErrorCode.NOT_LOGGED_IN
+      SkillErrorCode.NOT_LOGGED_IN
     );
   }
 }

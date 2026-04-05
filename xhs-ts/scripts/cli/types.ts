@@ -160,30 +160,15 @@ export interface UserCommandOptions {
 }
 
 // ============================================
-// Helper Functions
+// Helper Functions (Moved)
 // ============================================
 
 /**
- * Parse number option with default value
+ * Helper functions moved to cli/utils.ts
+ *
+ * - parseNumberOption
+ * - resolveHeadless
+ * - resolveBoolFlag
+ *
+ * @see cli/utils.ts
  */
-export function parseNumberOption(value: string | undefined, defaultValue: number): number {
-  if (value === undefined) {
-    return defaultValue;
-  }
-  const parsed = parseInt(value, 10);
-  return Number.isNaN(parsed) ? defaultValue : parsed;
-}
-
-/**
- * Resolve headless option: CLI override > config default
- */
-export function resolveHeadless(cliValue: boolean | undefined, configDefault: boolean): boolean {
-  return cliValue ?? configDefault;
-}
-
-/**
- * Resolve boolean flag: true if flag is present
- */
-export function resolveBoolFlag(value: boolean | undefined, defaultValue = false): boolean {
-  return value ?? defaultValue;
-}

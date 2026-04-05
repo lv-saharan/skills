@@ -8,51 +8,37 @@
 import type { Browser, BrowserContext, Page } from 'playwright';
 
 // ============================================
-// Launch Options
-// ============================================
-
-/** Browser launch options */
-export interface BrowserLaunchOptions {
-  /** Headless mode */
-  headless?: boolean;
-  /** Proxy URL */
-  proxy?: string;
-  /** Custom browser executable path */
-  browserPath?: string;
-  /** Browser channel (e.g., 'chrome', 'msedge') */
-  browserChannel?: string;
-  /** Enable stealth injection (default: true) */
-  stealth?: boolean;
-}
-
-// ============================================
-// Browser Instance (Simplified for CDP)
+// Browser Instance
 // ============================================
 
 /**
  * Browser instance container
- * Holds browser, context, and page together
+ * Holds browser, context, page and connection info together
+ *
+ * Core properties (browser, context, page) are always available.
+ * Connection properties (port, pid, wsEndpoint, isNewInstance) are
+ * available when launched via launchBrowser().
  */
 export interface BrowserInstance {
   browser: Browser;
   context: BrowserContext;
   page: Page;
+  /** CDP debugging port (available from launchBrowser) */
+  port?: number;
+  /** Browser process ID (available from launchBrowser) */
+  pid?: number;
+  /** WebSocket endpoint URL */
+  wsEndpoint?: string;
+  /** Whether this is a newly spawned instance */
+  isNewInstance?: boolean;
 }
 
 // ============================================
-// Cleanup Result
+// Environment Types
 // ============================================
 
-/** Result of cleanup operation */
-export interface CleanupResult {
-  /** Number of pages closed */
-  pagesClosed: number;
-  /** Whether context was closed */
-  contextClosed: boolean;
-  /** Whether browser was closed */
-  browserClosed: boolean;
-  /** Any errors during cleanup */
-  errors: Array<{ resource: string; error: Error }>;
-  /** Total cleanup duration in milliseconds */
-  duration: number;
-}
+/**
+ * Environment detection type
+ * Used to determine appropriate stealth behavior
+ */
+export type EnvironmentType = 'gui-native' | 'gui-virtual' | 'headless-smart' | 'headless-custom';

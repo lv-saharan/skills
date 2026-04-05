@@ -6,10 +6,8 @@
  */
 
 import type { BrowserContext, Page } from 'playwright';
-import { XhsError, XhsErrorCode } from '../../config';
-import { TIMEOUTS } from '../../config';
-import { debugLog, delay, randomDelay } from '../../config';
-import { XHS_URLS } from '../../config';
+import { SkillError, SkillErrorCode, timeouts, urls } from '../../config';
+import { debugLog, delay, randomDelay } from '../../core/utils';
 import { checkCaptcha } from '../../core/anti-detect';
 import type { PublishResult } from './types';
 import { SELECTORS, CREATOR_PUBLISH_URL } from './constants';
@@ -115,7 +113,7 @@ export async function navigateToPublishPageFromCreatorHome(page: Page): Promise<
   debugLog('Trying direct navigation to publish page...');
   await page.goto(CREATOR_PUBLISH_URL, {
     waitUntil: 'domcontentloaded',
-    timeout: TIMEOUTS.PAGE_LOAD,
+    timeout: timeouts.pageLoad,
   });
 
   await delay(2000);
@@ -154,14 +152,14 @@ export async function submitAndVerify(page: Page): Promise<PublishResult> {
   const isVisible = await submitBtn.isVisible().catch(() => false);
 
   if (!isVisible) {
-    throw new XhsError('Submit button not found', XhsErrorCode.NOT_FOUND);
+    throw new SkillError('Submit button not found', SkillErrorCode.NOT_FOUND);
   }
 
   const isEnabled = await submitBtn.isEnabled().catch(() => false);
   if (!isEnabled) {
-    throw new XhsError(
+    throw new SkillError(
       'Submit button is disabled. Please check if all required fields are filled.',
-      XhsErrorCode.NOT_FOUND
+      SkillErrorCode.NOT_FOUND
     );
   }
 
@@ -204,7 +202,7 @@ export async function submitAndVerify(page: Page): Promise<PublishResult> {
       return {
         success: true,
         noteId,
-        noteUrl: noteId ? `${XHS_URLS.explore}/${noteId}` : undefined,
+        noteUrl: noteId ? `${urls.explore}/${noteId}` : undefined,
         message: 'Note published successfully',
       };
     }
@@ -243,7 +241,7 @@ export async function submitAndVerify(page: Page): Promise<PublishResult> {
     return {
       success: true,
       noteId,
-      noteUrl: noteId ? `${XHS_URLS.explore}/${noteId}` : undefined,
+      noteUrl: noteId ? `${urls.explore}/${noteId}` : undefined,
       message: 'Note published successfully',
     };
   }

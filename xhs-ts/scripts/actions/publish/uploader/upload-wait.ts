@@ -5,10 +5,13 @@
  * @description Wait for image and video uploads to complete
  */
 
-import { getTmpFilePath } from '../../../config';
+import { getTmpFilePath } from '../../../core/utils';
 import type { Page } from 'playwright';
-import { XhsError, XhsErrorCode } from '../../../config';
-import { TIMEOUTS } from '../../../config';
+import { SkillError, SkillErrorCode } from '../../../config';
+import { timeouts } from '../../../config';
+
+/** Upload timeout in milliseconds */
+const UPLOAD_TIMEOUT = timeouts.upload ?? 120000;
 import { delay, debugLog, waitForCondition } from '../../../core/utils';
 import { SELECTORS } from '../constants';
 import { isOnLoginPage } from './login-detection';
@@ -179,9 +182,9 @@ async function handleManualLoginAndWait(page: Page): Promise<void> {
     console.log('\n✅ 检测到编辑器，上传成功！\n');
     console.log(JSON.stringify(manualUploadSuccessOutput));
   } catch {
-    throw new XhsError(
+    throw new SkillError(
       'Creator center login/upload timeout. Please try again.',
-      XhsErrorCode.NOT_LOGGED_IN
+      SkillErrorCode.NOT_LOGGED_IN
     );
   }
 }
@@ -207,17 +210,17 @@ export async function waitForImageUpload(page: Page, imageCount: number): Promis
 
         // Handle session lost
         if (status.sessionLost) {
-          throw new XhsError(
+          throw new SkillError(
             'SESSION_LOST_RETRY: Session was lost during upload.',
-            XhsErrorCode.NOT_LOGGED_IN
+            SkillErrorCode.NOT_LOGGED_IN
           );
         }
 
         // Handle upload error
         if (status.hasError) {
-          throw new XhsError(
+          throw new SkillError(
             `Image upload failed: ${status.errorMessage}`,
-            XhsErrorCode.NETWORK_ERROR
+            SkillErrorCode.NETWORK_ERROR
           );
         }
 
@@ -231,9 +234,9 @@ export async function waitForImageUpload(page: Page, imageCount: number): Promis
         return status.completed;
       },
       {
-        timeout: TIMEOUTS.UPLOAD,
+        timeout: UPLOAD_TIMEOUT,
         interval: 500,
-        timeoutMessage: `Image upload timeout after ${TIMEOUTS.UPLOAD / 1000}s`,
+        timeoutMessage: `Image upload timeout after ${UPLOAD_TIMEOUT / 1000}s`,
       }
     );
 
@@ -244,13 +247,13 @@ export async function waitForImageUpload(page: Page, imageCount: number): Promis
     const screenshotPath = getTmpFilePath('upload-timeout-debug', 'png');
     await page.screenshot({ path: screenshotPath }).catch(() => {});
 
-    if (error instanceof XhsError) {
+    if (error instanceof SkillError) {
       throw error;
     }
 
-    throw new XhsError(
-      `Image upload timeout after ${TIMEOUTS.UPLOAD / 1000}s. Screenshot saved to ${screenshotPath}`,
-      XhsErrorCode.NETWORK_ERROR
+    throw new SkillError(
+      `Image upload timeout after ${UPLOAD_TIMEOUT / 1000}s. Screenshot saved to ${screenshotPath}`,
+      SkillErrorCode.NETWORK_ERROR
     );
   }
 }
@@ -299,21 +302,21 @@ export async function waitForVideoUpload(page: Page): Promise<void> {
           .catch(() => false);
 
         if (hasError) {
-          throw new XhsError('Video upload failed', XhsErrorCode.NETWORK_ERROR);
+          throw new SkillError('Video upload failed', SkillErrorCode.NETWORK_ERROR);
         }
 
         return false;
       },
       {
-        timeout: TIMEOUTS.UPLOAD,
+        timeout: UPLOAD_TIMEOUT,
         interval: 1000,
         timeoutMessage: 'Video upload timeout',
       }
     );
   } catch (error) {
-    if (error instanceof XhsError) {
+    if (error instanceof SkillError) {
       throw error;
     }
-    throw new XhsError('Video upload timeout', XhsErrorCode.NETWORK_ERROR);
+    throw new SkillError('Video upload timeout', SkillErrorCode.NETWORK_ERROR);
   }
 }

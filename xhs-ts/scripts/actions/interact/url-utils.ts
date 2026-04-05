@@ -6,37 +6,18 @@
  */
 
 import { isPlatformUrl } from '../../config';
+import type { NoteIdExtraction, UserIdExtraction } from './types';
 
 // ============================================
-// Types
+// Internal Types
 // ============================================
 
-/** Generic result of extracting an ID from URL */
-export interface UrlExtractionResult {
+/** Generic result of extracting an ID from URL (internal use) */
+interface UrlExtractionResult {
   /** Successfully extracted */
   success: boolean;
   /** Extracted ID if found */
   id?: string;
-  /** Error message if failed */
-  error?: string;
-}
-
-/** Result of extracting note ID from URL */
-export interface NoteIdExtraction {
-  /** Successfully extracted */
-  success: boolean;
-  /** Note ID if found */
-  noteId?: string;
-  /** Error message if failed */
-  error?: string;
-}
-
-/** Result of extracting user ID from URL */
-export interface UserIdExtraction {
-  /** Successfully extracted */
-  success: boolean;
-  /** User ID if found */
-  userId?: string;
   /** Error message if failed */
   error?: string;
 }

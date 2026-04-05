@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Interact Commands (like, collect, comment, follow)
  *
  * @module cli/commands/interact.command
@@ -8,8 +8,8 @@ import type { Command } from 'commander';
 import { resolveUser } from '../../user';
 import { config } from '../../config';
 import { outputError } from '../../core/utils/output';
-import { XhsErrorCode } from '../../config';
-import { parseNumberOption, resolveHeadless } from '../types';
+import { SkillErrorCode } from '../../config';
+import { parseNumberOption, resolveHeadless } from '../utils';
 import type {
   LikeCommandOptions,
   CollectCommandOptions,
@@ -33,7 +33,7 @@ function registerLikeCommand(program: Command): void {
     .option('--delay <ms>', 'Delay between likes', '2000')
     .action(async (urls: string[], options: LikeCommandOptions) => {
       if (!urls?.length) {
-        outputError('请提供至少一个笔记 URL', XhsErrorCode.NOT_FOUND);
+        outputError('请提供至少一个笔记 URL', SkillErrorCode.NOT_FOUND);
         process.exit(1);
       }
       const { executeLike } = await import('../../actions/interact');
@@ -55,7 +55,7 @@ function registerCollectCommand(program: Command): void {
     .option('--delay <ms>', 'Delay between collects', '2000')
     .action(async (urls: string[], options: CollectCommandOptions) => {
       if (!urls?.length) {
-        outputError('请提供至少一个笔记 URL', XhsErrorCode.NOT_FOUND);
+        outputError('请提供至少一个笔记 URL', SkillErrorCode.NOT_FOUND);
         process.exit(1);
       }
       const { executeCollect } = await import('../../actions/interact');
@@ -94,7 +94,7 @@ function registerFollowCommand(program: Command): void {
     .option('--delay <ms>', 'Delay between follows', '2000')
     .action(async (urls: string[], options: FollowCommandOptions) => {
       if (!urls?.length) {
-        outputError('请提供至少一个用户主页 URL', XhsErrorCode.NOT_FOUND);
+        outputError('请提供至少一个用户主页 URL', SkillErrorCode.NOT_FOUND);
         process.exit(1);
       }
       const { executeFollow } = await import('../../actions/interact');
@@ -106,3 +106,4 @@ function registerFollowCommand(program: Command): void {
       });
     });
 }
+

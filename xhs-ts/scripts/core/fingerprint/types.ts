@@ -17,6 +17,8 @@ export interface ScreenConfig {
   width: number;
   height: number;
   colorDepth: 24 | 32;
+  /** Device pixel ratio (optional for backward compatibility, defaults to 1) */
+  devicePixelRatio?: 1 | 1.25 | 1.5 | 2;
 }
 
 /** Device hardware configuration */

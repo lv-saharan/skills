@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Scrape Commands (scrape-note, scrape-user)
  *
  * @module cli/commands/scrape.command
@@ -7,7 +7,7 @@
 import type { Command } from 'commander';
 import { resolveUser } from '../../user';
 import { config } from '../../config';
-import { parseNumberOption, resolveHeadless, resolveBoolFlag } from '../types';
+import { parseNumberOption, resolveHeadless, resolveBoolFlag } from '../utils';
 import type { ScrapeNoteCommandOptions, ScrapeUserCommandOptions } from '../types';
 
 export function registerScrapeCommands(program: Command): void {
@@ -54,3 +54,4 @@ function registerScrapeUserCommand(program: Command): void {
       });
     });
 }
+

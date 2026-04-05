@@ -49,101 +49,6 @@ export interface PlatformConfig {
 }
 
 // ============================================
-// Selectors Configuration
-// ============================================
-
-export interface SelectorsConfig {
-  login: {
-    modal: string;
-    buttons: string[];
-    userComponent: string;
-    qr: string[];
-    qrTab: string;
-    smsTab?: string;
-    phoneInput?: string;
-    sendSmsButton?: string;
-    smsCodeInput?: string;
-  };
-  interact: {
-    note?: {
-      container: string;
-      content: string;
-      interactContainer: string;
-      engagementBar: string;
-      leftArea: string;
-    };
-    like: {
-      button: string;
-      icon: string;
-      activeState: string;
-      count: string;
-    };
-    collect: {
-      button: string;
-      icon: string;
-      activeState: string;
-      count: string;
-    };
-    comment?: {
-      button: string;
-      input: string;
-      submit: string;
-      list: string;
-    };
-    follow: {
-      primaryButton: string;
-      fallbackButtons: string[];
-      userInfoContainer: string;
-      followingText: string;
-      notFollowingText: string;
-    };
-  };
-  search: {
-    container: string;
-    noteCard: string;
-    noteLink: string;
-    userCard: string;
-    userLink: string;
-    noteTitle: string;
-    authorName: string;
-    likeCount: string;
-    coverImage: string;
-    loading: string;
-  };
-}
-
-// ============================================
-// Errors Configuration
-// ============================================
-
-export type ErrorsConfig = Record<string, string>;
-
-// ============================================
-// Messages Configuration
-// ============================================
-
-export interface MessagesConfig {
-  qr: {
-    scanPrompt: string;
-    expiredMessage: string;
-    notFoundMessage: string;
-    captureFailedMessage: string;
-  };
-  login: {
-    success: string;
-    failedCaptcha: string;
-    failedErrorPage: string;
-    browserClosed: string;
-    pageClosed: string;
-    cookieFailed: string;
-  };
-  interact: {
-    notLoggedIn: string;
-    success: string;
-  };
-}
-
-// ============================================
 // Login Method
 // ============================================
 
@@ -163,8 +68,6 @@ export type LoginMethod = 'qr' | 'sms';
  * - BROWSER_PATH: Custom browser executable path (optional)
  * - BROWSER_CHANNEL: Browser channel (e.g., 'chrome', 'msedge')
  * - DEBUG: Enable debug logging (default: false)
- * - LOGIN_TIMEOUT: Login timeout in milliseconds (default: 120000)
- * - LOGIN_METHOD: Login method 'qr' or 'sms' (default: 'qr')
  */
 export interface AppConfig {
   /** Proxy URL */
@@ -177,8 +80,4 @@ export interface AppConfig {
   browserChannel: string | undefined;
   /** Debug logging enabled */
   debug: boolean;
-  /** Login timeout in milliseconds */
-  loginTimeout: number;
-  /** Default login method */
-  loginMethod: LoginMethod;
 }

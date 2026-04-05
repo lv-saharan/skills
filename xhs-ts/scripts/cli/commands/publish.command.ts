@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Publish Command
  *
  * @module cli/commands/publish.command
@@ -7,7 +7,7 @@
 import type { Command } from 'commander';
 import { resolveUser } from '../../user';
 import { config } from '../../config';
-import { resolveHeadless } from '../types';
+import { resolveHeadless } from '../utils';
 import type { PublishCommandOptions } from '../types';
 
 export function registerPublishCommand(program: Command): void {
@@ -38,3 +38,4 @@ export function registerPublishCommand(program: Command): void {
       });
     });
 }
+

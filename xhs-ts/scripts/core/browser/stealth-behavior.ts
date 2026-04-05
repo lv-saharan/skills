@@ -5,7 +5,7 @@
  * @description Environment-specific stealth behavior presets for anti-detection
  */
 
-import type { EnvironmentType } from '../../user/types';
+import type { EnvironmentType } from './types';
 import type { StealthModuleConfig, GeolocationConfig } from './stealth/types';
 
 export interface StealthBehaviorConfig {

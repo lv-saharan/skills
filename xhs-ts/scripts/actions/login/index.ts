@@ -17,6 +17,19 @@ export { qrLogin, waitForQrScan, captureQrCodeToFile } from './qr';
 export { smsLogin } from './sms';
 export { verifyExistingSession } from './verify';
 
+// Selectors
+export {
+  LOGIN_SELECTORS,
+  QR_SELECTORS,
+  QR_TAB_SELECTOR,
+  SMS_SELECTORS,
+  LOGIN_BUTTON_SELECTORS,
+  LOGIN_MODAL_SELECTOR,
+  USER_COMPONENT_SELECTOR,
+  LOGIN_MODAL_SELECTORS,
+} from './selectors';
+export type { LoginSelectors } from './selectors';
+
 // Types
 export type { LoginMethod, LoginOptions, LoginResult } from './types';
 

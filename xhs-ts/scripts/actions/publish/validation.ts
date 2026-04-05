@@ -7,7 +7,7 @@
 
 import { existsSync, statSync } from 'fs';
 import { extname, resolve } from 'path';
-import { XhsError, XhsErrorCode } from '../../config';
+import { SkillError, SkillErrorCode } from '../../config';
 import type { MediaValidation } from './types';
 import {
   MAX_TITLE_LENGTH,
@@ -139,42 +139,42 @@ export function validateMedia(mediaPaths: string[]): MediaValidation {
 export function validateContent(title: string, content: string, tags?: string[]): void {
   // Title validation
   if (!title || title.trim().length === 0) {
-    throw new XhsError('Title is required', XhsErrorCode.VALIDATION_ERROR);
+    throw new SkillError('Title is required', SkillErrorCode.VALIDATION_ERROR);
   }
 
   if (title.length > MAX_TITLE_LENGTH) {
-    throw new XhsError(
+    throw new SkillError(
       `Title too long: ${title.length} chars (max ${MAX_TITLE_LENGTH})`,
-      XhsErrorCode.VALIDATION_ERROR
+      SkillErrorCode.VALIDATION_ERROR
     );
   }
 
   // Content validation
   if (!content || content.trim().length === 0) {
-    throw new XhsError('Content is required', XhsErrorCode.VALIDATION_ERROR);
+    throw new SkillError('Content is required', SkillErrorCode.VALIDATION_ERROR);
   }
 
   if (content.length > MAX_CONTENT_LENGTH) {
-    throw new XhsError(
+    throw new SkillError(
       `Content too long: ${content.length} chars (max ${MAX_CONTENT_LENGTH})`,
-      XhsErrorCode.VALIDATION_ERROR
+      SkillErrorCode.VALIDATION_ERROR
     );
   }
 
   // Tags validation
   if (tags && tags.length > 0) {
     if (tags.length > MAX_TAGS) {
-      throw new XhsError(
+      throw new SkillError(
         `Too many tags: ${tags.length} (max ${MAX_TAGS})`,
-        XhsErrorCode.VALIDATION_ERROR
+        SkillErrorCode.VALIDATION_ERROR
       );
     }
 
     for (const tag of tags) {
       if (tag.length > MAX_TAG_LENGTH) {
-        throw new XhsError(
+        throw new SkillError(
           `Tag too long: "${tag}" (${tag.length} chars, max ${MAX_TAG_LENGTH})`,
-          XhsErrorCode.VALIDATION_ERROR
+          SkillErrorCode.VALIDATION_ERROR
         );
       }
     }

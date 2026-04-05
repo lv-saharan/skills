@@ -11,14 +11,24 @@
 
 import type { Page } from 'playwright';
 import type { UserName } from '../../user';
-import type { StealthBehaviorConfig, ProfileLaunchOptions } from '../../core/browser';
-import { withProfile, randomStealthDelay } from '../../core/browser';
+import type { StealthBehaviorConfig, ProfileLaunchOptions } from './browser-launcher';
+import { withProfile, randomStealthDelay } from './browser-launcher';
 import { resolveUser } from '../../user';
-import { XhsError, XhsErrorCode } from '../../config/errors';
-import { TIMEOUTS, XHS_URLS, DELAYS } from '../../config/loader';
-import { gaussianDelay, delay } from '../../core/utils';
-import { checkCaptcha, checkLoginStatus, simulateReading } from '../../core/anti-detect';
+import { SkillError, SkillErrorCode } from '../../config/errors';
+import { timeouts, urls, delays } from '../../config/loader';
+import { gaussianDelay, delay, debugLog } from '../../core/utils';
+import {
+  checkCaptcha,
+  checkLoginStatus,
+  simulateReading,
+  humanClick,
+} from '../../core/anti-detect';
 import { ensureLogin } from '../login';
+import {
+  LOGIN_BUTTON_SELECTORS,
+  LOGIN_MODAL_SELECTOR,
+  USER_COMPONENT_SELECTOR,
+} from '../login/selectors';
 
 // ============================================
 // Types
@@ -72,7 +82,7 @@ export interface AuthenticatedActionOptions {
  * Execute an action with authenticated session
  *
  * This is the PRIMARY API for all Xiaohongshu actions.
- * Handles: browser launch → navigate home → ensure login → execute callback
+ * Handles: browser launch -> navigate home -> ensure login -> execute callback
  *
  * @param user - User name (optional, defaults to current user)
  * @param callback - Action callback receiving SessionContext
@@ -103,7 +113,7 @@ export async function withSession<T>(
 
       // Step 1: Navigate to home page (loads persisted cookies)
       if (navigateHome) {
-        await page.goto(XHS_URLS.home, { timeout: TIMEOUTS.PAGE_LOAD });
+        await page.goto(urls.home, { timeout: timeouts.pageLoad });
         await randomStealthDelay(behavior, 'read');
       }
 
@@ -112,11 +122,14 @@ export async function withSession<T>(
         const loginResult = await ensureLogin(page, {
           user: resolvedUser,
           headless,
-          timeout: TIMEOUTS.LOGIN,
+          timeout: timeouts.login,
         });
 
         if (!loginResult.success) {
-          throw new XhsError(loginResult.message || 'Not logged in', XhsErrorCode.NOT_LOGGED_IN);
+          throw new SkillError(
+            loginResult.message || 'Not logged in',
+            SkillErrorCode.NOT_LOGGED_IN
+          );
         }
       }
 
@@ -180,9 +193,9 @@ export async function withAuthenticatedAction<T>(
  * Navigate to URL with proper loading and delay
  */
 export async function navigateTo(page: Page, url: string): Promise<void> {
-  await page.goto(url, { waitUntil: 'domcontentloaded', timeout: TIMEOUTS.PAGE_LOAD });
-  await page.waitForLoadState('networkidle', { timeout: TIMEOUTS.NETWORK_IDLE }).catch(() => {});
-  await gaussianDelay(DELAYS.afterNavigation);
+  await page.goto(url, { waitUntil: 'domcontentloaded', timeout: timeouts.pageLoad });
+  await page.waitForLoadState('networkidle', { timeout: timeouts.networkIdle }).catch(() => {});
+  await gaussianDelay(delays.afterNavigation);
 }
 
 /**
@@ -269,7 +282,7 @@ export async function executeBatch<T, R>(
           stdDev: options.delayBetween * 0.25,
         });
       } else {
-        await gaussianDelay(DELAYS.batchInterval);
+        await gaussianDelay(delays.batchInterval);
       }
     }
   }
@@ -314,4 +327,131 @@ export async function humanScroll(
 // ============================================
 
 /** Interaction delay constants */
-export const INTERACTION_DELAYS = DELAYS;
+export const INTERACTION_DELAYS = delays;
+
+// ============================================
+// Platform-specific utilities (moved from config/session.ts)
+// These are used by the auto-login flow
+// ============================================
+
+/**
+ * Check for error page
+ */
+export async function checkErrorPage(
+  page: Page
+): Promise<{ isError: boolean; errorCode?: string; errorMsg?: string }> {
+  try {
+    const currentUrl = page.url();
+
+    if (currentUrl.includes('/error') || currentUrl.includes('error_code')) {
+      const urlObj = new URL(currentUrl);
+      const errorCode = urlObj.searchParams.get('error_code') || undefined;
+      const errorMsg = urlObj.searchParams.get('error_msg') || undefined;
+
+      debugLog('Error page detected', { errorCode, errorMsg, url: currentUrl });
+      return { isError: true, errorCode, errorMsg };
+    }
+
+    return { isError: false };
+  } catch (error) {
+    debugLog('Error checking error page:', error);
+    return { isError: false };
+  }
+}
+
+/**
+ * Ensure login status is visible (trigger login modal if needed)
+ * This is used by auto-login flow
+ */
+export async function ensureLoginStatus(
+  page: Page,
+  _options?: { timeout?: number }
+): Promise<{ isLoggedIn: boolean; loginModalOpen?: boolean; triggered?: boolean; error?: string }> {
+  try {
+    const currentUrl = page.url();
+    debugLog('ensureLoginStatus: ' + currentUrl);
+
+    // Check for error page
+    const errorResult = await checkErrorPage(page);
+    if (errorResult.isError) {
+      debugLog('Error page detected');
+      return {
+        isLoggedIn: false,
+        error: `错误页面: ${errorResult.errorMsg || errorResult.errorCode || '未知错误'}`,
+      };
+    }
+
+    // Check if login modal is already open
+    const loginModalVisible = await page
+      .locator(LOGIN_MODAL_SELECTOR)
+      .first()
+      .isVisible({ timeout: 2000 })
+      .catch(() => false);
+
+    if (loginModalVisible) {
+      debugLog('.login-container found -> waiting for scan');
+      return {
+        isLoggedIn: false,
+        loginModalOpen: true,
+      };
+    }
+
+    // Check if user component is visible (logged in)
+    const userComponentVisible = await page
+      .locator(USER_COMPONENT_SELECTOR)
+      .first()
+      .isVisible({ timeout: 2000 })
+      .catch(() => false);
+
+    if (userComponentVisible) {
+      debugLog('.user.side-bar-component found -> logged in');
+      return { isLoggedIn: true };
+    }
+
+    // Try to trigger login modal
+    debugLog('Auto-triggering login modal...');
+
+    for (const selector of LOGIN_BUTTON_SELECTORS) {
+      const buttonVisible = await page
+        .locator(selector)
+        .first()
+        .isVisible({ timeout: 2000 })
+        .catch(() => false);
+
+      if (buttonVisible) {
+        debugLog(`Clicking login button: ${selector}`);
+
+        const clicked = await humanClick(page, selector, { delayAfter: 2000 });
+
+        if (clicked) {
+          const modalAppeared = await page
+            .locator(LOGIN_MODAL_SELECTOR)
+            .first()
+            .isVisible({ timeout: 5000 })
+            .catch(() => false);
+
+          if (modalAppeared) {
+            debugLog('Login modal triggered successfully');
+            return {
+              isLoggedIn: false,
+              loginModalOpen: true,
+              triggered: true,
+            };
+          }
+        }
+      }
+    }
+
+    debugLog('Cannot trigger login modal');
+    return {
+      isLoggedIn: false,
+      error: '无法触发登录弹窗',
+    };
+  } catch (error) {
+    debugLog('Error ensuring login status:', error);
+    return {
+      isLoggedIn: false,
+      error: error instanceof Error ? error.message : '未知错误',
+    };
+  }
+}

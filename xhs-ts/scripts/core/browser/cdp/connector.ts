@@ -1,4 +1,4 @@
-/**
+﻿/**
  * CDP Browser Connector
  *
  * @module browser/cdp/connector
@@ -7,7 +7,7 @@
 
 import { chromium } from 'playwright';
 import type { Browser } from 'playwright';
-import { DEFAULT_CDP_CONNECT_TIMEOUT } from './types';
+import { DEFAULT_CDP_CONNECT_TIMEOUT } from './constants';
 
 // ============================================
 // CDP Connection
@@ -66,3 +66,4 @@ export async function checkCDPConnection(port: number, timeout: number = 5000): 
     return false;
   }
 }
+

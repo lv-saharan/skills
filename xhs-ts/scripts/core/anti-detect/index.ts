@@ -9,15 +9,6 @@ import type { Page, Locator } from 'playwright';
 import { delay } from '../utils/delay';
 import { debugLog } from '../utils/logging';
 
-// Re-export advanced modules
-export { humanMouseMoveBezier, humanMouseMoveToElement } from './mouse-trajectory';
-export {
-  humanScrollPhysics,
-  humanScrollToPosition,
-  humanScrollToBottom,
-  humanScrollRead,
-} from './scroll-physics';
-
 // ============================================
 // Types
 // ============================================
@@ -36,15 +27,6 @@ export interface LoginSelectors {
   avatar?: string | string[];
 }
 
-/**
- * Login status result
- */
-export interface LoginStatus {
-  isLoggedIn: boolean;
-  loginModalOpen?: boolean;
-  error?: string;
-}
-
 // ============================================
 // Human-like Interactions
 // ============================================
@@ -59,19 +41,6 @@ async function getRandomPointInElement(element: Locator): Promise<{ x: number; y
     x: box.x + padding + Math.random() * (box.width - padding * 2),
     y: box.y + padding + Math.random() * (box.height - padding * 2),
   };
-}
-
-/**
- * Human-like mouse move
- */
-export async function humanMouseMove(
-  page: Page,
-  targetX: number,
-  targetY: number,
-  options: { steps?: number } = {}
-): Promise<void> {
-  const { steps = 10 + Math.floor(Math.random() * 10) } = options;
-  await page.mouse.move(targetX, targetY, { steps });
 }
 
 /**
@@ -99,101 +68,6 @@ export async function humanClick(
     return true;
   } catch (error) {
     debugLog('Human click failed: ' + selector, error);
-    return false;
-  }
-}
-
-/**
- * Human-like typing with Gaussian delay and occasional typos
- */
-export async function humanType(
-  page: Page,
-  selector: string,
-  text: string,
-  options: {
-    meanDelay?: number;
-    stdDev?: number;
-    clear?: boolean;
-    typoRate?: number;
-  } = {}
-): Promise<boolean> {
-  const { meanDelay = 50, stdDev = 20, clear = false, typoRate = 0.02 } = options;
-  try {
-    const element = page.locator(selector);
-    await element.waitFor({ state: 'visible', timeout: 5000 });
-    if (clear) {
-      await element.fill('');
-    }
-
-    // Keyboard layout for typo simulation
-    const keyboard: Record<string, string[]> = {
-      a: ['s', 'q', 'z'],
-      s: ['a', 'd', 'w', 'x'],
-      d: ['s', 'f', 'e', 'c'],
-      f: ['d', 'g', 'r', 'v'],
-      g: ['f', 'h', 't', 'b'],
-      h: ['g', 'j', 'y', 'n'],
-      j: ['h', 'k', 'u', 'm'],
-      k: ['j', 'l', 'i'],
-      l: ['k', 'o'],
-      q: ['w', 'a'],
-      w: ['q', 'e', 's'],
-      e: ['w', 'r', 'd'],
-      r: ['e', 't', 'f'],
-      t: ['r', 'y', 'g'],
-      y: ['t', 'u', 'h'],
-      u: ['y', 'i', 'j'],
-      i: ['u', 'o', 'k'],
-      o: ['i', 'p', 'l'],
-      p: ['o'],
-      z: ['a', 'x'],
-      x: ['z', 's', 'c'],
-      c: ['x', 'd', 'v'],
-      v: ['c', 'f', 'b'],
-      b: ['v', 'g', 'n'],
-      n: ['b', 'h', 'm'],
-      m: ['n', 'j'],
-    };
-
-    const gaussianDelay = (mean: number, sd: number): number => {
-      const u1 = Math.random();
-      const u2 = Math.random();
-      const z0 = Math.sqrt(-2.0 * Math.log(u1)) * Math.cos(2.0 * Math.PI * u2);
-      return Math.max(10, Math.floor(z0 * sd + mean));
-    };
-
-    const getNearbyChar = (char: string): string => {
-      const lower = char.toLowerCase();
-      if (keyboard[lower] && Math.random() < 0.7) {
-        const nearby = keyboard[lower];
-        const wrong = nearby[Math.floor(Math.random() * nearby.length)];
-        return char === lower ? wrong : wrong.toUpperCase();
-      }
-      return char;
-    };
-
-    for (let i = 0; i < text.length; i++) {
-      const char = text[i];
-
-      if (Math.random() < typoRate && /[a-zA-Z]/.test(char)) {
-        const wrongChar = getNearbyChar(char);
-        await element.pressSequentially(wrongChar, { delay: gaussianDelay(meanDelay, stdDev) });
-        await delay(100 + Math.random() * 150);
-        await element.press('Backspace');
-        await delay(80 + Math.random() * 100);
-        await element.pressSequentially(char, { delay: gaussianDelay(meanDelay, stdDev) });
-      } else {
-        await element.pressSequentially(char, { delay: gaussianDelay(meanDelay, stdDev) });
-      }
-
-      if ((char === ' ' || char === '.' || char === ',') && Math.random() < 0.01) {
-        await delay(200 + Math.random() * 500);
-      }
-    }
-
-    return true;
-  } catch (error) {
-    debugLog('Human type failed: ' + selector, error);
     return false;
   }
 }
@@ -316,15 +190,4 @@ export async function simulateReading(page: Page): Promise<void> {
   }
 
   await delay(1000 + Math.random() * 2000);
-}
-
-/**
- * Wait for page to be stable
- */
-export async function waitForStable(page: Page, options: { timeout?: number } = {}): Promise<void> {
-  try {
-    await page.waitForLoadState('networkidle', { timeout: options.timeout ?? 5000 });
-  } catch {
-    debugLog('Page did not reach network idle state');
-  }
 }

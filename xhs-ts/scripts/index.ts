@@ -18,7 +18,7 @@ import { validateConfig } from './config';
 import { registerAllCommands } from './cli';
 import { debugLog } from './core/utils';
 import { outputError } from './core/utils/output';
-import { XhsErrorCode } from './config';
+import { SkillErrorCode } from './config';
 
 // ============================================
 // Startup
@@ -53,13 +53,13 @@ process.on('uncaughtException', (error) => {
   }
 
   debugLog('Uncaught exception:', error);
-  outputError(error.message || 'Unknown error', XhsErrorCode.BROWSER_ERROR);
+  outputError(error.message || 'Unknown error', SkillErrorCode.BROWSER_ERROR);
   process.exit(1);
 });
 
 process.on('unhandledRejection', (reason) => {
   debugLog('Unhandled rejection:', reason);
-  outputError(String(reason), XhsErrorCode.BROWSER_ERROR);
+  outputError(String(reason), SkillErrorCode.BROWSER_ERROR);
   process.exit(1);
 });
 

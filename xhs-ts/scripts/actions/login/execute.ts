@@ -5,8 +5,8 @@
  * @description Handle user authentication via QR code or SMS
  */
 
-import { withProfile } from '../../core/browser';
-import { TIMEOUTS } from '../../config';
+import { withProfile } from '../shared/browser-launcher';
+import { timeouts } from '../../config';
 import { debugLog } from '../../core/utils';
 import { config } from '../../config';
 import { outputSuccess, outputFromError } from '../../core/utils/output';
@@ -17,7 +17,7 @@ import { verifyExistingSession } from './verify';
 import { createUserDir, userExists, resolveUser } from '../../user';
 
 export async function executeLogin(options: LoginOptions): Promise<void> {
-  const { method = 'qr', headless, timeout = TIMEOUTS.LOGIN, creator, user } = options;
+  const { method = 'qr', headless, timeout = timeouts.login, creator, user } = options;
   const resolvedUser = resolveUser(user);
 
   debugLog(

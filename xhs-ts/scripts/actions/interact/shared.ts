@@ -35,7 +35,7 @@ export {
 // ============================================
 
 import type { StealthBehaviorConfig } from '../../core/browser';
-import { DELAYS } from '../../config/loader';
+import { delays } from '../../config/loader';
 
 /**
  * Get interaction delays from behavior config
@@ -48,7 +48,7 @@ export function getInteractionDelays(behavior?: StealthBehaviorConfig): {
   batchInterval: { mean: number; stdDev: number };
 } {
   if (!behavior) {
-    return DELAYS;
+    return delays;
   }
 
   return {

@@ -6,20 +6,15 @@
  */
 
 import type { Page } from 'playwright';
-import {
-  XhsError,
-  XhsErrorCode,
-  QR_SELECTORS,
-  LOGIN_MODAL_SELECTORS,
-  LOGIN_BUTTON_SELECTORS,
-} from '../../config';
+import { SkillError, SkillErrorCode, urls } from '../../config';
+import { getTmpFilePath } from '../../core/utils';
+import { QR_SELECTORS, LOGIN_MODAL_SELECTORS, LOGIN_BUTTON_SELECTORS } from './selectors';
 import type { BrowserInstance } from '../../core/browser/types';
 import type { UserName } from '../../user';
-import { XHS_URLS, debugLog, delay, randomDelay, waitForCondition } from '../../config';
+import { debugLog, delay, randomDelay, waitForCondition } from '../../core/utils';
 import { humanClick, checkCaptcha } from '../../core/anti-detect';
-import { checkErrorPage } from '../../config';
+import { checkErrorPage } from '../shared/session';
 import { outputQrCode } from '../../core/utils/output';
-import { getTmpFilePath } from '../../config';
 import { writeFile } from 'fs/promises';
 import type { LoginResult } from './types';
 
@@ -52,9 +47,9 @@ export async function captureQrCodeToFile(page: Page, user?: UserName): Promise<
     throw new Error('QR code element not found');
   } catch (error) {
     debugLog('Failed to capture QR code:', error);
-    throw new XhsError(
+    throw new SkillError(
       'Failed to capture QR code in headless mode',
-      XhsErrorCode.LOGIN_FAILED,
+      SkillErrorCode.LOGIN_FAILED,
       error
     );
   }
@@ -104,24 +99,24 @@ export async function waitForQrScan(page: Page, timeout: number): Promise<void> 
       const elapsed = Math.floor((Date.now() - startTime) / 1000);
 
       if (page.isClosed()) {
-        throw new XhsError(
+        throw new SkillError(
           'Browser window closed by user. Login cancelled.',
-          XhsErrorCode.LOGIN_FAILED
+          SkillErrorCode.LOGIN_FAILED
         );
       }
 
       const hasCaptcha = await checkCaptcha(page);
       if (hasCaptcha) {
-        throw new XhsError(
+        throw new SkillError(
           'CAPTCHA detected. Please complete it manually.',
-          XhsErrorCode.CAPTCHA_REQUIRED
+          SkillErrorCode.CAPTCHA_REQUIRED
         );
       }
 
       if (await isQrCodeExpired(page)) {
-        throw new XhsError(
+        throw new SkillError(
           'QR code expired. Please refresh and try again.',
-          XhsErrorCode.LOGIN_FAILED
+          SkillErrorCode.LOGIN_FAILED
         );
       }
 
@@ -182,15 +177,15 @@ export async function waitForQrScan(page: Page, timeout: number): Promise<void> 
  */
 async function triggerLoginModal(page: Page): Promise<void> {
   debugLog('Navigating to home page...');
-  await page.goto(XHS_URLS.home, { waitUntil: 'domcontentloaded', timeout: 30000 });
+  await page.goto(urls.home, { waitUntil: 'domcontentloaded', timeout: 30000 });
   await randomDelay(2000, 3000);
 
   const errorResult = await checkErrorPage(page);
   if (errorResult.isError) {
-    throw new XhsError(
+    throw new SkillError(
       `登录失败：检测到错误页面 (错误码: ${errorResult.errorCode || '未知'}, 原因: ${errorResult.errorMsg || '未知'})。` +
         `建议：1) 切换网络环境后重试；2) 使用代理；3) 使用非 headless 模式登录。`,
-      XhsErrorCode.LOGIN_FAILED
+      SkillErrorCode.LOGIN_FAILED
     );
   }
 
@@ -217,7 +212,7 @@ async function triggerLoginModal(page: Page): Promise<void> {
   }
 
   debugLog('No login button found, navigating to login page...');
-  await page.goto(XHS_URLS.login, { waitUntil: 'domcontentloaded', timeout: 30000 });
+  await page.goto(urls.login, { waitUntil: 'domcontentloaded', timeout: 30000 });
   await randomDelay(1000, 2000);
 }
 
@@ -265,7 +260,7 @@ export async function qrLogin(
   await waitForQrScan(page, timeout);
 
   debugLog('Navigating to home page to finalize login...');
-  await page.goto(XHS_URLS.home, { waitUntil: 'networkidle', timeout: 30000 }).catch(() => {
+  await page.goto(urls.home, { waitUntil: 'networkidle', timeout: 30000 }).catch(() => {
     debugLog('Navigation to home page timed out, continuing...');
   });
 

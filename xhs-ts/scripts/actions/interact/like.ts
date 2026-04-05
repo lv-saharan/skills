@@ -9,7 +9,7 @@ import type { Page } from 'playwright';
 import type { LikeOptions, LikeResult } from './types';
 import { extractNoteIdFromUrl } from './url-utils';
 import { LIKE_SELECTORS } from './selectors';
-import { TIMEOUTS } from '../../config';
+import { timeouts } from '../../config';
 import { debugLog, delay, gaussianDelay } from '../../core/utils';
 import {
   humanClick,
@@ -69,8 +69,8 @@ async function performLike(page: Page, url: string): Promise<LikeResult> {
 
   try {
     debugLog('导航到: ' + url);
-    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: TIMEOUTS.PAGE_LOAD });
-    await page.waitForLoadState('networkidle', { timeout: TIMEOUTS.NETWORK_IDLE }).catch(() => {});
+    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: timeouts.pageLoad });
+    await page.waitForLoadState('networkidle', { timeout: timeouts.networkIdle }).catch(() => {});
     await delay(1500 + Math.random() * 1000);
 
     if (!(await checkLoginStatus(page))) {

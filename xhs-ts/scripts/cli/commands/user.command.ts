@@ -7,7 +7,7 @@
 import type { Command } from 'commander';
 import { listUsers, setCurrentUser, clearCurrentUser } from '../../user';
 import { outputSuccess, outputError } from '../../core/utils/output';
-import { XhsErrorCode } from '../../config';
+import { SkillErrorCode } from '../../config';
 import type { UserCommandOptions } from '../types';
 
 export function registerUserCommand(program: Command): void {
@@ -43,5 +43,5 @@ export function registerUserCommand(program: Command): void {
 
 function outputFromError(error: unknown): void {
   const message = error instanceof Error ? error.message : String(error);
-  outputError(message, XhsErrorCode.BROWSER_ERROR);
+  outputError(message, SkillErrorCode.BROWSER_ERROR);
 }

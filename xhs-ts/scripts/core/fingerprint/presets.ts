@@ -5,7 +5,7 @@
  * @description Load and select device presets (platform-agnostic)
  */
 
-import type { DevicePreset, FingerprintConfig, UserFingerprint } from './types';
+import type { DevicePreset, UserFingerprint } from './types';
 
 /**
  * Load device presets from config file
@@ -14,11 +14,11 @@ import type { DevicePreset, FingerprintConfig, UserFingerprint } from './types';
  * @returns Device presets array
  */
 export async function loadDevicePresets(configPath?: string): Promise<DevicePreset[]> {
-  const path = configPath || 'config.json';
+  const filePath = configPath || 'config.json';
   try {
     const fs = await import('fs/promises');
-    const content = await fs.readFile(path, 'utf-8');
-    const config = JSON.parse(content) as FingerprintConfig;
+    const content = await fs.readFile(filePath, 'utf-8');
+    const config = JSON.parse(content) as { presets?: DevicePreset[] };
     return config.presets || [];
   } catch (error) {
     console.warn('Failed to load device presets:', error);

@@ -7,7 +7,7 @@
 
 import type { Page } from 'playwright';
 import { SEARCH_CONTAINER_SELECTOR, NOTE_ITEM_SELECTOR } from './navigation';
-import { debugLog, randomDelay } from '../../config';
+import { debugLog, randomDelay } from '../../core/utils';
 import { humanScroll } from '../../core/anti-detect';
 
 // ============================================

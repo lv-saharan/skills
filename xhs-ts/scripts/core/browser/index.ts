@@ -1,36 +1,40 @@
-/**
+﻿/**
  * Browser module entry
  *
  * @module core/browser
- * @description CDP browser management + stealth injection
+ * @description CDP browser management + stealth injection (platform-agnostic)
+ *
+ * For profile-aware browser launch, use actions/shared/browser-launcher instead.
  */
 
-// Profile launcher (main API)
+// Types
+export type { BrowserInstance, EnvironmentType } from './types';
+
+// Pure port utilities
+export { checkCDPReady, allocatePortForIdentifier } from './port-utils';
+
+// Pure browser launcher
 export {
-  withProfile,
-  launchProfileBrowser,
-  hasCDPInstance,
-  getCDPPort,
-  closeCDPInstance,
-  randomStealthDelay,
-} from './profile-launcher';
-export type {
-  StealthBehaviorConfig,
-  ProfileLaunchOptions,
-  ProfileBrowserResult,
-} from './profile-launcher';
+  launchBrowser,
+  spawnCDPBrowser,
+  tryReconnectCDP,
+  closeBrowser,
+  injectStealthToContext,
+  findBrowserExecutablePath,
+  type CDPLaunchOptions,
+  type StealthLaunchOptions,
+  type SavedConnection,
+} from './launcher';
+
+// Stealth behavior
+export { getStealthBehavior } from './stealth-behavior';
+export type { StealthBehaviorConfig } from './stealth-behavior';
 
 // Stealth modules
-export {
-  generateStealthScript,
-  generateStealthScriptWithLocation,
-  STEALTH_INJECTION_SCRIPT,
-} from './stealth';
+export { generateStealthScript } from './stealth';
 export type { StealthModuleConfig, GeolocationConfig } from './stealth/types';
-export { DEFAULT_STEALTH_CONFIG, DEFAULT_GEOLOCATION } from './stealth/types';
-
-// Browser types
-export type { BrowserLaunchOptions, BrowserInstance, CleanupResult } from './types';
+export { DEFAULT_STEALTH_CONFIG, DEFAULT_GEOLOCATION } from './stealth/constants';
 
 // CDP internals
-export { connectCDPBrowser, checkCDPConnection } from './cdp/connector';
+export { connectCDPBrowser, checkCDPConnection } from './cdp';
+

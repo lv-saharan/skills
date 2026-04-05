@@ -10,7 +10,7 @@ import type { ScrapeNoteOptions, ScrapeNoteResult } from './types';
 import { extractNoteIdFromUrl } from '../interact/url-utils';
 import { NOTE_SELECTORS, ERROR_SELECTORS } from './selectors';
 import { withSession, type SessionContext } from '../shared/session';
-import { TIMEOUTS } from '../../config/loader';
+import { timeouts } from '../../config/loader';
 import { debugLog, delay, outputSuccess, outputFromError } from '../../core/utils';
 import { checkCaptcha, checkLoginStatus, simulateReading } from '../../core/anti-detect';
 
@@ -309,8 +309,8 @@ async function scrapeNote(
   try {
     // 1. Navigate to page
     debugLog('导航到: ' + url);
-    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: TIMEOUTS.PAGE_LOAD });
-    await page.waitForLoadState('networkidle', { timeout: TIMEOUTS.NETWORK_IDLE }).catch(() => {});
+    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: timeouts.pageLoad });
+    await page.waitForLoadState('networkidle', { timeout: timeouts.networkIdle }).catch(() => {});
     await delay(1500 + Math.random() * 1000);
 
     // 2. Check for errors

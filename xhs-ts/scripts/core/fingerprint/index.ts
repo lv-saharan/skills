@@ -8,7 +8,6 @@
 export { loadDevicePresets, selectPresetByWeight, generateFingerprintFromPreset } from './presets';
 export type {
   DevicePreset,
-  FingerprintConfig,
   UserFingerprint,
   DeviceConfig,
   ScreenConfig,

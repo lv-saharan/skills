@@ -5,5 +5,5 @@
  * @description Standardized JSON output formatting (platform-agnostic)
  */
 
-export { outputSuccess, outputQrCode, outputError, output, outputFromError } from './format';
+export { outputSuccess, outputQrCode, outputError, outputFromError } from './format';
 export type { SuccessResponse, ErrorResponse, CliOutput, QrCodeOutput } from './types';

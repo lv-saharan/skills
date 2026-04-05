@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Stealth injection script generator
  *
  * @module browser/stealth
@@ -7,7 +7,7 @@
 
 import type { UserFingerprint } from '../../fingerprint/types';
 import type { StealthModuleConfig, GeolocationConfig } from './types';
-import { DEFAULT_STEALTH_CONFIG, DEFAULT_GEOLOCATION } from './types';
+import { DEFAULT_STEALTH_CONFIG, DEFAULT_GEOLOCATION } from './constants';
 
 // Import module generators
 import { generateNavigatorScript } from './navigator';
@@ -116,47 +116,3 @@ export function generateStealthScript(
   return combineScripts(...scripts);
 }
 
-/**
- * Generate stealth script with custom geolocation
- *
- * @param fp - User's device fingerprint
- * @param latitude - Latitude
- * @param longitude - Longitude
- * @param accuracy - Accuracy in meters (default: 100)
- * @returns JavaScript code to inject
- */
-export function generateStealthScriptWithLocation(
-  fp: UserFingerprint,
-  latitude: number,
-  longitude: number,
-  accuracy: number = 100
-): string {
-  const geolocation: GeolocationConfig = {
-    latitude,
-    longitude,
-    accuracy,
-    altitude: null,
-    altitudeAccuracy: null,
-    heading: null,
-    speed: null,
-  };
-
-  return generateStealthScript(fp, DEFAULT_STEALTH_CONFIG, geolocation);
-}
-
-// ============================================
-// Legacy Static Script (Backward Compatibility)
-// ============================================
-
-/**
- * Static stealth injection script (legacy)
- *
- * @deprecated Use generateStealthScript() with user fingerprint instead
- */
-export const STEALTH_INJECTION_SCRIPT = `
-// Legacy script - use generateStealthScript() instead
-if (typeof window.__name === 'undefined') {
-  window.__name = (fn, _name) => fn;
-}
-Object.defineProperty(navigator, 'webdriver', { get: () => undefined, configurable: true });
-`;
