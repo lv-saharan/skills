@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Unified Profile Storage (v3)
  *
  * @module user/storage-v3
@@ -55,7 +55,7 @@ export function getProfilePath(user: UserName): string {
 /**
  * Get legacy meta.json path
  */
-function getLegacyMetaPath(user: UserName): string {
+export function getLegacyMetaPath(user: UserName): string {
   return path.join(getUserDir(user), LEGACY_META_FILE);
 }
 

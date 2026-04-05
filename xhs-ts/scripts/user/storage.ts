@@ -12,7 +12,7 @@ import type {
   UserName,
   UserInfo,
   UserListResult,
-  UserMeta,
+  ProfileMeta,
   ProfileStatus,
   ProfileStatusInfo,
 } from './types';
@@ -269,8 +269,7 @@ export async function createUserProfile(
   await getUserFingerprint(user);
 
   // Create profile metadata
-  const meta: UserMeta = {
-    version: 1,
+  const meta: ProfileMeta = {
     createdAt: now,
     lastUsedAt: now,
     environmentType: environmentType as
@@ -307,7 +306,7 @@ export async function updateLastUsed(user: UserName): Promise<void> {
   if (existsSync(metaPath)) {
     try {
       const metaContent = await readFile(metaPath, 'utf-8');
-      const meta: UserMeta = JSON.parse(metaContent);
+      const meta: ProfileMeta = JSON.parse(metaContent);
       meta.lastUsedAt = now;
       await writeFile(metaPath, JSON.stringify(meta, null, 2), 'utf-8');
       debugLog(`Updated lastUsedAt for user: ${user}`);
@@ -317,92 +316,3 @@ export async function updateLastUsed(user: UserName): Promise<void> {
   }
 }
 
-// ============================================
-// Browser Connection Management (Legacy - uses v3 API internally)
-// ============================================
-
-/**
- * Browser connection info stored for CDP instance reuse
- *
- * @deprecated Use ConnectionInfo from './types' and new API from './storage-v3'
- */
-export interface BrowserConnectionInfo {
-  cdpPort: number;
-  pid?: number;
-  wsEndpoint?: string;
-  startedAt?: string;
-  lastActivityAt?: string;
-}
-
-/**
- * Save browser connection info for later reuse
- *
- * @deprecated Use saveConnectionInfo from './storage-v3'
- */
-export async function saveBrowserConnection(
-  user: UserName,
-  info: BrowserConnectionInfo
-): Promise<void> {
-  validateUserName(user);
-
-  // Use new v3 API internally
-  const { saveConnectionInfo } = await import('./storage-v3');
-  await saveConnectionInfo(user, {
-    cdpPort: info.cdpPort,
-    pid: info.pid,
-    wsEndpoint: info.wsEndpoint,
-    startedAt: info.startedAt || new Date().toISOString(),
-    lastActivityAt: info.lastActivityAt || new Date().toISOString(),
-  });
-}
-
-/**
- * Load browser connection info
- *
- * @deprecated Use loadConnectionInfo from './storage-v3'
- */
-export async function loadBrowserConnection(user: UserName): Promise<BrowserConnectionInfo | null> {
-  validateUserName(user);
-
-  // Use new v3 API internally
-  const { loadConnectionInfo } = await import('./storage-v3');
-  const conn = await loadConnectionInfo(user);
-
-  if (!conn) {
-    return null;
-  }
-
-  return {
-    cdpPort: conn.cdpPort,
-    pid: conn.pid,
-    wsEndpoint: conn.wsEndpoint,
-    startedAt: conn.startedAt,
-    lastActivityAt: conn.lastActivityAt,
-  };
-}
-
-/**
- * Clear browser connection info
- *
- * @deprecated Use clearConnectionInfo from './storage-v3'
- */
-export async function clearBrowserConnection(user: UserName): Promise<void> {
-  validateUserName(user);
-
-  // Use new v3 API internally
-  const { clearConnectionInfo } = await import('./storage-v3');
-  await clearConnectionInfo(user);
-}
-
-/**
- * Update last activity timestamp for browser connection
- *
- * @deprecated Use updateConnectionActivity from './storage-v3'
- */
-export async function updateLastActivity(user: UserName): Promise<void> {
-  validateUserName(user);
-
-  // Use new v3 API internally
-  const { updateConnectionActivity } = await import('./storage-v3');
-  await updateConnectionActivity(user);
-}
