@@ -7,8 +7,8 @@
 import type { Command } from 'commander';
 import { resolveUser } from '../../user';
 import { config } from '../../config';
-import { outputError } from '../../utils/output';
-import { XhsErrorCode } from '../../shared';
+import { outputError } from '../../core/utils/output';
+import { XhsErrorCode } from '../../config';
 import { parseNumberOption, resolveHeadless } from '../types';
 import type {
   LikeCommandOptions,
@@ -36,7 +36,7 @@ function registerLikeCommand(program: Command): void {
         outputError('请提供至少一个笔记 URL', XhsErrorCode.NOT_FOUND);
         process.exit(1);
       }
-      const { executeLike } = await import('../../interact');
+      const { executeLike } = await import('../../actions/interact');
       await executeLike({
         urls,
         headless: resolveHeadless(options.headless, config.headless),
@@ -58,7 +58,7 @@ function registerCollectCommand(program: Command): void {
         outputError('请提供至少一个笔记 URL', XhsErrorCode.NOT_FOUND);
         process.exit(1);
       }
-      const { executeCollect } = await import('../../interact');
+      const { executeCollect } = await import('../../actions/interact');
       await executeCollect({
         urls,
         headless: resolveHeadless(options.headless, config.headless),
@@ -75,7 +75,7 @@ function registerCommentCommand(program: Command): void {
     .option('--headless', 'Run in headless mode')
     .option('--user <name>', 'User name')
     .action(async (url: string, text: string, options: CommentCommandOptions) => {
-      const { executeComment } = await import('../../interact');
+      const { executeComment } = await import('../../actions/interact');
       await executeComment({
         url,
         text,
@@ -97,7 +97,7 @@ function registerFollowCommand(program: Command): void {
         outputError('请提供至少一个用户主页 URL', XhsErrorCode.NOT_FOUND);
         process.exit(1);
       }
-      const { executeFollow } = await import('../../interact');
+      const { executeFollow } = await import('../../actions/interact');
       await executeFollow({
         urls,
         headless: resolveHeadless(options.headless, config.headless),

@@ -6,8 +6,8 @@
 
 import type { Command } from 'commander';
 import { listUsers, setCurrentUser, clearCurrentUser } from '../../user';
-import { outputSuccess, outputError } from '../../utils/output';
-import { XhsErrorCode } from '../../shared';
+import { outputSuccess, outputError } from '../../core/utils/output';
+import { XhsErrorCode } from '../../config';
 import type { UserCommandOptions } from '../types';
 
 export function registerUserCommand(program: Command): void {

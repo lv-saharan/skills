@@ -24,7 +24,7 @@ export function registerSearchCommand(program: Command): void {
     .option('--headless', 'Run in headless mode')
     .option('--user <name>', 'User name')
     .action(async (keyword: string, options: SearchCommandOptions) => {
-      const { executeSearch } = await import('../../search');
+      const { executeSearch } = await import('../../actions/search');
       await executeSearch({
         keyword,
         skip: parseNumberOption(options.skip, 0),

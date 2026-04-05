@@ -11,7 +11,7 @@ import path from 'path';
 import { getUsersDir, getUserDir, getUserTmpDir } from './storage';
 import { saveUsersMeta } from './users-meta';
 import type { UsersMeta } from './types';
-import { debugLog } from '../utils/helpers';
+import { debugLog } from '../core/utils';
 
 // ============================================
 // Constants

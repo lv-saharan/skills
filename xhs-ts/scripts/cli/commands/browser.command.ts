@@ -8,7 +8,7 @@
 import type { Command } from 'commander';
 import { config } from '../../config';
 import { resolveHeadless } from '../types';
-import { handleBrowserCommand } from '../../browser/commands';
+import { handleBrowserCommand } from '../../core/browser/commands';
 import type { BrowserCommandOptions as CliBrowserOptions } from '../types';
 
 export function registerBrowserCommand(program: Command): void {

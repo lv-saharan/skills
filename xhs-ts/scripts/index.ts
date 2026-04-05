@@ -16,9 +16,9 @@ import { Command } from 'commander';
 import { ensureMigrated } from './user';
 import { validateConfig } from './config';
 import { registerAllCommands } from './cli';
-import { debugLog } from './utils/helpers';
-import { outputError } from './utils/output';
-import { XhsErrorCode } from './shared';
+import { debugLog } from './core/utils';
+import { outputError } from './core/utils/output';
+import { XhsErrorCode } from './config';
 
 // ============================================
 // Startup

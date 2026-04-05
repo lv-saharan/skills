@@ -1,0 +1,34 @@
+{
+  "name": "xiaohongshu",
+  "domain": "xiaohongshu.com",
+  "urls": {
+    "home": "https://www.xiaohongshu.com",
+    "login": "https://www.xiaohongshu.com/login",
+    "explore": "https://www.xiaohongshu.com/explore",
+    "creator": "https://creator.xiaohongshu.com",
+    "creatorPublish": "https://creator.xiaohongshu.com/publish/publish?source=official"
+  },
+  "timeouts": {
+    "networkIdle": 20000,
+    "pageLoad": 60000,
+    "upload": 120000,
+    "login": 120000,
+    "selector": 15000,
+    "qrCheckInterval": 1000
+  },
+  "delays": {
+    "afterNavigation": { "mean": 2000, "stdDev": 400 },
+    "afterClick": { "mean": 1200, "stdDev": 300 },
+    "batchInterval": { "mean": 3000, "stdDev": 800 }
+  },
+  "stealthDelays": {
+    "gui-native": {
+      "action": { "min": 500, "max": 1500 },
+      "read": { "min": 1000, "max": 3000 }
+    },
+    "headless": {
+      "action": { "min": 1500, "max": 3500 },
+      "read": { "min": 2000, "max": 5000 }
+    }
+  }
+}

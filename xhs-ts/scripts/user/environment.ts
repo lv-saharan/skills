@@ -6,7 +6,6 @@
  */
 
 import type { EnvironmentType } from './types';
-import { debugLog } from '../utils/helpers';
 
 // ============================================
 // Display Support Detection

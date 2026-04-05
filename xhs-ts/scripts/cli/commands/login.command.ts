@@ -20,7 +20,7 @@ export function registerLoginCommand(program: Command): void {
     .option('--timeout <ms>', 'Login timeout in milliseconds')
     .option('--user <name>', 'User name')
     .action(async (options: LoginCommandOptions) => {
-      const { executeLogin } = await import('../../login');
+      const { executeLogin } = await import('../../actions/login');
       const method = options.sms ? 'sms' : 'qr';
       const timeout = options.timeout ? parseInt(options.timeout, 10) : config.loginTimeout;
 

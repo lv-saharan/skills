@@ -22,7 +22,7 @@ export function registerPublishCommand(program: Command): void {
     .option('--headless', 'Run in headless mode')
     .option('--user <name>', 'User name')
     .action(async (options: PublishCommandOptions) => {
-      const { executePublish } = await import('../../publish');
+      const { executePublish } = await import('../../actions/publish');
       const mediaPaths = options.video
         ? [options.video]
         : options.images!.split(',').map((p) => p.trim());

@@ -1,0 +1,72 @@
+{
+  "login": {
+    "modal": ".login-container",
+    "buttons": [
+      ".login-btn",
+      "[class*=\"loginButton\"]",
+      "button:has-text(\"登录\")"
+    ],
+    "userComponent": ".user.side-bar-component",
+    "qr": [
+      "[class*=\"qr\"]",
+      ".login-container canvas"
+    ],
+    "qrTab": "[class*=\"qr\"]",
+    "smsTab": "[class*=\"sms\"]",
+    "phoneInput": "input[type=\"tel\"]",
+    "sendSmsButton": "button:has-text(\"发送\")",
+    "smsCodeInput": "input[maxlength=\"6\"]"
+  },
+  "interact": {
+    "note": {
+      "container": ".note-container, [class*=\"noteDetail\"]",
+      "content": ".note-content, [class*=\"noteContent\"]",
+      "interactContainer": ".interact-container",
+      "engagementBar": ".buttons.engage-bar-style",
+      "leftArea": ".left"
+    },
+    "like": {
+      "button": ".interact-container .buttons .like-wrapper",
+      "icon": ".like-wrapper .like-lottie, .like-wrapper svg",
+      "activeState": ".like-wrapper.like-active, .like-active, [class*=\"like-active\"], [class*=\"likeActive\"], [class*=\"liked\"]",
+      "count": ":text(\"/^\\d+$/\"), :text(\"/^\\d+(\\.\\d+)?[万kK]?$/\"), [class*=\"count\"]"
+    },
+    "collect": {
+      "button": ".interact-container .buttons .collect-wrapper",
+      "icon": "svg, img, [class*=\"collect-icon\"]",
+      "activeState": ".collect-wrapper.collect-active, .collect-active, [class*=\"collect-active\"], [class*=\"collectActive\"], [class*=\"collected\"]",
+      "count": ":text(\"/^\\d+$/\"), [class*=\"count\"]"
+    },
+    "comment": {
+      "button": ".chat-wrapper, .left > .chat-wrapper, .buttons.engage-bar-style .chat-wrapper, .interact-container .chat-wrapper, [class*=\"chat-wrapper\"], [class*=\"comment\"]",
+      "input": "textarea[placeholder*=\"评论\"], textarea[placeholder*=\"说点什么\"], .content-input, [class*=\"content-edit\"], #content-textarea",
+      "submit": "button:has-text(\"发送\"), button:has-text(\"发布\"), [class*=\"send\"], [class*=\"Send\"]",
+      "list": "[class*=\"comments\"], [class*=\"Comments\"], .comments-el"
+    },
+    "follow": {
+      "primaryButton": ".reds-button-new.follow-button",
+      "fallbackButtons": [
+        "button.follow-button",
+        "button:has-text(\"关注\")",
+        "button:has-text(\"Follow\")",
+        "[class*=\"follow-btn\"]",
+        "[class*=\"followBtn\"]"
+      ],
+      "userInfoContainer": "[class*=\"user-info\"], [class*=\"userInfo\"], .user-info, [class*=\"authorInfo\"], [class*=\"author-info\"]",
+      "followingText": "已关注,互相关注,相互关注,Following,following",
+      "notFollowingText": "关注,Follow,+ 关注,+ Follow"
+    }
+  },
+  "search": {
+    "container": ".search-result-list",
+    "noteCard": ".note-item, [class*=\"noteCard\"]",
+    "noteLink": "a[href*=\"/explore/\"]",
+    "userCard": ".user-item, [class*=\"userCard\"]",
+    "userLink": "a[href*=\"/user/profile/\"]",
+    "noteTitle": ".title, [class*=\"title\"]",
+    "authorName": ".author, [class*=\"author\"]",
+    "likeCount": "[class*=\"like\"]",
+    "coverImage": "img",
+    "loading": ".loading"
+  }
+}

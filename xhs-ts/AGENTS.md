@@ -21,15 +21,21 @@ npm run test                            # Run tests
 
 ```
 scripts/
-├── browser/      # CDP 浏览器管理 (profile-launcher, cdp/, stealth/)
+├── actions/      # 所有操作模块（统一入口）
+│   ├── shared/   # 共享 Session 管理（withSession API）
+│   ├── login/    # 登录 (qr, sms, auto-login)
+│   ├── search/   # 搜索
+│   ├── publish/  # 发布 (uploader/)
+│   ├── interact/ # 互动 (like, collect, comment, follow)
+│   └── scrape/   # 抓取 (note, user)
+├── core/         # 核心基础设施（平台无关）
+│   ├── browser/  # CDP 浏览器管理
+│   ├── anti-detect/ # 反检测
+│   ├── utils/    # 工具函数
+│   └── error/    # 错误处理
+├── config/       # 配置（URLs, selectors, timeouts）
 ├── user/         # 多用户管理 (storage-v3, profile-loader, migration)
-├── login/        # 登录 (qr, sms, auto-login)
-├── search/       # 搜索
-├── publish/      # 发布 (uploader/)
-├── interact/     # 互动 (like, collect, comment, follow)
-├── scrape/       # 抓取 (note, user)
-├── shared/       # 共享类型/常量/错误
-└── utils/        # 工具 (helpers/, anti-detect/, output/)
+└── cli/          # CLI 命令入口
 ```
 
 > 详细结构：`tree scripts/` 或查看各模块 `index.ts`
@@ -60,11 +66,11 @@ import { CONST } from './constants';
 
 | 工具函数 | 用途 |
 |----------|------|
-| `waitForCondition()` | **替代所有 while 循环** |
-| `withAuthenticatedAction()` | 统一认证流程 |
+| `withSession()` | **统一认证入口** - 浏览器启动 + 导航首页 + 登录验证 |
+| `withAuthenticatedAction()` | 简化版认证（向后兼容） |
 | `preparePageForAction()` | 页面准备（导航+错误检查+模拟阅读） |
-| `humanMouseMoveBezier()` | 贝塞尔曲线鼠标轨迹 |
-| `humanScrollPhysics()` | 物理滚动模拟 |
+| `waitForCondition()` | **替代所有 while 循环** |
+| `humanScroll()` | 物理滚动模拟 |
 
 ---
 
@@ -94,27 +100,32 @@ await page.click('a[href*="creator.xiaohongshu.com"]');
 ## 关键 API
 
 ```typescript
-// 浏览器管理
-import { withProfile } from './browser';
-await withProfile('user', async (page, result) => {
-  const { browser, context, cdpPort, isNewInstance } = result;
-  // ...
-}, { headless: true, keepAlive: true });
+// 统一 Session 管理（推荐）
+import { withSession, type SessionContext } from './actions/shared/session';
+await withSession(user, async (ctx) => {
+  const { page, behavior, user } = ctx;
+  // withSession 已处理：浏览器启动 → 导航首页 → 登录验证
+  // ... 执行操作
+}, { headless: true });
 
-// 认证操作
-import { withAuthenticatedAction, preparePageForAction } from './interact/shared';
-await withAuthenticatedAction(headless, user, async (page) => { ... });
+// 简化版（向后兼容）
+import { withAuthenticatedAction } from './actions/shared/session';
+await withAuthenticatedAction(headless, user, async (page, behavior) => { ... });
+
+// 页面准备工具
+import { preparePageForAction, checkPageHealth } from './actions/shared/session';
+const error = await preparePageForAction(page, url); // 导航 + 检查 + 模拟阅读
 
 // URL 提取
-import { extractNoteId, extractUserId } from './interact/url-utils';
-const { id } = extractNoteId(url);
+import { extractNoteIdFromUrl, extractUserIdFromUrl } from './actions/interact/url-utils';
+const { noteId } = extractNoteIdFromUrl(url);
 
 // 用户管理
 import { resolveUser, listUsers } from './user';
 const user = resolveUser(options.user);  // --user > current > default
 
 // 反检测脚本
-import { generateStealthScript } from './browser/stealth';
+import { generateStealthScript } from './core/browser/stealth';
 const script = generateStealthScript(fingerprint);
 ```
 

@@ -6,11 +6,11 @@
  */
 
 import { existsSync, readFileSync, writeFileSync } from 'fs';
-import { readFile, mkdir, writeFile, rename, unlink } from 'fs/promises';
+import { mkdir, writeFile, rename, unlink } from 'fs/promises';
 import path from 'path';
 import type { UserName, UsersMeta } from './types';
 import { getUsersDir, validateUserName, userExists, createUserDir } from './storage';
-import { debugLog } from '../utils/helpers';
+import { debugLog } from '../core/utils';
 
 // ============================================
 // Constants

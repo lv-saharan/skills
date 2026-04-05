@@ -26,7 +26,7 @@ import { validateUserName } from './storage';
 import { getUserDir, getUserDataDir } from './storage';
 import { hasDisplaySupport, detectEnvironmentType } from './environment';
 import { getUserFingerprint } from './fingerprint';
-import { debugLog } from '../utils/helpers';
+import { debugLog } from '../core/utils';
 
 // ============================================
 // Constants

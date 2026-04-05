@@ -9,7 +9,7 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { existsSync, mkdirSync } from 'fs';
 import type { AppConfig } from './types';
-import type { LoginMethod } from '../shared';
+import type { LoginMethod } from './types';
 import type { UserName } from '../user';
 
 // ============================================

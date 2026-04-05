@@ -24,7 +24,7 @@ function registerScrapeNoteCommand(program: Command): void {
     .option('--comments', 'Include comments')
     .option('--max-comments <number>', 'Max comments', '20')
     .action(async (url: string, options: ScrapeNoteCommandOptions) => {
-      const { executeScrapeNote } = await import('../../scrape');
+      const { executeScrapeNote } = await import('../../actions/scrape');
       await executeScrapeNote({
         url,
         headless: resolveHeadless(options.headless, config.headless),
@@ -44,7 +44,7 @@ function registerScrapeUserCommand(program: Command): void {
     .option('--notes', 'Include notes')
     .option('--max-notes <number>', 'Max notes', '12')
     .action(async (url: string, options: ScrapeUserCommandOptions) => {
-      const { executeScrapeUser } = await import('../../scrape');
+      const { executeScrapeUser } = await import('../../actions/scrape');
       await executeScrapeUser({
         url,
         headless: resolveHeadless(options.headless, config.headless),

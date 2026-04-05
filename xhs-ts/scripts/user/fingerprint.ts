@@ -10,9 +10,8 @@ import { readFile, writeFile, mkdir } from 'fs/promises';
 import path from 'path';
 import type { UserName, UserFingerprint } from './types';
 import { getUserDir } from './storage';
-import { MAINSTREAM_PRESETS } from '../browser/fingerprint-presets';
-import { hasDisplaySupport } from './environment';
-import { debugLog } from '../utils/helpers';
+import { MAINSTREAM_PRESETS } from '../core/browser/fingerprint-presets';
+import { debugLog } from '../core/utils';
 
 // ============================================
 // Constants
@@ -39,7 +38,7 @@ function getFingerprintPath(user: UserName): string {
 /**
  * Select preset by weight from a list
  */
-function selectByWeight(): typeof MAINSTREAM_PRESETS[number] {
+function selectByWeight(): (typeof MAINSTREAM_PRESETS)[number] {
   const totalWeight = MAINSTREAM_PRESETS.reduce((sum, p) => sum + p.weight, 0);
   let random = Math.random() * totalWeight;
 
