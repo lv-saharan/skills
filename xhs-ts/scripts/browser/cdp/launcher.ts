@@ -196,6 +196,14 @@ export async function spawnCDPBrowserDetached(
     '--start-maximized',
     '--no-first-run',
     '--no-default-browser-check',
+    // Disable session restore to prevent pages from existing before addInitScript
+    '--disable-features=SessionRestore',
+    // Explicitly disable session restore from last session
+    '--restore-last-session=false',
+    // Disable session crash bubble that might restore tabs
+    '--disable-session-crashed-bubble',
+    // Prevent Chrome from saving session state
+    '--disable-save-password-bubble',
   ];
 
   if (config.headless) {

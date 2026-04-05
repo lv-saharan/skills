@@ -5,7 +5,6 @@
  * @description Type definitions for CDP-based browser instance management
  */
 
-import type { Browser, Page } from 'playwright';
 import type { UserName } from '../../user/types';
 
 // ============================================
@@ -17,12 +16,6 @@ export const CDP_PORT_RANGE_START = 18900;
 
 /** CDP port range end */
 export const CDP_PORT_RANGE_END = 18999;
-
-/** Default idle timeout in milliseconds (30 minutes) */
-export const DEFAULT_IDLE_TIMEOUT = 30 * 60 * 1000;
-
-/** Default health check interval in milliseconds (60 seconds) */
-export const DEFAULT_HEALTH_CHECK_INTERVAL = 60 * 1000;
 
 /** Default CDP connection timeout in milliseconds */
 export const DEFAULT_CDP_CONNECT_TIMEOUT = 10000;
@@ -85,37 +78,6 @@ export interface BrowserInstanceConfig {
 }
 
 // ============================================
-// Managed Browser Instance
-// ============================================
-
-/**
- * Managed browser instance
- *
- * A browser instance managed by the BrowserInstanceManager.
- */
-export interface ManagedBrowserInstance {
-  /** Unique instance ID */
-  id: string;
-  /** User name */
-  user: UserName;
-  /** Playwright Browser object */
-  browser: Browser;
-  /** CDP connection metadata */
-  cdp: CDPConnectionMeta;
-  /** Configuration used to create this instance */
-  config: BrowserInstanceConfig;
-  /** Activity tracking */
-  activity: {
-    /** Last activity timestamp */
-    lastActivity: Date;
-    /** Whether instance is currently active */
-    isActive: boolean;
-  };
-  /** Creation timestamp */
-  createdAt: Date;
-}
-
-// ============================================
 // Port Allocation Result
 // ============================================
 
@@ -131,85 +93,4 @@ export interface PortAllocationResult {
   port?: number;
   /** Error message (if failed) */
   error?: string;
-}
-
-// ============================================
-// Main Page Info
-// ============================================
-
-/**
- * Main page information
- *
- * Tracks the main page for a browser instance.
- * The main page is kept open after login and serves as the session page.
- */
-export interface MainPageInfo {
-  /** User name */
-  user: UserName;
-  /** Main page reference */
-  page: Page;
-  /** Creation timestamp */
-  createdAt: Date;
-  /** Last navigation URL */
-  currentUrl?: string;
-  /** Whether the main page is currently in use */
-  inUse: boolean;
-}
-
-// ============================================
-// Health Check Result
-// ============================================
-
-/**
- * Health check result for a browser instance
- */
-export interface HealthCheckResult {
-  /** Instance ID */
-  instanceId: string;
-  /** User name */
-  user: UserName;
-  /** Whether browser is connected */
-  isConnected: boolean;
-  /** Whether browser is responsive (can execute commands) */
-  isResponsive: boolean;
-  /** Idle time in milliseconds */
-  idleTimeMs: number;
-  /** Whether instance should be cleaned up */
-  shouldCleanup: boolean;
-  /** Reason for cleanup (if applicable) */
-  cleanupReason?: 'disconnected' | 'idle_timeout' | 'error';
-  /** Error message (if any) */
-  error?: string;
-}
-
-// ============================================
-// Instance Manager State
-// ============================================
-
-/**
- * Instance manager state
- *
- * Snapshot of the current state of the browser instance manager.
- */
-export interface InstanceManagerState {
-  /** Total number of managed instances */
-  totalInstances: number;
-  /** Active instances by user */
-  instancesByUser: Record<
-    UserName,
-    {
-      instanceId: string;
-      cdpPort: number;
-      createdAt: string;
-      lastActivity: string;
-    }
-  >;
-  /** Main pages by user */
-  mainPagesByUser: Record<
-    UserName,
-    {
-      createdAt: string;
-      currentUrl?: string;
-    }
-  >;
 }

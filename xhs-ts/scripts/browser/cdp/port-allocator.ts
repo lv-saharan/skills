@@ -168,47 +168,6 @@ export async function getPortForUser(user: UserName): Promise<number | undefined
 }
 
 // ============================================
-// Deprecated Functions (kept for backward compatibility)
-// ============================================
-
-/**
- * Release a specific port
- *
- * @deprecated Use releasePortForUser instead. This function is a no-op now.
- * @param _port - Port to release (ignored)
- */
-export function releasePort(_port: number): void {
-  // No-op: port allocation is now managed via profile.json
-  // Use releasePortForUser(user) to clear connection info
-  debugLog('releasePort() is deprecated, use releasePortForUser(user) instead');
-}
-
-/**
- * Get all allocated ports
- *
- * @deprecated Port allocation is now managed via profile.json per user.
- * This function returns an empty set.
- * @returns Empty set
- */
-export function getAllocatedPorts(): Set<number> {
-  // Deprecated: no longer tracking ports globally
-  // Use getPortForUser(user) to get a specific user's port
-  return new Set();
-}
-
-/**
- * Clear all port allocations
- *
- * @deprecated Port allocation is now managed via profile.json per user.
- * This function is a no-op.
- */
-export function clearAllPorts(): void {
-  // Deprecated: no longer tracking ports globally
-  // Use releasePortForUser(user) to clear a specific user's connection
-  debugLog('clearAllPorts() is deprecated, use releasePortForUser(user) instead');
-}
-
-// ============================================
 // Helpers
 // ============================================
 

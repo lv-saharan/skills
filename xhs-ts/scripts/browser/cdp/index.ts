@@ -9,14 +9,7 @@
 export * from './types';
 
 // Port allocation
-export {
-  allocatePort,
-  releasePort,
-  releasePortForUser,
-  checkPortAvailable,
-  checkCDPReady,
-  getPortForUser,
-} from './port-allocator';
+export { allocatePort, releasePortForUser } from './port-allocator';
 
 // Launcher
 export {
@@ -28,13 +21,7 @@ export {
 } from './launcher';
 
 // Connector
-export {
-  connectCDPBrowser,
-  connectCDPBrowserViaWS,
-  checkCDPConnection,
-  getCDPEndpointInfo,
-  buildCDPConnectionMeta,
-} from './connector';
+export { connectCDPBrowser, checkCDPConnection } from './connector';
 
 // Stealth
 export {
