@@ -10,7 +10,8 @@
 // ============================================
 
 // Main function
-export { executeScrapeNote, extractNoteIdFromUrl } from './note';
+export { executeScrapeNote } from './note';
+export { extractNoteIdFromUrl } from '../interact/url-utils';
 
 // Types
 export type {
@@ -28,7 +29,8 @@ export type {
 // ============================================
 
 // Main function
-export { executeScrapeUser, extractUserIdFromUrl } from './user';
+export { executeScrapeUser } from './user';
+export { extractUserIdFromUrl } from '../interact/url-utils';
 
 // Types
 export type {
@@ -44,9 +46,3 @@ export type {
 // ============================================
 
 export { NOTE_SELECTORS, USER_SELECTORS, ERROR_SELECTORS } from './selectors';
-
-// ============================================
-// Utilities
-// ============================================
-
-export { createNoteErrorResult, createUserErrorResult, parseCount } from './utils';

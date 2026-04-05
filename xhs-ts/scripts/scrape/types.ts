@@ -6,6 +6,10 @@
  */
 
 import type { UserName } from '../user';
+import type { NoteIdExtraction, UserIdExtraction } from '../interact/types';
+
+// Re-export extraction types for convenience
+export type { NoteIdExtraction, UserIdExtraction };
 
 // ============================================
 // Note Scraping Types
@@ -219,28 +223,4 @@ export interface ScrapeUserResult {
   scrapedAt: string;
   /** User that performed the scrape */
   user?: UserName;
-}
-
-// ============================================
-// URL Extraction Types
-// ============================================
-
-/** Result of extracting note ID from URL */
-export interface NoteIdExtraction {
-  /** Successfully extracted */
-  success: boolean;
-  /** Note ID if found */
-  noteId?: string;
-  /** Error message if failed */
-  error?: string;
-}
-
-/** Result of extracting user ID from URL */
-export interface UserIdExtraction {
-  /** Successfully extracted */
-  success: boolean;
-  /** User ID if found */
-  userId?: string;
-  /** Error message if failed */
-  error?: string;
 }

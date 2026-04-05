@@ -6,7 +6,8 @@
  */
 
 import type { Page } from 'playwright';
-import type { ScrapeNoteOptions, ScrapeNoteResult, NoteIdExtraction } from './types';
+import type { ScrapeNoteOptions, ScrapeNoteResult } from './types';
+import { extractNoteIdFromUrl } from '../interact/url-utils';
 import { NOTE_SELECTORS, ERROR_SELECTORS } from './selectors';
 import { XhsError, XhsErrorCode, TIMEOUTS } from '../shared';
 import { withProfile, randomStealthDelay } from '../browser';
@@ -20,49 +21,11 @@ import { outputSuccess, outputFromError } from '../utils/output';
 // Constants
 // ============================================
 
-const PAGE_LOAD_TIMEOUT = 20000;
+// Use TIMEOUTS.NETWORK_IDLE from shared
 const DEFAULT_MAX_COMMENTS = 20;
 const MAX_COMMENTS = 100;
 
 // ============================================
-// URL Parsing
-// ============================================
-
-/**
- * Extract note ID from URL
- * Supports:
- * - https://www.xiaohongshu.com/explore/{noteId}
- * - https://www.xiaohongshu.com/explore/{noteId}?xsec_token=xxx
- * - https://www.xiaohongshu.com/discovery/item/{noteId}
- */
-export function extractNoteIdFromUrl(url: string): NoteIdExtraction {
-  try {
-    const urlObj = new URL(url);
-
-    // Short links not supported
-    if (urlObj.hostname === 'xhslink.com') {
-      return { success: false, error: '短链接不支持，请使用完整URL' };
-    }
-
-    if (urlObj.hostname.includes('xiaohongshu.com')) {
-      // Pattern 1: /explore/{noteId}
-      const exploreMatch = urlObj.pathname.match(/\/explore\/([a-zA-Z0-9]+)/);
-      if (exploreMatch && exploreMatch[1].length >= 20) {
-        return { success: true, noteId: exploreMatch[1] };
-      }
-
-      // Pattern 2: /discovery/item/{noteId}
-      const discoveryMatch = urlObj.pathname.match(/\/discovery\/item\/([a-zA-Z0-9]+)/);
-      if (discoveryMatch && discoveryMatch[1].length >= 20) {
-        return { success: true, noteId: discoveryMatch[1] };
-      }
-    }
-
-    return { success: false, error: '无法从URL提取笔记ID，请检查URL格式' };
-  } catch {
-    return { success: false, error: 'URL格式无效' };
-  }
-}
 
 // ============================================
 // Data Extraction
@@ -353,7 +316,7 @@ async function scrapeNote(
     // 1. Navigate to page
     debugLog('导航到: ' + url);
     await page.goto(url, { waitUntil: 'domcontentloaded', timeout: TIMEOUTS.PAGE_LOAD });
-    await page.waitForLoadState('networkidle', { timeout: PAGE_LOAD_TIMEOUT }).catch(() => {});
+    await page.waitForLoadState('networkidle', { timeout: TIMEOUTS.NETWORK_IDLE }).catch(() => {});
     await delay(1500 + Math.random() * 1000);
 
     // 2. Check for errors
