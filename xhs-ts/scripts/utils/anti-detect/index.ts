@@ -7,15 +7,13 @@
 
 import type { Page, Locator } from 'playwright';
 import { delay, randomDelay, debugLog } from '../helpers';
+import {
+  LOGIN_BUTTON_SELECTORS,
+  LOGIN_MODAL_SELECTOR,
+  USER_COMPONENT_SELECTOR,
+} from '../../shared';
 
-// Re-export advanced modules
-export { humanMouseMoveBezier, humanMouseMoveToElement } from './mouse-trajectory';
-export {
-  humanScrollPhysics,
-  humanScrollToPosition,
-  humanScrollToBottom,
-  humanScrollRead,
-} from './scroll-physics';
+// Advanced modules are internal - do not re-export
 
 async function getRandomPointInElement(element: Locator): Promise<{ x: number; y: number } | null> {
   const box = await element.boundingBox();
@@ -198,11 +196,39 @@ export async function humanScroll(
   options: { direction?: 'down' | 'up'; distance?: number; speed?: 'slow' | 'normal' | 'fast' } = {}
 ): Promise<void> {
   const { direction = 'down', distance = 300, speed = 'normal' } = options;
-  const scrollAmount = direction === 'down' ? distance : -distance;
-  const steps = speed === 'slow' ? 5 : speed === 'fast' ? 2 : 3;
-  for (let i = 0; i < steps; i++) {
-    await page.mouse.wheel(0, scrollAmount / steps);
-    await randomDelay(100, 300);
+
+  // Physics phases: accelerate (20%) -> stable (50%) -> decelerate (30%)
+  const speedFactor = speed === 'slow' ? 1.5 : speed === 'fast' ? 0.6 : 1.0;
+  const phases = [
+    { ratio: 0.2, acceleration: 1.5 },
+    { ratio: 0.5, acceleration: 0 },
+    { ratio: 0.3, acceleration: -2 },
+  ];
+
+  const sign = direction === 'down' ? 1 : -1;
+  let velocity = 0;
+  const maxVelocity = distance / 12;
+
+  for (const phase of phases) {
+    const phaseDistance = distance * phase.ratio;
+    let scrolled = 0;
+
+    while (scrolled < phaseDistance) {
+      velocity = Math.max(3, Math.min(maxVelocity, velocity + phase.acceleration * 0.5));
+      const remaining = phaseDistance - scrolled;
+      const delta = Math.min(velocity, remaining);
+
+      await page.mouse.wheel(0, sign * delta);
+      scrolled += delta;
+
+      const baseDelay = (15 + Math.random() * 15) * speedFactor;
+      await delay(baseDelay);
+
+      // Random pause (simulating reading)
+      if (Math.random() < 0.02) {
+        await delay(80 + Math.random() * 150);
+      }
+    }
   }
 }
 
@@ -270,13 +296,10 @@ export async function checkErrorPage(
 // ============================================
 
 /** Login modal container selector */
-const LOGIN_MODAL_SELECTOR = '.login-container';
 
 /** User component selector (logged in indicator) */
-const USER_COMPONENT_SELECTOR = '.user.side-bar-component';
 
 /** Login button selectors (to trigger login modal) */
-const LOGIN_BUTTON_SELECTORS = ['button.login-btn', '.login-btn'] as const;
 
 /**
  * Check if user is logged in (pure check, no side effects)
@@ -291,10 +314,6 @@ export async function checkLoginStatus(page: Page): Promise<boolean> {
   try {
     const currentUrl = page.url();
     debugLog('checkLoginStatus: ' + currentUrl);
-
-    // Wait for page to be fully loaded
-    await page.waitForLoadState('networkidle').catch(() => {});
-    await delay(1500);
 
     // STEP 1: 检查错误页面
     const errorResult = await checkErrorPage(page);
@@ -374,10 +393,6 @@ export async function ensureLoginStatus(
   try {
     const currentUrl = page.url();
     debugLog('ensureLoginStatus: ' + currentUrl);
-
-    // Wait for page to be fully loaded
-    await page.waitForLoadState('networkidle').catch(() => {});
-    await delay(1500);
 
     // STEP 1: 检查错误页面
     const errorResult = await checkErrorPage(page);

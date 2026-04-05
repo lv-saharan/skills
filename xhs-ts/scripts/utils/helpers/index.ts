@@ -18,21 +18,8 @@ export { config };
 // Re-export XHS_URLS from shared (single source of truth)
 export { XHS_URLS };
 
-// Re-export probability utilities
-export {
-  gaussianRandom,
-  gaussianRandomClamped,
-  humanDelay,
-  humanDelayBounded,
-  timeAwareDelay,
-  readingDelay,
-  profileDelay,
-  actionDelay,
-  BEHAVIOR_PROFILES,
-  ACTION_TIMING,
-} from './probability';
-
-export type { BehaviorProfileName } from './probability';
+// gaussianRandomClamped is used internally via dynamic import
+// Do not export probability utilities - they are internal implementation details
 
 // ============================================
 // Timing Utilities
