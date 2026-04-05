@@ -33,9 +33,6 @@ export {
 // import { TIMEOUTS } from '../shared';
 // TIMEOUTS.PAGE_LOAD, TIMEOUTS.UPLOAD
 
-// Auth utilities
-export { waitForCreatorCenterLogin, requireCreatorCenterLogin } from './auth';
-
 // Upload functions (for advanced usage)
 export {
   uploadMedia,
