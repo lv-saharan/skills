@@ -155,7 +155,9 @@ export async function executeSearch(options: SearchOptions): Promise<void> {
 
       // Navigate to home and verify login (Profile auto-loads persisted state)
       debugLog('Navigating to homepage...');
+      debugLog('Pages before navigation: ' + page.context().pages().length);
       await page.goto(XHS_URLS.home, { timeout: TIMEOUTS.PAGE_LOAD });
+      debugLog('Pages after navigation: ' + page.context().pages().length);
       await randomStealthDelay(behavior, 'read');
 
       // Ensure login (auto-login if needed)
