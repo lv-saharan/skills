@@ -20,7 +20,7 @@ import { extractNoteId } from './like';
 // Constants
 // ============================================
 
-const PAGE_LOAD_TIMEOUT = 20000;
+// Use TIMEOUTS.NETWORK_IDLE from shared
 
 // ============================================
 // Collect Status Detection
@@ -65,7 +65,7 @@ async function performCollect(page: Page, url: string): Promise<CollectResult> {
   try {
     debugLog('导航到: ' + url);
     await page.goto(url, { waitUntil: 'domcontentloaded', timeout: TIMEOUTS.PAGE_LOAD });
-    await page.waitForLoadState('networkidle', { timeout: PAGE_LOAD_TIMEOUT }).catch(() => {});
+    await page.waitForLoadState('networkidle', { timeout: TIMEOUTS.NETWORK_IDLE }).catch(() => {});
     await delay(1500 + Math.random() * 1000);
 
     if (!(await checkLoginStatus(page))) {

@@ -6,7 +6,9 @@
  */
 
 import type { Page } from 'playwright';
-import type { LikeOptions, LikeResult, NoteIdExtraction } from './types';
+import type { LikeOptions, LikeResult } from './types';
+import type { NoteIdExtraction } from './types';
+import { extractNoteIdFromUrl } from './url-utils';
 import { LIKE_SELECTORS } from './selectors';
 import { XhsError, XhsErrorCode, TIMEOUTS } from '../shared';
 import { withProfile, randomStealthDelay } from '../browser';
@@ -19,7 +21,7 @@ import { outputSuccess, outputFromError } from '../utils/output';
 // Constants
 // ============================================
 
-const PAGE_LOAD_TIMEOUT = 20000;
+// Use TIMEOUTS.NETWORK_IDLE from shared
 
 // ============================================
 // URL Parsing
@@ -86,7 +88,7 @@ async function checkLikeStatus(page: Page): Promise<{ visible: boolean; liked: b
 async function performLike(page: Page, url: string): Promise<LikeResult> {
   debugLog('开始执行点赞...');
 
-  const extraction = extractNoteId(url);
+  const extraction = extractNoteIdFromUrl(url);
   if (!extraction.success) {
     return { success: false, url, noteId: '', liked: false, error: extraction.error };
   }
@@ -96,7 +98,7 @@ async function performLike(page: Page, url: string): Promise<LikeResult> {
     // 1. 导航到页面
     debugLog('导航到: ' + url);
     await page.goto(url, { waitUntil: 'domcontentloaded', timeout: TIMEOUTS.PAGE_LOAD });
-    await page.waitForLoadState('networkidle', { timeout: PAGE_LOAD_TIMEOUT }).catch(() => {});
+    await page.waitForLoadState('networkidle', { timeout: TIMEOUTS.NETWORK_IDLE }).catch(() => {});
     await delay(1500 + Math.random() * 1000);
 
     // 2. 检查错误状态

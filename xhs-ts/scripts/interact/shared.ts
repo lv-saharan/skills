@@ -14,46 +14,44 @@ import {
   type StealthBehaviorConfig,
 } from '../browser';
 import { resolveUser } from '../user';
-import { XhsError, XhsErrorCode, TIMEOUTS } from '../shared';
-import { XHS_URLS, gaussianDelay } from '../utils/helpers';
+import { XhsError, XhsErrorCode, TIMEOUTS, DELAYS, XHS_URLS } from '../shared';
+import { gaussianDelay } from '../utils/helpers';
 import { checkLoginStatus, checkCaptcha, simulateReading } from '../utils/anti-detect';
 import { ensureLogin } from '../login';
 
 // ============================================
-// Constants
+// Delay Utilities
 // ============================================
 
-export const INTERACTION_PAGE_LOAD_TIMEOUT = 20000;
+/** Re-export unified delay constants from shared for backward compatibility */
+export const INTERACTION_DELAYS = DELAYS;
 
-export const DEFAULT_INTERACTION_DELAYS = {
-  afterNavigation: { mean: 2000, stdDev: 400 },
-  afterClick: { mean: 1200, stdDev: 300 },
-  batchInterval: { mean: 3000, stdDev: 800 },
-} as const;
+export interface InteractionDelayPreset {
+  mean: number;
+  stdDev: number;
+}
 
-export const INTERACTION_DELAYS = DEFAULT_INTERACTION_DELAYS;
-
-export function getInteractionDelays(
-  behavior?: StealthBehaviorConfig
-): typeof DEFAULT_INTERACTION_DELAYS {
+export function getInteractionDelays(behavior?: StealthBehaviorConfig): {
+  afterNavigation: { mean: number; stdDev: number };
+  afterClick: { mean: number; stdDev: number };
+  batchInterval: { mean: number; stdDev: number };
+} {
   if (!behavior) {
-    return DEFAULT_INTERACTION_DELAYS;
+    return DELAYS;
   }
 
   return {
     afterNavigation: {
-      mean: (behavior.minReadTime + (behavior.maxReadTime - behavior.minReadTime) / 2) as 2000,
-      stdDev: ((behavior.maxReadTime - behavior.minReadTime) / 4) as 400,
+      mean: behavior.minReadTime + (behavior.maxReadTime - behavior.minReadTime) / 2,
+      stdDev: (behavior.maxReadTime - behavior.minReadTime) / 4,
     },
     afterClick: {
-      mean: (behavior.minActionDelay +
-        (behavior.maxActionDelay - behavior.minActionDelay) / 2) as 1200,
-      stdDev: ((behavior.maxActionDelay - behavior.minActionDelay) / 4) as 300,
+      mean: behavior.minActionDelay + (behavior.maxActionDelay - behavior.minActionDelay) / 2,
+      stdDev: (behavior.maxActionDelay - behavior.minActionDelay) / 4,
     },
     batchInterval: {
-      mean: (behavior.minActionDelay +
-        (behavior.maxActionDelay - behavior.minActionDelay) / 2) as 3000,
-      stdDev: ((behavior.maxActionDelay - behavior.minActionDelay) / 4) as 800,
+      mean: behavior.minActionDelay + (behavior.maxActionDelay - behavior.minActionDelay) / 2,
+      stdDev: (behavior.maxActionDelay - behavior.minActionDelay) / 4,
     },
   };
 }
@@ -100,10 +98,8 @@ export async function withAuthenticatedAction<T>(
 
 export async function navigateToPage(page: Page, url: string): Promise<void> {
   await page.goto(url, { waitUntil: 'domcontentloaded', timeout: TIMEOUTS.PAGE_LOAD });
-  await page
-    .waitForLoadState('networkidle', { timeout: INTERACTION_PAGE_LOAD_TIMEOUT })
-    .catch(() => {});
-  await gaussianDelay(DEFAULT_INTERACTION_DELAYS.afterNavigation);
+  await page.waitForLoadState('networkidle', { timeout: 5000 }).catch(() => {});
+  await gaussianDelay(DELAYS.afterNavigation);
 }
 
 export async function checkPageErrors(page: Page): Promise<string | null> {
@@ -166,7 +162,7 @@ export async function executeBatch<T, R>(
       if (options.delayBetween) {
         await gaussianDelay({ mean: options.delayBetween, stdDev: options.delayBetween * 0.25 });
       } else {
-        await gaussianDelay(DEFAULT_INTERACTION_DELAYS.batchInterval);
+        await gaussianDelay(DELAYS.batchInterval);
       }
     }
   }

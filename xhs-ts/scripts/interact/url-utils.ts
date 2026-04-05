@@ -9,7 +9,7 @@
 // Types
 // ============================================
 
-/** Result of extracting an ID from URL */
+/** Generic result of extracting an ID from URL */
 export interface UrlExtractionResult {
   /** Successfully extracted */
   success: boolean;
@@ -19,12 +19,32 @@ export interface UrlExtractionResult {
   error?: string;
 }
 
+/** Result of extracting note ID from URL */
+export interface NoteIdExtraction {
+  /** Successfully extracted */
+  success: boolean;
+  /** Note ID if found */
+  noteId?: string;
+  /** Error message if failed */
+  error?: string;
+}
+
+/** Result of extracting user ID from URL */
+export interface UserIdExtraction {
+  /** Successfully extracted */
+  success: boolean;
+  /** User ID if found */
+  userId?: string;
+  /** Error message if failed */
+  error?: string;
+}
+
 // ============================================
-// Note URL Extraction
+// Core URL Extraction
 // ============================================
 
 /**
- * Extract note ID from URL
+ * Extract note ID from URL (core implementation)
  *
  * Supports:
  * - https://www.xiaohongshu.com/explore/{noteId}
@@ -35,7 +55,7 @@ export interface UrlExtractionResult {
  * - Short links (xhslink.com) - will return error
  *
  * @param url - Note URL
- * @returns Extraction result with noteId or error
+ * @returns Extraction result with id or error
  */
 export function extractNoteId(url: string): UrlExtractionResult {
   try {
@@ -53,13 +73,13 @@ export function extractNoteId(url: string): UrlExtractionResult {
 
     // Pattern 1: /explore/{noteId}
     const exploreMatch = urlObj.pathname.match(/\/explore\/([a-zA-Z0-9]+)/);
-    if (exploreMatch) {
+    if (exploreMatch && exploreMatch[1].length >= 20) {
       return { success: true, id: exploreMatch[1] };
     }
 
     // Pattern 2: /discovery/item/{noteId}
     const discoveryMatch = urlObj.pathname.match(/\/discovery\/item\/([a-zA-Z0-9]+)/);
-    if (discoveryMatch) {
+    if (discoveryMatch && discoveryMatch[1].length >= 20) {
       return { success: true, id: discoveryMatch[1] };
     }
 
@@ -69,12 +89,8 @@ export function extractNoteId(url: string): UrlExtractionResult {
   }
 }
 
-// ============================================
-// User URL Extraction
-// ============================================
-
 /**
- * Extract user ID from URL
+ * Extract user ID from URL (core implementation)
  *
  * Supports:
  * - https://www.xiaohongshu.com/user/profile/{userId}
@@ -83,7 +99,7 @@ export function extractNoteId(url: string): UrlExtractionResult {
  * - Short links (xhslink.com) - will return error
  *
  * @param url - User profile URL
- * @returns Extraction result with userId or error
+ * @returns Extraction result with id or error
  */
 export function extractUserId(url: string): UrlExtractionResult {
   try {
@@ -101,7 +117,7 @@ export function extractUserId(url: string): UrlExtractionResult {
 
     // Pattern: /user/profile/{userId}
     const match = urlObj.pathname.match(/\/user\/profile\/([a-zA-Z0-9]+)/);
-    if (match) {
+    if (match && match[1].length >= 20) {
       return { success: true, id: match[1] };
     }
 
@@ -112,15 +128,16 @@ export function extractUserId(url: string): UrlExtractionResult {
 }
 
 // ============================================
-// Legacy Exports (for backward compatibility)
+// Convenience Wrappers (with specific field names)
 // ============================================
 
-/** @deprecated Use extractNoteId instead - returns { success, id?, error? } */
-export function extractNoteIdLegacy(url: string): {
-  success: boolean;
-  noteId?: string;
-  error?: string;
-} {
+/**
+ * Extract note ID from URL (returns NoteIdExtraction)
+ *
+ * @param url - Note URL
+ * @returns Extraction result with noteId field
+ */
+export function extractNoteIdFromUrl(url: string): NoteIdExtraction {
   const result = extractNoteId(url);
   return {
     success: result.success,
@@ -129,12 +146,13 @@ export function extractNoteIdLegacy(url: string): {
   };
 }
 
-/** @deprecated Use extractUserId instead - returns { success, id?, error? } */
-export function extractUserIdLegacy(url: string): {
-  success: boolean;
-  userId?: string;
-  error?: string;
-} {
+/**
+ * Extract user ID from URL (returns UserIdExtraction)
+ *
+ * @param url - User profile URL
+ * @returns Extraction result with userId field
+ */
+export function extractUserIdFromUrl(url: string): UserIdExtraction {
   const result = extractUserId(url);
   return {
     success: result.success,

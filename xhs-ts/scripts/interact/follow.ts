@@ -6,30 +6,13 @@
  */
 
 import type { Page, Locator } from 'playwright';
-import type { FollowOptions, FollowResult, UserIdExtraction } from './types';
+import type { FollowOptions, FollowResult } from './types';
 import { FOLLOW_SELECTORS } from './selectors';
 import { withAuthenticatedAction, INTERACTION_DELAYS, preparePageForAction } from './shared';
-import { extractUserId as extractUserIdFromUrl } from './url-utils';
+import { extractUserIdFromUrl } from './url-utils';
 import { debugLog, gaussianDelay } from '../utils/helpers';
 import { humanClick, checkLoginStatus } from '../utils/anti-detect';
 import { outputSuccess, outputFromError } from '../utils/output';
-
-// ============================================
-// Legacy Export (for backward compatibility)
-// ============================================
-
-/**
- * Extract user ID from URL
- * @deprecated Import from './url-utils' instead
- */
-export function extractUserId(url: string): UserIdExtraction {
-  const result = extractUserIdFromUrl(url);
-  return {
-    success: result.success,
-    userId: result.id,
-    error: result.error,
-  };
-}
 
 // ============================================
 // Follow Status Detection
@@ -113,7 +96,7 @@ async function performFollow(page: Page, url: string): Promise<FollowResult> {
   if (!extraction.success) {
     return { success: false, url, userId: '', following: false, error: extraction.error };
   }
-  const userId = extraction.id!;
+  const userId = extraction.userId!;
 
   // Prepare page (navigate + check errors + simulate reading)
   // Note: For user pages, we need to check for different error messages

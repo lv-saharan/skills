@@ -10,7 +10,7 @@
 // ============================================
 
 // Main functions
-export { executeLike, extractNoteId } from './like';
+export { executeLike } from './like';
 
 // Types
 export type { LikeOptions, LikeResult, LikeManyResult } from './types';
@@ -40,7 +40,13 @@ export type { CommentOptions, CommentResult } from './types';
 // ============================================
 
 // Main functions
-export { executeFollow, extractUserId } from './follow';
+export { executeFollow } from './follow';
+export {
+  extractNoteId,
+  extractNoteIdFromUrl,
+  extractUserId,
+  extractUserIdFromUrl,
+} from './url-utils';
 
 // Types
 export type { FollowOptions, FollowResult, FollowManyResult, UserIdExtraction } from './types';
@@ -55,7 +61,7 @@ export type { NoteIdExtraction } from './types';
 // Shared Utilities (for advanced usage)
 // ============================================
 
-export { withAuthenticatedAction, INTERACTION_DELAYS } from './shared';
+export { withAuthenticatedAction, executeBatch, INTERACTION_DELAYS } from './shared';
 export {
   extractNoteId as extractNoteIdUtil,
   extractUserId as extractUserIdUtil,
