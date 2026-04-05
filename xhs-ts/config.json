@@ -15,7 +15,7 @@
       "browser": {
         "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36",
         "vendor": "Google Inc.",
-        "languages": ["zh-CN", "zh", "en-US", "en"]
+        "languages": ["zh-CN", "en", "en-GB", "en-US"]
       },
       "screen": {
         "width": 1920,
@@ -38,7 +38,7 @@
       "browser": {
         "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36",
         "vendor": "Google Inc.",
-        "languages": ["zh-CN", "zh", "en-US", "en"]
+        "languages": ["zh-CN", "en", "en-GB", "en-US"]
       },
       "screen": {
         "width": 1536,
@@ -61,7 +61,7 @@
       "browser": {
         "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36",
         "vendor": "Google Inc.",
-        "languages": ["zh-CN", "zh", "en-US", "en"]
+        "languages": ["zh-CN", "en", "en-GB", "en-US"]
       },
       "screen": {
         "width": 2560,
@@ -84,7 +84,7 @@
       "browser": {
         "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36",
         "vendor": "Google Inc.",
-        "languages": ["zh-CN", "zh", "en-US", "en"]
+        "languages": ["zh-CN", "en", "en-GB", "en-US"]
       },
       "screen": {
         "width": 1920,
@@ -107,7 +107,7 @@
       "browser": {
         "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36",
         "vendor": "Google Inc.",
-        "languages": ["zh-CN", "zh", "en-US", "en"]
+        "languages": ["zh-CN", "en", "en-GB", "en-US"]
       },
       "screen": {
         "width": 3840,
@@ -130,7 +130,7 @@
       "browser": {
         "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36",
         "vendor": "Google Inc.",
-        "languages": ["zh-CN", "zh", "en-US", "en"]
+        "languages": ["zh-CN", "en", "en-GB", "en-US"]
       },
       "screen": {
         "width": 2560,
@@ -153,7 +153,7 @@
       "browser": {
         "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36",
         "vendor": "Google Inc.",
-        "languages": ["zh-CN", "zh", "en-US", "en"]
+        "languages": ["zh-CN", "en", "en-GB", "en-US"]
       },
       "screen": {
         "width": 2560,
@@ -176,7 +176,7 @@
       "browser": {
         "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36",
         "vendor": "Google Inc.",
-        "languages": ["zh-CN", "zh", "en-US", "en"]
+        "languages": ["zh-CN", "en", "en-GB", "en-US"]
       },
       "screen": {
         "width": 1440,
@@ -199,7 +199,7 @@
       "browser": {
         "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36",
         "vendor": "Google Inc.",
-        "languages": ["zh-CN", "zh", "en-US", "en"]
+        "languages": ["zh-CN", "en", "en-GB", "en-US"]
       },
       "screen": {
         "width": 3840,
@@ -222,7 +222,7 @@
       "browser": {
         "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36",
         "vendor": "Google Inc.",
-        "languages": ["zh-CN", "zh", "en-US", "en"]
+        "languages": ["zh-CN", "en", "en-GB", "en-US"]
       },
       "screen": {
         "width": 3840,
@@ -245,7 +245,7 @@
       "browser": {
         "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36",
         "vendor": "Google Inc.",
-        "languages": ["zh-CN", "zh", "en-US", "en"]
+        "languages": ["zh-CN", "en", "en-GB", "en-US"]
       },
       "screen": {
         "width": 2560,
@@ -268,7 +268,7 @@
       "browser": {
         "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36",
         "vendor": "Google Inc.",
-        "languages": ["zh-CN", "zh", "en-US", "en"]
+        "languages": ["zh-CN", "en", "en-GB", "en-US"]
       },
       "screen": {
         "width": 3840,

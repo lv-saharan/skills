@@ -13,4 +13,14 @@ export type { XhsErrorCodeType } from './errors';
 export type { LoginMethod } from './types';
 
 // Shared constants
-export { TIMEOUTS, XHS_URLS } from './constants';
+export { TIMEOUTS, XHS_URLS, DELAYS, STEALTH_DELAYS } from './constants';
+
+// Shared selectors
+export {
+  QR_SELECTORS,
+  LOGIN_MODAL_SELECTORS,
+  LOGIN_MODAL_SELECTOR,
+  LOGIN_BUTTON_SELECTORS,
+  QR_TAB_SELECTOR,
+  USER_COMPONENT_SELECTOR,
+} from './selectors';
