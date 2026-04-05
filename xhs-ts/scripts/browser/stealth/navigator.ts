@@ -123,18 +123,5 @@ if (originalQuery) {
   };
 }
 
-// Hide automation in prototype chain
-const oldCall = Function.prototype.call;
-Function.prototype.call = function() {
-  if (arguments.length > 0 && arguments[0] !== null && arguments[0] !== undefined) {
-    if (arguments[0].navigator && arguments[0].navigator.webdriver !== undefined) {
-      Object.defineProperty(arguments[0].navigator, 'webdriver', {
-        get: () => undefined,
-        configurable: true
-      });
-    }
-  }
-  return oldCall.apply(this, arguments);
-};
 `;
 }

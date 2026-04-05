@@ -23,7 +23,7 @@ import { generateFontScript } from './font';
 import { generateBatteryScript } from './battery';
 import { generateGeolocationScript } from './geolocation';
 import { generatePerformanceScript } from './performance';
-import { getPolyfillScript, getIframeFixScript, getSourceURLScript, combineScripts } from './utils';
+import { getIframeFixScript, getSourceURLScript, combineScripts } from './utils';
 
 // Re-export types
 export * from './types';
@@ -41,9 +41,6 @@ export function generateStealthScript(
   geolocation?: GeolocationConfig
 ): string {
   const scripts: string[] = [];
-
-  // Always include polyfill
-  scripts.push(getPolyfillScript());
 
   // Navigator spoofing
   if (config.navigator !== false) {

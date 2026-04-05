@@ -12,7 +12,6 @@
 export {
   generateStealthScript,
   generateStealthScriptWithLocation,
-  STEALTH_INJECTION_SCRIPT,
   DEFAULT_STEALTH_CONFIG,
   DEFAULT_GEOLOCATION,
 } from './stealth/index';

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Stealth utilities
  *
  * @module browser/stealth/utils
@@ -37,12 +37,28 @@ export function getInjectionGuardCloseScript(): string {
 
 /**
  * Polyfill script for __name
+ *
+ * CRITICAL: This must be placed OUTSIDE injection guard to ensure it always runs.
+ * Reason: When CDP context is reused, the injection guard flag (__XHS_STEALTH_INJECTED__)
+ * may already be set from a previous page, causing the guard to skip the entire script.
+ * But __name polyfill must always be available for tsx/esbuild compiled page.evaluate code.
+ *
+ * Uses Object.defineProperty to prevent XHS page scripts from overwriting.
  */
 export function getPolyfillScript(): string {
   return `
-// __name polyfill
+// __name polyfill - always executes (outside injection guard)
+// Use Object.defineProperty to prevent XHS from overwriting
 if (typeof window.__name === 'undefined') {
-  window.__name = (fn, _name) => fn;
+  try {
+    Object.defineProperty(window, '__name', {
+      value: (fn, _name) => fn,
+      writable: false,
+      configurable: true
+    });
+  } catch (e) {
+    window.__name = (fn, _name) => fn;
+  }
 }
 `;
 }
@@ -82,8 +98,27 @@ export function getSourceURLScript(): string {
 
 /**
  * Combine multiple scripts into one with injection guard
+ *
+ * CRITICAL: __name polyfill is placed OUTSIDE injection guard.
+ * Structure: polyfill (always) → injection guard → other modules → guard close
+ *
+ * This ensures:
+ * 1. __name is always available for tsx/esbuild compiled page.evaluate code
+ * 2. Other modules are protected from duplicate injection by the guard
+ * 3. Context reuse doesn't break __name polyfill availability
  */
 export function combineScripts(...scripts: string[]): string {
-  const content = scripts.filter(Boolean).join('\n\n');
-  return getInjectionGuardScript() + '\n' + content + '\n' + getInjectionGuardCloseScript();
+  const polyfill = getPolyfillScript();
+  const otherModules = scripts.filter(Boolean).join('\n\n');
+
+  // Structure: polyfill (unguarded) → guard → modules → guard close
+  return (
+    polyfill +
+    '\n' +
+    getInjectionGuardScript() +
+    '\n' +
+    otherModules +
+    '\n' +
+    getInjectionGuardCloseScript()
+  );
 }
