@@ -7,40 +7,20 @@
 
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
+import type {
+  DevicePlatform,
+  ScreenConfig,
+  DeviceConfig,
+  WebGLConfig,
+  BrowserConfig,
+} from '../user/types';
+
+// Re-export types for convenience
+export type { DevicePlatform, ScreenConfig, DeviceConfig, WebGLConfig, BrowserConfig };
 
 // ============================================
-// Types
+// Device Preset Type
 // ============================================
-
-/** Device platform type */
-export type DevicePlatform = 'Windows' | 'MacIntel' | 'Linux x86_64';
-
-/** Screen resolution configuration */
-export interface ScreenConfig {
-  width: number;
-  height: number;
-  colorDepth?: 24 | 32;
-}
-
-/** Device hardware configuration */
-export interface DeviceConfig {
-  platform: DevicePlatform;
-  hardwareConcurrency: number;
-  deviceMemory: number;
-}
-
-/** WebGL configuration */
-export interface WebGLConfig {
-  vendor: string;
-  renderer: string;
-}
-
-/** Browser configuration */
-export interface BrowserConfig {
-  userAgent: string;
-  vendor: string;
-  languages: string[];
-}
 
 /** Complete device preset */
 export interface DevicePreset {
@@ -86,7 +66,7 @@ function loadPresetsFromConfig(): DevicePreset[] {
         weight: 100,
         description: 'Fallback preset (config.json not found)',
         device: {
-          platform: 'Windows',
+          platform: 'Windows' as DevicePlatform,
           hardwareConcurrency: 8,
           deviceMemory: 8,
         },
@@ -98,7 +78,7 @@ function loadPresetsFromConfig(): DevicePreset[] {
           userAgent:
             'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
           vendor: 'Google Inc.',
-          languages: ['zh-CN', 'zh', 'en-US', 'en'],
+          languages: ['zh-CN', 'en', 'en-GB', 'en-US'],
         },
         screen: {
           width: 1920,
@@ -128,70 +108,3 @@ function loadPresetsFromConfig(): DevicePreset[] {
  * - 1440×900 (老款笔记本): ~5%
  */
 export const MAINSTREAM_PRESETS: DevicePreset[] = loadPresetsFromConfig();
-
-// ============================================
-// Selection Functions
-// ============================================
-
-/**
- * Select a device preset based on weight distribution
- * @returns A device preset selected randomly by weight
- */
-export function selectPresetByWeight(): DevicePreset {
-  const totalWeight = MAINSTREAM_PRESETS.reduce((sum, p) => sum + p.weight, 0);
-  let random = Math.random() * totalWeight;
-
-  for (const preset of MAINSTREAM_PRESETS) {
-    random -= preset.weight;
-    if (random <= 0) {
-      return preset;
-    }
-  }
-
-  // Fallback to first preset
-  return MAINSTREAM_PRESETS[0];
-}
-
-/**
- * Get all available presets with their weights
- */
-export function getPresetList(): Array<{ description: string; weight: number }> {
-  return MAINSTREAM_PRESETS.map((p) => ({
-    description: p.description,
-    weight: p.weight,
-  }));
-}
-
-/**
- * Get screen resolution statistics
- */
-export function getScreenResolutionStats(): Map<string, number> {
-  const stats = new Map<string, number>();
-
-  for (const preset of MAINSTREAM_PRESETS) {
-    const key = `${preset.screen.width}×${preset.screen.height}`;
-    const current = stats.get(key) ?? 0;
-    stats.set(key, current + preset.weight);
-  }
-
-  return stats;
-}
-
-/**
- * Validate a preset has all required fields
- */
-export function validatePreset(preset: DevicePreset): boolean {
-  return (
-    typeof preset.weight === 'number' &&
-    preset.weight > 0 &&
-    typeof preset.description === 'string' &&
-    preset.device.platform !== undefined &&
-    preset.device.hardwareConcurrency > 0 &&
-    preset.device.deviceMemory > 0 &&
-    typeof preset.webgl.vendor === 'string' &&
-    typeof preset.webgl.renderer === 'string' &&
-    typeof preset.browser.userAgent === 'string' &&
-    preset.screen.width > 0 &&
-    preset.screen.height > 0
-  );
-}

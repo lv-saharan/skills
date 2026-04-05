@@ -1,53 +1,28 @@
-﻿/**
+/**
  * Profile-based CDP browser launcher
  *
  * @module browser/profile-launcher
- * @description Unified CDP browser launcher with stealth behavior configuration
+ * @description Orchestrates CDP browser lifecycle: load profile → connect/spawn → inject stealth → return result
  */
 
 import type { Browser, BrowserContext, Page } from 'playwright';
 import type { UserName, EnvironmentType } from '../user/types';
-import type { StealthModuleConfig, GeolocationConfig } from './stealth/types';
 import { injectStealthToContext } from './cdp/stealth';
-import { connectCDPBrowser, checkCDPConnection } from './cdp/connector';
-import { spawnCDPBrowserDetached } from './cdp/launcher';
-import {
-  loadConnectionInfo,
-  saveConnectionInfo,
-  clearConnectionInfo,
-  updateProfileLastUsed,
-} from '../user/storage-v3';
-import { getUserDataDir, hasProfile, createUserProfile } from '../user/storage';
+import { hasProfile, createUserProfile } from '../user/storage';
 import { loadUserProfile } from '../user/profile-loader';
-import { allocatePort, releasePortForUser } from './cdp/port-allocator';
+import { updateProfileLastUsed } from '../user/storage-v3';
+import { resolveUser } from '../user';
 import { config } from '../config';
-import { debugLog, delay, waitForCondition } from '../utils/helpers';
-import { exec } from 'child_process';
-import { promisify } from 'util';
+import { debugLog } from '../utils/helpers';
+import type { StealthBehaviorConfig } from './stealth-behavior';
+import type { ProfileLaunchOptions } from './cdp-spawner';
+import { getStealthBehavior } from './stealth-behavior';
+import { tryConnectExistingCDP, closeCDPInstance } from './cdp-connection';
+import { spawnNewCDPBrowser } from './cdp-spawner';
 
-const execAsync = promisify(exec);
-
-export interface StealthBehaviorConfig {
-  minActionDelay: number;
-  maxActionDelay: number;
-  minReadTime: number;
-  maxReadTime: number;
-  viewportRandomization: boolean;
-  humanMouseMovement: boolean;
-  stealthConfig: StealthModuleConfig;
-  geolocation?: GeolocationConfig;
-}
-
-export interface ProfileLaunchOptions {
-  user?: UserName;
-  headless?: boolean;
-  proxy?: string;
-  browserPath?: string;
-  browserChannel?: string;
-  timeout?: number;
-  autoCreate?: boolean;
-  keepAlive?: boolean;
-}
+export type { StealthBehaviorConfig } from './stealth-behavior';
+export type { ProfileLaunchOptions } from './cdp-spawner';
+export { closeCDPInstance, hasCDPInstance, getCDPPort } from './cdp-connection';
 
 export interface ProfileBrowserResult {
   browser: Browser;
@@ -60,47 +35,9 @@ export interface ProfileBrowserResult {
   isNewInstance: boolean;
 }
 
-const GUI_NATIVE_BEHAVIOR: StealthBehaviorConfig = {
-  minActionDelay: 500,
-  maxActionDelay: 1500,
-  minReadTime: 1000,
-  maxReadTime: 3000,
-  viewportRandomization: false,
-  humanMouseMovement: true,
-  stealthConfig: {
-    navigator: true,
-    screen: true,
-    webgl: true,
-    canvas: true,
-    audio: true,
-    chrome: true,
-    webrtc: true,
-    media: true,
-    timezone: true,
-    font: true,
-    battery: true,
-    geolocation: true,
-    performance: true,
-  },
-};
-
-const HEADLESS_SMART_BEHAVIOR: StealthBehaviorConfig = {
-  minActionDelay: 1500,
-  maxActionDelay: 3500,
-  minReadTime: 2000,
-  maxReadTime: 5000,
-  viewportRandomization: true,
-  humanMouseMovement: false,
-  stealthConfig: GUI_NATIVE_BEHAVIOR.stealthConfig,
-};
-
-export function getStealthBehavior(environmentType: EnvironmentType): StealthBehaviorConfig {
-  if (environmentType === 'gui-native') {
-    return GUI_NATIVE_BEHAVIOR;
-  }
-  return HEADLESS_SMART_BEHAVIOR;
-}
-
+/**
+ * Random delay based on stealth behavior configuration
+ */
 export async function randomStealthDelay(
   behavior: StealthBehaviorConfig,
   actionType: 'action' | 'read' = 'action'
@@ -110,164 +47,24 @@ export async function randomStealthDelay(
       ? { min: behavior.minReadTime, max: behavior.maxReadTime }
       : { min: behavior.minActionDelay, max: behavior.maxActionDelay };
   const delayMs = Math.floor(Math.random() * (max - min + 1)) + min;
-  await delay(delayMs);
+  await new Promise((r) => setTimeout(r, delayMs));
 }
 
-function resolveUser(explicitUser?: UserName): UserName {
-  return explicitUser || 'default';
-}
-
-async function tryConnectExistingCDP(
-  user: UserName,
-  requestedHeadless: boolean
-): Promise<{ browser: Browser; port: number } | null> {
-  const savedConnection = await loadConnectionInfo(user);
-  if (!savedConnection?.cdpPort) {
-    return null;
-  }
-
-  const savedHeadless = savedConnection.headless ?? false;
-  if (savedHeadless !== requestedHeadless) {
-    debugLog('Headless mode mismatch for user ' + user + ', closing existing instance.');
-    await closeCDPInstance(user);
-    return null;
-  }
-
-  const isResponsive = await checkCDPConnection(savedConnection.cdpPort);
-  if (!isResponsive) {
-    await clearConnectionInfo(user);
-    await releasePortForUser(user);
-    return null;
-  }
-
-  const browser = await connectCDPBrowser(savedConnection.cdpPort);
-  if (!browser) {
-    await clearConnectionInfo(user);
-    await releasePortForUser(user);
-    return null;
-  }
-
-  debugLog('Reconnected to existing CDP browser for user: ' + user, {
-    port: savedConnection.cdpPort,
-  });
-  return { browser, port: savedConnection.cdpPort };
-}
-
-async function spawnNewCDPBrowser(
-  user: UserName,
-  options: ProfileLaunchOptions
-): Promise<{ browser: Browser; port: number }> {
-  const userDataDir = getUserDataDir(user);
-  const portResult = await allocatePort(user);
-  if (!portResult.success || !portResult.port) {
-    throw new Error('Failed to allocate CDP port for user: ' + user);
-  }
-
-  const port = portResult.port;
-  const headless = options.headless ?? config.headless;
-  debugLog('Spawning new CDP browser for user: ' + user, { port, userDataDir, headless });
-
-  const spawnResult = await spawnCDPBrowserDetached(
-    {
-      user,
-      headless,
-      proxy: options.proxy ?? config.proxy,
-      browserPath: options.browserPath ?? config.browserPath,
-      browserChannel: options.browserChannel ?? config.browserChannel,
-    },
-    userDataDir
-  );
-
-  await saveConnectionInfo(user, {
-    cdpPort: spawnResult.cdp.port,
-    pid: spawnResult.pid,
-    wsEndpoint: spawnResult.cdp.wsEndpoint,
-    headless: spawnResult.cdp.headless,
-    startedAt: spawnResult.cdp.connectedAt,
-    lastActivityAt: spawnResult.cdp.lastActivityAt,
-  });
-
-  const browser = await connectCDPBrowser(spawnResult.cdp.port);
-  if (!browser) {
-    throw new Error('Failed to connect to spawned CDP browser for user: ' + user);
-  }
-
-  return { browser, port };
-}
-
-async function forceKillProcess(pid: number): Promise<boolean> {
-  try {
-    if (process.platform === 'win32') {
-      await execAsync('taskkill /F /PID ' + pid);
-    } else {
-      process.kill(pid, 'SIGKILL');
-    }
-    await waitForCondition(
-      async () => {
-        try {
-          process.kill(pid, 0);
-          return false;
-        } catch {
-          return true;
-        }
-      },
-      { timeout: 5000, interval: 500 }
-    );
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-export async function closeCDPInstance(user: UserName): Promise<void> {
-  const connection = await loadConnectionInfo(user);
-  if (!connection?.cdpPort) {
-    debugLog('No CDP instance to close for user: ' + user);
-    return;
-  }
-
-  const { cdpPort, pid } = connection;
-  try {
-    const browser = await connectCDPBrowser(cdpPort, 5000);
-    if (browser) {
-      await browser.close();
-      debugLog('Closed CDP browser via API for user: ' + user);
-    }
-  } catch {
-    debugLog('CDP close failed for user: ' + user);
-  }
-
-  await delay(1000);
-  const stillAlive = await checkCDPConnection(cdpPort);
-  if (stillAlive && pid) {
-    debugLog('Browser still alive, force killing PID ' + pid);
-    await forceKillProcess(pid);
-  }
-
-  await clearConnectionInfo(user);
-  await releasePortForUser(user);
-  debugLog('CDP instance closed for user: ' + user);
-}
-
-export async function hasCDPInstance(user: UserName): Promise<boolean> {
-  const connection = await loadConnectionInfo(user);
-  if (!connection?.cdpPort) {
-    return false;
-  }
-  return checkCDPConnection(connection.cdpPort);
-}
-
-export async function getCDPPort(user: UserName): Promise<number | undefined> {
-  const connection = await loadConnectionInfo(user);
-  return connection?.cdpPort;
-}
-
+/**
+ * Launch a browser instance for a user profile
+ *
+ * Lifecycle:
+ * 1. Resolve user → load profile → get behavior config
+ * 2. Try reconnecting to existing CDP instance
+ * 3. If no existing instance, spawn new one
+ * 4. Inject stealth script into context (always, even on reuse)
+ * 5. Create fresh page and return result
+ */
 export async function launchProfileBrowser(
   options: ProfileLaunchOptions = {}
 ): Promise<ProfileBrowserResult> {
   const { user: explicitUser, headless = config.headless, autoCreate = false } = options;
   const user = resolveUser(explicitUser);
-  debugLog('Launching CDP browser for user: ' + user);
 
   if (!hasProfile(user)) {
     if (autoCreate) {
@@ -306,21 +103,49 @@ export async function launchProfileBrowser(
 
   const contexts = browser.contexts();
   let context: BrowserContext;
+
   if (contexts.length > 0) {
     context = contexts[0];
+
+    // Inject stealth script (idempotent - addInitScript runs on every new page)
+    // FIX: Previously commented out, causing fingerprint leak on reused contexts
     await injectStealthToContext(context, profile.fingerprint);
+
+    // Clean up extra pages: keep only 1 page to avoid accumulation
+    // Chrome's default context requires at least 1 page to stay open
+    const existingPages = context.pages();
+    if (existingPages.length > 1) {
+      debugLog(`Closing ${existingPages.length - 1} extra page(s), keeping 1`);
+      for (let i = 1; i < existingPages.length; i++) {
+        try {
+          await existingPages[i].close({ runBeforeUnload: false });
+        } catch {
+          // Page may be already closed
+        }
+      }
+    }
+
+    debugLog(`Reused context with ${context.pages().length} page(s)`);
   } else {
     context = await browser.newContext();
     await injectStealthToContext(context, profile.fingerprint);
   }
 
-  const pages = context.pages();
-  const page = pages.length > 0 ? pages[0] : await context.newPage();
+  // Always create a fresh page to ensure stealth script is applied
+  const page = await context.newPage();
   await updateProfileLastUsed(user);
 
   return { browser, context, page, user, environmentType, behavior, cdpPort, isNewInstance };
 }
 
+/**
+ * High-level API: acquire browser, run callback, manage lifecycle
+ *
+ * @param user - User name
+ * @param callback - Async function receiving page and profile result
+ * @param options - Launch options (headless, keepAlive, etc.)
+ * @returns Callback result
+ */
 export async function withProfile<T>(
   user: UserName,
   callback: (page: Page, result: Omit<ProfileBrowserResult, 'page'>) => Promise<T>,

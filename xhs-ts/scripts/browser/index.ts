@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Browser module
  *
  * @module browser
@@ -15,7 +15,8 @@ export {
 } from './profile-launcher';
 
 // Behavior configuration
-export { getStealthBehavior, randomStealthDelay } from './profile-launcher';
+export { getStealthBehavior } from './stealth-behavior';
+export { randomStealthDelay } from './profile-launcher';
 export type {
   StealthBehaviorConfig,
   ProfileLaunchOptions,
