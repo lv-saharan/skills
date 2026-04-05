@@ -89,45 +89,6 @@ export function loadUsersMeta(): UsersMeta {
 }
 
 /**
- * Load users metadata asynchronously with version migration support
- *
- * Automatically migrates from version 1/2 to version 3 if needed.
- * Use this instead of loadUsersMeta() to avoid race conditions.
- */
-export async function loadUsersMetaAsync(): Promise<UsersMeta> {
-  const metaPath = getUsersMetaPath();
-
-  if (!existsSync(metaPath)) {
-    return { ...DEFAULT_USERS_META_V3 };
-  }
-
-  try {
-    const content = await readFile(metaPath, 'utf-8');
-    const meta = JSON.parse(content) as { version?: number; current?: UserName };
-
-    // Version 1 or 2 -> 3 migration (simplify: remove profiles)
-    if (!meta.version || meta.version < 3) {
-      debugLog(`Migrating users.json from version ${meta.version || 1} to version 3...`);
-
-      const migratedMeta: UsersMeta = {
-        current: meta.current || 'default',
-        version: 3,
-      };
-
-      await saveUsersMeta(migratedMeta);
-      debugLog('Migrated users.json to version 3 (removed profiles field)');
-
-      return migratedMeta;
-    }
-
-    return { ...DEFAULT_USERS_META_V3, ...meta };
-  } catch (error) {
-    debugLog('Failed to load users.json, using default:', error);
-    return { ...DEFAULT_USERS_META_V3 };
-  }
-}
-
-/**
  * Save users metadata with atomic write
  *
  * Uses atomic write pattern: write to temp file, then rename.
@@ -169,14 +130,6 @@ export async function saveUsersMeta(meta: UsersMeta): Promise<void> {
  */
 export function getCurrentUser(): UserName {
   const meta = loadUsersMeta();
-  return meta.current || 'default';
-}
-
-/**
- * Get current user name asynchronously
- */
-export async function getCurrentUserAsync(): Promise<UserName> {
-  const meta = await loadUsersMetaAsync();
   return meta.current || 'default';
 }
 
@@ -225,14 +178,4 @@ export function resolveUser(explicitUser?: UserName): UserName {
     return explicitUser;
   }
   return getCurrentUser();
-}
-
-/**
- * Resolve user name asynchronously
- */
-export async function resolveUserAsync(explicitUser?: UserName): Promise<UserName> {
-  if (explicitUser) {
-    return explicitUser;
-  }
-  return getCurrentUserAsync();
 }

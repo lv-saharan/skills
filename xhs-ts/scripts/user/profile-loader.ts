@@ -8,8 +8,9 @@
 import { existsSync } from 'fs';
 import { readFile } from 'fs/promises';
 import path from 'path';
-import type { UserName, UserProfile, UserMeta, UserEnvironment, UserFingerprint } from './types';
-import { getUserDir, getUserDataDir, getProfileMetaPath, validateUserName } from './storage';
+import type { UserName, UserProfile, ProfileMeta, UserEnvironment, UserFingerprint } from './types';
+import { getUserDir, getUserDataDir, validateUserName } from './storage';
+import { getProfilePath, getLegacyMetaPath } from './storage-v3';
 
 /**
  * Create default fingerprint for legacy users
@@ -26,7 +27,7 @@ function createDefaultFingerprint(): UserFingerprint {
     browser: {
       userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
       vendor: 'Google Inc.',
-      languages: ['zh-CN', 'zh', 'en-US', 'en'],
+      languages: ['zh-CN', 'en', 'en-GB', 'en-US'],
     },
     webgl: {
       vendor: 'Google Inc.',
@@ -45,6 +46,8 @@ function createDefaultFingerprint(): UserFingerprint {
 /**
  * Load user profile
  *
+ * Supports both v3 (profile.json) and legacy (meta.json) formats.
+ *
  * @param user - User name
  * @returns User profile data
  * @throws Error if profile doesn't exist
@@ -54,17 +57,33 @@ export async function loadUserProfile(user: UserName): Promise<UserProfile> {
 
   const userDir = getUserDir(user);
   const userDataDir = getUserDataDir(user);
-  const metaPath = getProfileMetaPath(user);
+  const profilePath = getProfilePath(user);
+  const legacyMetaPath = getLegacyMetaPath(user);
   const fingerprintPath = path.join(userDir, 'fingerprint.json');
 
-  // Check if profile exists
-  if (!existsSync(metaPath)) {
+  let meta: ProfileMeta;
+
+  // Try v3 format first (profile.json)
+  if (existsSync(profilePath)) {
+    const content = await readFile(profilePath, 'utf-8');
+    const data = JSON.parse(content) as { meta: ProfileMeta };
+    meta = data.meta;
+  }
+  // Fall back to legacy format (meta.json)
+  else if (existsSync(legacyMetaPath)) {
+    const content = await readFile(legacyMetaPath, 'utf-8');
+    const data = JSON.parse(content) as ProfileMeta & { version?: number };
+    // Extract meta without version field (if present)
+    meta = {
+      createdAt: data.createdAt,
+      lastUsedAt: data.lastUsedAt,
+      environmentType: data.environmentType,
+      fingerprintSource: data.fingerprintSource,
+      presetDescription: data.presetDescription,
+    };
+  } else {
     throw new Error(`Profile does not exist for user: ${user}`);
   }
-
-  // Load profile metadata
-  const metaContent = await readFile(metaPath, 'utf-8');
-  const meta = JSON.parse(metaContent) as UserMeta;
 
   // Load fingerprint
   let fingerprint: UserFingerprint;

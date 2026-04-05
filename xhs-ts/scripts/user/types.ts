@@ -1,4 +1,4 @@
-﻿/**
+/**
  * User module types
  *
  * @module user/types
@@ -257,7 +257,7 @@ export interface UserMeta {
  */
 export interface UserProfile {
   /** User metadata */
-  meta: UserMeta;
+  meta: ProfileMeta;
   /** User fingerprint configuration */
   fingerprint: UserFingerprint;
   /** Environment information at time of profile creation */

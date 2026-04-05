@@ -21,7 +21,6 @@ export type {
   FingerprintSource,
   DeviceProfile,
   UserEnvironment,
-  UserMeta,
   UserProfile,
   ProfileStatus,
   ProfileStatusInfo,
@@ -52,14 +51,11 @@ export {
 // Users metadata operations (users.json)
 export {
   loadUsersMeta,
-  loadUsersMetaAsync,
   saveUsersMeta,
   getCurrentUser,
-  getCurrentUserAsync,
   setCurrentUser,
   clearCurrentUser,
   resolveUser,
-  resolveUserAsync,
 } from './users-meta';
 
 // Profile loading
@@ -71,34 +67,16 @@ export {
   loadUserProfileData,
   saveUserProfileData,
   createUserProfileData,
-  hasProfileData,
   loadConnectionInfo,
   saveConnectionInfo,
   clearConnectionInfo,
-  updateConnectionActivity,
-  updateProfileLastUsed,
 } from './storage-v3';
 
-// Fingerprint operations (includes getMostMainstreamPreset)
-export {
-  getUserFingerprint,
-  saveUserFingerprint,
-  hasUserFingerprint,
-  regenerateUserFingerprint,
-  getFingerprintInfo,
-  getMostMainstreamPreset,
-  getDefaultPresetInfo,
-} from './fingerprint';
+// Fingerprint operations
+export { getUserFingerprint } from './fingerprint';
 
 // Environment detection
-export {
-  hasDisplaySupport,
-  detectDeviceProfile,
-  detectEnvironmentType,
-  detectEnvironment,
-  selectPresetBySmartMatch,
-  getMostMainstreamPresetInfo,
-} from './environment';
+export { hasDisplaySupport, detectEnvironmentType } from './environment';
 
 // Migration
-export { isMigrationNeeded, migrateToMultiUser, ensureMigrated } from './migration';
+export { isMigrationNeeded, ensureMigrated } from './migration';
