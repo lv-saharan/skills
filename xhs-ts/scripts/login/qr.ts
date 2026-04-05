@@ -6,7 +6,13 @@
  */
 
 import type { Page } from 'playwright';
-import { XhsError, XhsErrorCode } from '../shared';
+import {
+  XhsError,
+  XhsErrorCode,
+  QR_SELECTORS,
+  LOGIN_MODAL_SELECTORS,
+  LOGIN_BUTTON_SELECTORS,
+} from '../shared';
 import type { BrowserInstance } from '../browser/types';
 import type { UserName } from '../user';
 import { XHS_URLS, debugLog, delay, randomDelay, waitForCondition } from '../utils/helpers';
@@ -21,13 +27,10 @@ import type { LoginResult } from './types';
 // ============================================
 
 /** QR code selectors */
-const QR_SELECTORS: string[] = ['img.qrcode-img'];
 
 /** Login modal/container selectors */
-const LOGIN_MODAL_SELECTORS: string[] = ['.login-container'];
 
 /** Login button selectors (to trigger login from home page) */
-const LOGIN_BUTTON_SELECTORS: string[] = ['button.login-btn', '.login-btn'];
 
 /** QR code expired patterns */
 const QR_EXPIRED_PATTERNS = /二维码.*过期|已失效|请刷新|二维码已失效/;

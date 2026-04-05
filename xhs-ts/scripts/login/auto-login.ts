@@ -11,22 +11,12 @@
 
 import type { Page } from 'playwright';
 import type { UserName } from '../user/types';
-import { TIMEOUTS } from '../shared';
+import { TIMEOUTS, QR_SELECTORS, QR_TAB_SELECTOR } from '../shared';
 import { debugLog, delay, waitForCondition } from '../utils/helpers';
 import { ensureLoginStatus, checkLoginStatus, checkCaptcha } from '../utils/anti-detect';
 import { outputQrCode } from '../utils/output';
 import { getTmpFilePath } from '../config';
 import { writeFile } from 'fs/promises';
-
-// ============================================
-// Constants
-// ============================================
-
-/** QR code selectors */
-const QR_SELECTORS = ['img.qrcode-img', '.qrcode-img'] as const;
-
-/** QR code tab selector */
-const QR_TAB_SELECTOR = '[class*="qrcode-tab"], button:has-text("扫码")';
 
 // ============================================
 // Types

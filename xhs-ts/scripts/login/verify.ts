@@ -43,9 +43,6 @@ export async function verifyExistingSession(user?: UserName): Promise<boolean> {
           timeout: 30000,
         });
 
-        // Wait for page to fully render
-        await delay(3000);
-
         // Check login status
         const isLoggedIn = await checkLoginStatus(page);
         debugLog(`checkLoginStatus result: ${isLoggedIn}`);
