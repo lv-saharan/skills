@@ -54,4 +54,3 @@ function registerScrapeUserCommand(program: Command): void {
       });
     });
 }
-

@@ -32,4 +32,3 @@ export function registerLoginCommand(program: Command): void {
       });
     });
 }
-

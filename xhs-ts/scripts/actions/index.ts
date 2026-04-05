@@ -65,9 +65,22 @@ export type {
   SearchFilters,
 } from './search';
 
-export { buildSearchUrl, getFilterSelectors, navigateToSearch, isVerificationPage, hasSearchResults, searchViaHomepage, applyFiltersViaUI } from './search';
+export {
+  buildSearchUrl,
+  getFilterSelectors,
+  navigateToSearch,
+  isVerificationPage,
+  hasSearchResults,
+  searchViaHomepage,
+  applyFiltersViaUI,
+} from './search';
 
-export { hoverNotesForTokens, loadMoreResults, NOTES_PER_SCROLL, extractSearchResults } from './search';
+export {
+  hoverNotesForTokens,
+  loadMoreResults,
+  NOTES_PER_SCROLL,
+  extractSearchResults,
+} from './search';
 
 // ============================================
 // Publish Actions
@@ -75,12 +88,7 @@ export { hoverNotesForTokens, loadMoreResults, NOTES_PER_SCROLL, extractSearchRe
 
 export { executePublish } from './publish';
 
-export type {
-  PublishMediaType,
-  PublishOptions,
-  PublishResult,
-  MediaValidation,
-} from './publish';
+export type { PublishMediaType, PublishOptions, PublishResult, MediaValidation } from './publish';
 
 export {
   validateMedia,

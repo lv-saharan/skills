@@ -39,4 +39,3 @@ export function registerSearchCommand(program: Command): void {
       });
     });
 }
-

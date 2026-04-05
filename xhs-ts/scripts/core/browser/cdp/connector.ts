@@ -66,4 +66,3 @@ export async function checkCDPConnection(port: number, timeout: number = 5000): 
     return false;
   }
 }
-

@@ -22,7 +22,7 @@ import {
 import { listUsers, resolveUser } from '../../user';
 // NOTE: Moved import to actions/shared/browser-launcher to fix layering violation
 import { outputSuccess, outputError } from '../../core/utils/output';
-import { SkillError, SkillErrorCode } from '../../config/errors';
+import { SkillErrorCode } from '../../config/errors';
 import type { UserName } from '../../user/types';
 
 // ============================================
@@ -258,4 +258,3 @@ export function registerBrowserCommand(program: Command): void {
       });
     });
 }
-

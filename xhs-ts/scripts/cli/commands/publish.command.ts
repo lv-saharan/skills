@@ -38,4 +38,3 @@ export function registerPublishCommand(program: Command): void {
       });
     });
 }
-

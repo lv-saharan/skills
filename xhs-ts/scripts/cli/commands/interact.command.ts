@@ -106,4 +106,3 @@ function registerFollowCommand(program: Command): void {
       });
     });
 }
-

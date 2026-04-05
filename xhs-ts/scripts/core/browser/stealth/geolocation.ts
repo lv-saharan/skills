@@ -89,4 +89,3 @@ export function generateGeolocationScript(config: GeolocationConfig = DEFAULT_GE
 })();
 `;
 }
-

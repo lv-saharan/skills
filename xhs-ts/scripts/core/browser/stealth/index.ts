@@ -115,4 +115,3 @@ export function generateStealthScript(
 
   return combineScripts(...scripts);
 }
-

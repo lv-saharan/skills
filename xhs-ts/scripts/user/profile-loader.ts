@@ -8,7 +8,14 @@
 import { existsSync } from 'fs';
 import { readFile } from 'fs/promises';
 import path from 'path';
-import type { UserName, UserProfile, ProfileMeta, UserEnvironment, UserFingerprint, GeolocationConfig } from './types';
+import type {
+  UserName,
+  UserProfile,
+  ProfileMeta,
+  UserEnvironment,
+  UserFingerprint,
+  GeolocationConfig,
+} from './types';
 import { getUserDir, getUserDataDir, validateUserName } from './storage';
 import { getProfilePath, getLegacyMetaPath } from './storage-v3';
 
@@ -62,14 +69,14 @@ export async function loadUserProfile(user: UserName): Promise<UserProfile> {
   const fingerprintPath = path.join(userDir, 'fingerprint.json');
 
   let meta: ProfileMeta;
+  let userGeolocation: GeolocationConfig | undefined;
 
   // Try v3 format first (profile.json)
   if (existsSync(profilePath)) {
     const content = await readFile(profilePath, 'utf-8');
     const data = JSON.parse(content) as { meta: ProfileMeta; geolocation?: GeolocationConfig };
     meta = data.meta;
-    // Store geolocation for later use
-    var userGeolocation = data.geolocation;
+    userGeolocation = data.geolocation;
   }
   // Fall back to legacy format (meta.json)
   else if (existsSync(legacyMetaPath)) {
