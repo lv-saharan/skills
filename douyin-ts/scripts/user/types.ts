@@ -247,3 +247,55 @@ export interface UsersMeta {
   /** Profile references for each user */
   profiles?: Record<UserName, ProfileRef>;
 }
+
+// ============================================
+// Profile Storage v3 Types
+// ============================================
+
+/**
+ * Profile metadata (stored in profile.json)
+ */
+export interface ProfileMeta {
+  /** Profile creation timestamp */
+  createdAt: string;
+  /** Last access timestamp */
+  lastUsedAt: string;
+  /** Environment type */
+  environmentType: EnvironmentType;
+  /** Fingerprint source */
+  fingerprintSource: FingerprintSource;
+  /** Description of preset used */
+  presetDescription?: string;
+}
+
+/**
+ * CDP connection info (stored in profile.json)
+ */
+export interface ConnectionInfo {
+  /** CDP port */
+  cdpPort: number;
+  /** Browser process ID */
+  pid: number;
+  /** WebSocket endpoint */
+  wsEndpoint: string;
+  /** Whether running in headless mode */
+  headless?: boolean;
+  /** Connection start timestamp */
+  startedAt: string;
+  /** Last activity timestamp */
+  lastActivityAt: string;
+}
+
+/**
+ * Unified user profile data (v3 structure)
+ *
+ * Stored in users/{user}/profile.json
+ */
+export interface UserProfileData {
+  /** Data version */
+  version: number;
+  /** Profile metadata */
+  meta: ProfileMeta;
+  /** CDP connection info (if browser is running) */
+  connection?: ConnectionInfo;
+}

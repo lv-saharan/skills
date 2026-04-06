@@ -16,7 +16,7 @@ import {
   hasDisplaySupport,
   detectScreenResolution,
 } from './environment';
-import { debugLog } from '../utils/helpers';
+import { debugLog } from '../core/utils';
 
 // ============================================
 // Constants
@@ -235,3 +235,4 @@ export function getDefaultPresetInfo(): {
     screen: `${preset.screen.width}x${preset.screen.height}`,
   };
 }
+

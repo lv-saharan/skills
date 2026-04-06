@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Migration logic for multi-user support
  *
  * @module user/migration
@@ -16,7 +16,7 @@ import {
   loadUsersMetaAsync,
 } from './storage';
 import type { UsersMeta } from './types';
-import { debugLog } from '../utils/helpers';
+import { debugLog } from '../core/utils';
 
 // ============================================
 // Constants
@@ -325,3 +325,4 @@ export async function ensureMigrated(): Promise<void> {
     );
   }
 }
+

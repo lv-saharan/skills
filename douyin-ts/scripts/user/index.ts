@@ -27,6 +27,10 @@ export type {
   ProfileStatus,
   ProfileStatusInfo,
   ProfileRef,
+  // v3 types
+  ProfileMeta,
+  ConnectionInfo,
+  UserProfileData,
 } from './types';
 
 // Storage operations
@@ -57,6 +61,19 @@ export {
   loadUserProfile,
   updateLastUsed,
 } from './storage';
+
+// v3 Storage operations
+export {
+  loadUserProfileData,
+  saveUserProfileData,
+  createUserProfileData,
+  hasProfileData,
+  loadConnectionInfo,
+  saveConnectionInfo,
+  clearConnectionInfo,
+  updateConnectionActivity,
+  updateProfileLastUsed,
+} from './storage-v3';
 
 // Fingerprint operations (includes getMostMainstreamPreset)
 export {

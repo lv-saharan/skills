@@ -10,7 +10,7 @@ import { execSync } from 'child_process';
 import type { DevicePlatform } from '../browser/fingerprint-presets';
 import { MAINSTREAM_PRESETS, type DevicePreset } from '../browser/fingerprint-presets';
 import type { EnvironmentType, UserEnvironment, DeviceProfile } from './types';
-import { debugLog } from '../utils/helpers';
+import { debugLog } from '../core/utils';
 
 // ============================================
 // Screen Resolution Detection
@@ -490,3 +490,4 @@ export function generateFingerprint(): {
 } {
   return generateEnvironmentFingerprint();
 }
+

@@ -20,7 +20,7 @@ import type {
 } from './types';
 import { hasDisplaySupport, detectEnvironmentType } from './environment';
 import { getUserFingerprint } from './fingerprint';
-import { debugLog } from '../utils/helpers';
+import { debugLog } from '../core/utils';
 
 // ============================================
 // Constants
@@ -662,3 +662,4 @@ export async function updateLastUsed(user: UserName): Promise<void> {
     await saveUsersMeta(usersMeta);
   }
 }
+

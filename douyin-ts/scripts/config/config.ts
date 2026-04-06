@@ -9,8 +9,14 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { existsSync, mkdirSync } from 'fs';
 import type { AppConfig } from './types';
-import type { LoginMethod } from '../shared';
 import type { UserName } from '../user';
+
+// ============================================
+// Types
+// ============================================
+
+/** Login method type */
+export type LoginMethod = 'qr' | 'sms';
 
 // ============================================
 // Environment Loading
