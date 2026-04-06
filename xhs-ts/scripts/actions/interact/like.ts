@@ -7,7 +7,7 @@
 
 import type { Page } from 'playwright';
 import type { LikeOptions, LikeResult } from './types';
-import { extractNoteIdFromUrl } from './url-utils';
+import { extractNoteIdFromUrl } from '../shared/url-utils';
 import { LIKE_SELECTORS } from './selectors';
 import { timeouts } from '../../config';
 import { debugLog, delay, gaussianDelay } from '../../core/utils';
@@ -25,7 +25,7 @@ import { resolveUser } from '../../user';
 // URL Parsing
 // ============================================
 
-export { extractNoteId } from './url-utils';
+export { extractNoteId } from '../shared/url-utils';
 
 // ============================================
 // Like Status Detection (SVG use element)

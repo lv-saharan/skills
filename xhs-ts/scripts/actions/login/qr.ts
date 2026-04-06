@@ -184,7 +184,7 @@ async function triggerLoginModal(page: Page): Promise<void> {
   if (errorResult.isError) {
     throw new SkillError(
       `登录失败：检测到错误页面 (错误码: ${errorResult.errorCode || '未知'}, 原因: ${errorResult.errorMsg || '未知'})。` +
-        `建议：1) 切换网络环境后重试；2) 使用代理；3) 使用非 headless 模式登录。`,
+        `建议：1) 切换网络环境后重试；2) 使用代理；3) 检查是否被风控。`,
       SkillErrorCode.LOGIN_FAILED
     );
   }

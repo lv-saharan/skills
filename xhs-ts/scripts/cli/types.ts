@@ -90,6 +90,8 @@ export interface LoginCommandOptions extends BaseCommandOptions {
   qr?: boolean;
   /** Use SMS login (--sms flag) */
   sms?: boolean;
+  /** Phone number for SMS login (--phone <number>) */
+  phone?: string;
   /** Login to creator center (--creator flag) */
   creator?: boolean;
   /** Login timeout in milliseconds (--timeout <ms>) */

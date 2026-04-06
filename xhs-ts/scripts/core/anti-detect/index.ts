@@ -27,8 +27,50 @@ export interface LoginSelectors {
   avatar?: string | string[];
 }
 
+/**
+ * Options for humanType function
+ */
+export interface HumanTypeOptions {
+  /** Minimum delay between keystrokes in ms (default: 30) */
+  minDelay?: number;
+  /** Maximum delay between keystrokes in ms (default: 120) */
+  maxDelay?: number;
+  /** Chance of a thinking pause (0-1, default: 0.08) */
+  thinkPauseChance?: number;
+  /** Chance of making a typo and correcting it (0-1, default: 0.02) */
+  typoChance?: number;
+  /** Clear existing text before typing (default: true) */
+  clearFirst?: boolean;
+}
+
+/**
+ * Options for humanScroll function
+ */
+export interface HumanScrollOptions {
+  /** Scroll direction (default: 'down') */
+  direction?: 'down' | 'up';
+  /** Total scroll distance in pixels (default: 300) */
+  distance?: number;
+  /** Use acceleration/deceleration curve (default: true) */
+  withAcceleration?: boolean;
+  /** Scroll speed preset (default: 'normal') - for backward compatibility */
+  speed?: 'slow' | 'normal' | 'fast';
+}
+
+/**
+ * Options for retryWithHesitation function
+ */
+export interface RetryOptions {
+  /** Maximum number of retry attempts (default: 3) */
+  maxRetries?: number;
+  /** Base delay before first retry in ms (default: 2000) */
+  baseDelay?: number;
+  /** Maximum delay cap in ms (default: 10000) */
+  maxDelay?: number;
+}
+
 // ============================================
-// Human-like Interactions
+// Helper Functions
 // ============================================
 
 async function getRandomPointInElement(element: Locator): Promise<{ x: number; y: number } | null> {
@@ -42,6 +84,57 @@ async function getRandomPointInElement(element: Locator): Promise<{ x: number; y
     y: box.y + padding + Math.random() * (box.height - padding * 2),
   };
 }
+
+/**
+ * Check if character is ASCII (typo only for ASCII)
+ */
+function isAsciiChar(char: string): boolean {
+  return char.charCodeAt(0) < 128;
+}
+
+/**
+ * Generate a typo character (only for ASCII letters/numbers)
+ */
+function generateTypoChar(char: string): string | null {
+  if (!isAsciiChar(char)) {
+    return null;
+  }
+
+  const code = char.charCodeAt(0);
+
+  // For lowercase letters
+  if (code >= 97 && code <= 122) {
+    const offset = Math.random() > 0.5 ? 1 : -1;
+    const newCode = code + offset;
+    if (newCode >= 97 && newCode <= 122) {
+      return String.fromCharCode(newCode);
+    }
+  }
+
+  // For uppercase letters
+  if (code >= 65 && code <= 90) {
+    const offset = Math.random() > 0.5 ? 1 : -1;
+    const newCode = code + offset;
+    if (newCode >= 65 && newCode <= 90) {
+      return String.fromCharCode(newCode);
+    }
+  }
+
+  // For numbers
+  if (code >= 48 && code <= 57) {
+    const offset = Math.random() > 0.5 ? 1 : -1;
+    const newCode = code + offset;
+    if (newCode >= 48 && newCode <= 57) {
+      return String.fromCharCode(newCode);
+    }
+  }
+
+  return null;
+}
+
+// ============================================
+// Human-like Interactions
+// ============================================
 
 /**
  * Human-like click
@@ -73,19 +166,154 @@ export async function humanClick(
 }
 
 /**
- * Basic human-like scroll
+ * Human-like typing with realistic delays and occasional corrections
+ *
+ * Supports both ASCII and non-ASCII (Chinese, etc.) characters.
+ * Typo simulation only applies to ASCII characters.
+ *
+ * @param locator - Playwright locator for the input element
+ * @param text - Text to type
+ * @param options - Typing behavior options
  */
-export async function humanScroll(
-  page: Page,
-  options: { direction?: 'down' | 'up'; distance?: number; speed?: 'slow' | 'normal' | 'fast' } = {}
+export async function humanType(
+  locator: Locator,
+  text: string,
+  options: HumanTypeOptions = {}
 ): Promise<void> {
-  const { direction = 'down', distance = 300, speed = 'normal' } = options;
-  const scrollAmount = direction === 'down' ? distance : -distance;
-  const steps = speed === 'slow' ? 5 : speed === 'fast' ? 2 : 3;
-  for (let i = 0; i < steps; i++) {
-    await page.mouse.wheel(0, scrollAmount / steps);
+  const {
+    minDelay = 30,
+    maxDelay = 120,
+    thinkPauseChance = 0.08,
+    typoChance = 0.02,
+    clearFirst = true,
+  } = options;
+
+  try {
+    // Focus the element
+    await locator.focus();
     await delay(100 + Math.random() * 200);
+
+    // Clear existing content if requested
+    if (clearFirst) {
+      await locator.fill('');
+      await delay(150 + Math.random() * 150);
+    }
+
+    // Type each character with human-like delays
+    for (let i = 0; i < text.length; i++) {
+      const char = text[i];
+
+      // Check if we should simulate a typo (only for ASCII)
+      const shouldTypo = Math.random() < typoChance && i > 2 && i < text.length - 2;
+      const typoChar = shouldTypo ? generateTypoChar(char) : null;
+
+      if (typoChar) {
+        // Type wrong character
+        await locator.pressSequentially(typoChar, { delay: 50 + Math.random() * 100 });
+        await delay(100 + Math.random() * 200);
+
+        // Realize mistake and backspace
+        await delay(200 + Math.random() * 300);
+        await locator.press('Backspace');
+        await delay(100 + Math.random() * 150);
+
+        // Type correct character
+        await locator.pressSequentially(char, { delay: 50 + Math.random() * 100 });
+      } else {
+        // Normal typing - use pressSequentially for proper character handling
+        await locator.pressSequentially(char, { delay: 0 }); // We handle delay ourselves
+      }
+
+      // Occasional thinking pause
+      if (Math.random() < thinkPauseChance) {
+        await delay(300 + Math.random() * 700);
+      }
+
+      // Random delay between keystrokes
+      await delay(minDelay + Math.random() * (maxDelay - minDelay));
+    }
+
+    // Small delay after completing typing
+    await delay(100 + Math.random() * 200);
+  } catch (error) {
+    debugLog('humanType failed, falling back to fill:', error);
+    // Fallback: use fill() which is more reliable but less human-like
+    if (clearFirst) {
+      await locator.fill(text);
+    } else {
+      const currentValue = await locator.inputValue().catch(() => '');
+      await locator.fill(currentValue + text);
+    }
   }
+}
+
+/**
+ * Human-like scroll with acceleration and deceleration
+ *
+ * @param page - Playwright page
+ * @param options - Scroll options
+ */
+export async function humanScroll(page: Page, options: HumanScrollOptions = {}): Promise<void> {
+  const { direction = 'down', distance = 300, withAcceleration = true, speed = 'normal' } = options;
+  const scrollAmount = direction === 'down' ? distance : -distance;
+
+  // Determine steps based on speed (for backward compatibility)
+  const steps = speed === 'slow' ? 6 : speed === 'fast' ? 3 : 5 + Math.floor(Math.random() * 2);
+
+  for (let i = 0; i < steps; i++) {
+    let amount: number;
+
+    if (withAcceleration) {
+      // Ease-in-out curve: start slow, accelerate, then decelerate
+      const progress = i / (steps - 1);
+      const easeProgress =
+        progress < 0.5 ? 2 * progress * progress : 1 - Math.pow(-2 * progress + 2, 2) / 2;
+      amount = (scrollAmount * easeProgress) / steps;
+    } else {
+      amount = scrollAmount / steps;
+    }
+
+    await page.mouse.wheel(0, amount);
+    await delay(80 + Math.random() * 120);
+  }
+}
+
+/**
+ * Retry an action with human-like hesitation between attempts
+ *
+ * @param action - Async function to retry
+ * @param options - Retry options
+ * @returns Result of the action
+ */
+export async function retryWithHesitation<T>(
+  action: () => Promise<T>,
+  options: RetryOptions = {}
+): Promise<T> {
+  const { maxRetries = 3, baseDelay = 2000, maxDelay = 10000 } = options;
+
+  let lastError: Error | undefined;
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await action();
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+
+      if (attempt === maxRetries) {
+        break;
+      }
+
+      // Exponential backoff with jitter (simulates human hesitation)
+      const hesitation = Math.min(
+        baseDelay * Math.pow(1.5, attempt) + Math.random() * 1000,
+        maxDelay
+      );
+      debugLog(`Retry ${attempt + 1}/${maxRetries}, waiting ${Math.round(hesitation)}ms`);
+      await delay(hesitation);
+    }
+  }
+
+  throw lastError;
 }
 
 // ============================================

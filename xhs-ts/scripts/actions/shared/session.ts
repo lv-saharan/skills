@@ -16,19 +16,23 @@ import { withProfile, randomStealthDelay } from './browser-launcher';
 import { resolveUser } from '../../user';
 import { SkillError, SkillErrorCode } from '../../config/errors';
 import { timeouts, urls, delays } from '../../config/loader';
-import { gaussianDelay, delay, debugLog } from '../../core/utils';
+import { gaussianDelay, delay, debugLog, waitForCondition } from '../../core/utils';
 import {
   checkCaptcha,
   checkLoginStatus,
   simulateReading,
   humanClick,
 } from '../../core/anti-detect';
-import { ensureLogin } from '../login';
 import {
   LOGIN_BUTTON_SELECTORS,
   LOGIN_MODAL_SELECTOR,
   USER_COMPONENT_SELECTOR,
-} from '../login/selectors';
+  QR_CODE_SELECTORS,
+  QR_TAB_SELECTOR,
+} from './selectors';
+import { writeFile } from 'fs/promises';
+import { getTmpFilePath } from '../../core/utils';
+import { outputQrCode } from '../../core/utils/output';
 
 // ============================================
 // Types
@@ -75,6 +79,164 @@ export interface AuthenticatedActionOptions {
 }
 
 // ============================================
+// Auto-Login Types
+// ============================================
+
+/**
+ * Options for ensureLogin
+ */
+export interface EnsureLoginOptions {
+  user: UserName;
+  timeout?: number;
+}
+
+/**
+ * Result of ensureLogin operation
+ */
+export interface EnsureLoginResult {
+  success: boolean;
+  message?: string;
+  qrPath?: string;
+}
+
+// ============================================
+// Auto-Login Implementation
+// ============================================
+
+/**
+ * Ensure user is logged in, auto-start login if needed
+ *
+ * @param page - Playwright page
+ * @param options - Login options
+ * @returns Login result
+ */
+export async function ensureLogin(
+  page: Page,
+  options: EnsureLoginOptions
+): Promise<EnsureLoginResult> {
+  const { user, timeout = timeouts.login } = options;
+
+  // Use ensureLoginStatus to check login state
+  const status = await ensureLoginStatus(page);
+
+  if (status.isLoggedIn) {
+    debugLog('User already logged in');
+    return { success: true, message: 'Already logged in' };
+  }
+
+  // If there's an error (e.g., error page), return it
+  if (status.error) {
+    return { success: false, message: status.error };
+  }
+
+  // Try to trigger login modal if not already open
+  // Headless mode supports this - QR code will be saved to file
+  if (!status.loginModalOpen) {
+    const triggeredStatus = await ensureLoginStatus(page, { forceTrigger: true });
+
+    if (!triggeredStatus.loginModalOpen) {
+      return {
+        success: false,
+        message: '无法触发登录弹窗。请手动打开小红书网站登录。',
+      };
+    }
+  }
+
+  // Proceed with QR code detection and wait for scan
+  // Headless mode: QR code will be saved to file and output to agent
+  // GUI mode: QR code visible in browser window
+  return await waitForQrScan(page, { user, timeout });
+}
+
+/**
+ * Wait for QR code scan and login completion
+ */
+async function waitForQrScan(
+  page: Page,
+  options: { user: UserName; timeout: number }
+): Promise<EnsureLoginResult> {
+  const { user, timeout } = options;
+
+  try {
+    // Step 1: Switch to QR code tab if needed
+    debugLog('Looking for QR code tab...');
+    const qrTab = page.locator(QR_TAB_SELECTOR).first();
+    if (await qrTab.isVisible().catch(() => false)) {
+      debugLog('Found QR code tab, clicking...');
+      await qrTab.click();
+      await delay(500);
+    }
+
+    // Step 2: Find and save QR code
+    debugLog('Waiting for QR code...');
+    let qrPath: string | undefined;
+
+    for (const selector of QR_CODE_SELECTORS) {
+      const qrElement = page.locator(selector).first();
+      if (await qrElement.isVisible().catch(() => false)) {
+        debugLog('QR code found: ' + selector);
+
+        try {
+          // Wait for element to be stable before screenshot
+          await qrElement.waitFor({ state: 'visible', timeout: 5000 });
+          await delay(500);
+
+          const buffer = await qrElement.screenshot({ type: 'png', timeout: 10000 });
+          qrPath = getTmpFilePath('qr_login', 'png', user);
+          await writeFile(qrPath, buffer);
+          debugLog('QR code saved to: ' + qrPath);
+
+          // Output QR path for agent communication
+          outputQrCode(qrPath, '请扫描二维码登录');
+        } catch (error) {
+          debugLog('Failed to save QR code:', error);
+        }
+        break;
+      }
+    }
+
+    if (!qrPath) {
+      debugLog('QR code not found, but modal is open. Waiting for scan...');
+    }
+
+    // Step 3: Wait for user to scan QR code
+    debugLog('Waiting for user to scan QR code...');
+
+    await waitForCondition(
+      async () => {
+        // Check for login success
+        const loggedIn = await checkLoginStatus(page);
+        if (loggedIn) {
+          return true;
+        }
+
+        // Check for captcha
+        const hasCaptcha = await checkCaptcha(page);
+        if (hasCaptcha) {
+          debugLog('Captcha detected during login');
+        }
+
+        return false;
+      },
+      {
+        timeout,
+        interval: 1000,
+        timeoutMessage: 'Login timeout - QR code not scanned',
+      }
+    );
+
+    debugLog('Login successful!');
+    return { success: true, message: 'Login successful', qrPath };
+  } catch (error) {
+    debugLog('Login timeout or error:', error);
+    return {
+      success: false,
+      message: 'Login timeout. Please try again.',
+    };
+  }
+}
+
+// ============================================
 // Core Session API
 // ============================================
 
@@ -113,7 +275,11 @@ export async function withSession<T>(
 
       // Step 1: Navigate to home page (loads persisted cookies)
       if (navigateHome) {
-        await page.goto(urls.home, { timeout: timeouts.pageLoad });
+        await page.goto(urls.home, { waitUntil: 'domcontentloaded', timeout: timeouts.pageLoad });
+        // Wait for page to stabilize before checking login status (critical for headless mode)
+        await page
+          .waitForLoadState('networkidle', { timeout: timeouts.networkIdle })
+          .catch(() => {});
         await randomStealthDelay(behavior, 'read');
       }
 
@@ -121,7 +287,6 @@ export async function withSession<T>(
       if (!skipLogin) {
         const loginResult = await ensureLogin(page, {
           user: resolvedUser,
-          headless,
           timeout: timeouts.login,
         });
 
@@ -362,14 +527,26 @@ export async function checkErrorPage(
 /**
  * Ensure login status is visible (trigger login modal if needed)
  * This is used by auto-login flow
+ *
+ * NOTE: Headless and GUI modes are handled identically - the only difference
+ * is how the CDP browser instance is launched (see core/browser/launcher.ts).
+ * Both modes can trigger login modal and capture QR code.
  */
 export async function ensureLoginStatus(
   page: Page,
-  _options?: { timeout?: number }
+  options?: { timeout?: number; forceTrigger?: boolean }
 ): Promise<{ isLoggedIn: boolean; loginModalOpen?: boolean; triggered?: boolean; error?: string }> {
+  const { forceTrigger = false } = options || {};
+
   try {
+    // CRITICAL: Wait for page to stabilize BEFORE any checks
+    // Waiting ensures login elements are fully rendered before detection
+    await page.waitForLoadState('domcontentloaded', { timeout: timeouts.pageLoad }).catch(() => {});
+    await page.waitForLoadState('networkidle', { timeout: timeouts.networkIdle }).catch(() => {});
+    await delay(1500); // Extra buffer for dynamic content (JS rendering)
+
     const currentUrl = page.url();
-    debugLog('ensureLoginStatus: ' + currentUrl);
+    debugLog('ensureLoginStatus: ' + currentUrl, { forceTrigger });
 
     // Check for error page
     const errorResult = await checkErrorPage(page);
@@ -385,7 +562,7 @@ export async function ensureLoginStatus(
     const loginModalVisible = await page
       .locator(LOGIN_MODAL_SELECTOR)
       .first()
-      .isVisible({ timeout: 2000 })
+      .isVisible({ timeout: timeouts.selector })
       .catch(() => false);
 
     if (loginModalVisible) {
@@ -400,7 +577,7 @@ export async function ensureLoginStatus(
     const userComponentVisible = await page
       .locator(USER_COMPONENT_SELECTOR)
       .first()
-      .isVisible({ timeout: 2000 })
+      .isVisible({ timeout: timeouts.selector })
       .catch(() => false);
 
     if (userComponentVisible) {
@@ -408,17 +585,32 @@ export async function ensureLoginStatus(
       return { isLoggedIn: true };
     }
 
-    // Try to trigger login modal
+    // URL-based login detection (works for both headless and GUI modes)
+    // If redirected to /explore (not /login) without login modal, user is logged in
+    const isOnExplorePage = currentUrl.includes('/explore');
+    const isOnLoginPage = currentUrl.includes('/login');
+
+    if (isOnExplorePage && !isOnLoginPage && !loginModalVisible) {
+      debugLog('On /explore without login modal -> assuming logged in');
+      return { isLoggedIn: true };
+    }
+
+    // Not logged in - try to trigger login modal if forceTrigger is true
+    if (!forceTrigger) {
+      debugLog('Not logged in and modal not open');
+      return {
+        isLoggedIn: false,
+        loginModalOpen: false,
+      };
+    }
+
     debugLog('Auto-triggering login modal...');
 
     for (const selector of LOGIN_BUTTON_SELECTORS) {
-      const buttonVisible = await page
-        .locator(selector)
-        .first()
-        .isVisible({ timeout: 2000 })
-        .catch(() => false);
-
-      if (buttonVisible) {
+      try {
+        // Wait for button to be visible with longer timeout
+        const button = page.locator(selector).first();
+        await button.waitFor({ state: 'visible', timeout: timeouts.selector });
         debugLog(`Clicking login button: ${selector}`);
 
         const clicked = await humanClick(page, selector, { delayAfter: 2000 });
@@ -439,7 +631,32 @@ export async function ensureLoginStatus(
             };
           }
         }
+      } catch {
+        // Button not found, try next selector
+        continue;
       }
+    }
+
+    // Fallback: navigate to /login page if login button not found
+    debugLog('Login button not found, navigating to /login page...');
+    await page.goto(urls.login, { waitUntil: 'domcontentloaded', timeout: timeouts.pageLoad });
+    await page.waitForLoadState('networkidle', { timeout: timeouts.networkIdle }).catch(() => {});
+    await delay(1000);
+
+    // Check if login modal appeared on /login page
+    const loginModalOnLoginPage = await page
+      .locator(LOGIN_MODAL_SELECTOR)
+      .first()
+      .isVisible({ timeout: timeouts.selector })
+      .catch(() => false);
+
+    if (loginModalOnLoginPage) {
+      debugLog('Login modal visible on /login page');
+      return {
+        isLoggedIn: false,
+        loginModalOpen: true,
+        triggered: true,
+      };
     }
 
     debugLog('Cannot trigger login modal');

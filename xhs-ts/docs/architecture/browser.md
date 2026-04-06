@@ -69,7 +69,7 @@ port = 9222 + (hash(user) % 100)  // 范围: 9222-9322
 ## 公共 API
 
 ```typescript
-import { withProfile, launchProfileBrowser } from './browser';
+import { withProfile, launchProfileBrowser } from './actions/shared/browser-launcher';
 
 // 推荐：withProfile
 await withProfile('my-user', async (page, result) => {
@@ -109,9 +109,9 @@ await withProfile('user', callback, { keepAlive: false });
 
 | 模块 | 职责 |
 |------|------|
-| `profile-launcher.ts` | 实例获取入口（连接复用 + 新建实例） |
-| `commands.ts` | CLI 命令处理 |
-| `cdp/launcher.ts` | 浏览器进程启动 |
-| `cdp/connector.ts` | CDP 连接管理 |
-| `cdp/port-allocator.ts` | 端口分配 |
-| `user/storage-v3.ts` | 连接信息持久化 |
+| `actions/shared/browser-launcher.ts` | 实例获取入口（连接复用 + 新建实例） |
+| `cli/commands/browser.command.ts` | CLI 命令处理 |
+| `core/browser/launcher.ts` | 浏览器进程启动 |
+| `core/browser/cdp/connector.ts` | CDP 连接管理 |
+| `core/browser/port-utils.ts` | 端口分配 |
+| `user/storage-v3.ts` | 连接信息持久化（profile.json） |

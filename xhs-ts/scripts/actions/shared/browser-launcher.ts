@@ -185,14 +185,28 @@ export async function launchProfileBrowser(
 
   // Load saved connection for reconnection attempt
   const savedConnection = await loadConnectionInfo(user);
-  const connectionForReconnect: SavedConnection | null = savedConnection?.cdpPort
-    ? {
-        port: savedConnection.cdpPort,
-        pid: savedConnection.pid,
-        wsEndpoint: savedConnection.wsEndpoint,
-        headless: savedConnection.headless ?? false,
-      }
-    : null;
+
+  // If headless mode mismatch, close old instance before spawning new one
+  // (--headless is a launch argument, cannot change at runtime)
+  if (savedConnection?.cdpPort && savedConnection.headless !== actualHeadless) {
+    debugLog('Headless mode mismatch, closing old instance', {
+      saved: savedConnection.headless,
+      requested: actualHeadless,
+    });
+    await closeCDPInstance(user);
+    // Proceed with null connection to spawn new instance
+  }
+
+  // Prepare connection for reconnect (only if headless matches)
+  const connectionForReconnect: SavedConnection | null =
+    savedConnection?.cdpPort && savedConnection.headless === actualHeadless
+      ? {
+          port: savedConnection.cdpPort,
+          pid: savedConnection.pid,
+          wsEndpoint: savedConnection.wsEndpoint,
+          headless: savedConnection.headless ?? false,
+        }
+      : null;
 
   // Launch browser using core launcher
   const result = await launchBrowserCore(
@@ -262,6 +276,16 @@ export async function withProfile<T>(
       isNewInstance: result.isNewInstance,
     });
   } finally {
+    // Close own page (each action manages only its own pages)
+    if (!result.page.isClosed()) {
+      try {
+        await result.page.close({ runBeforeUnload: false });
+        debugLog('Closed own page for user: ' + result.user);
+      } catch {
+        // Page may already be closed
+      }
+    }
+
     if (keepAlive) {
       // Disconnect from browser but keep it running
       await result.browser.close();

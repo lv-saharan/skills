@@ -3,18 +3,20 @@
  *
  * @module login
  * @description Handle user authentication via QR code or SMS
+ *
+ * NOTE: ensureLogin is now exported from actions/shared/session.ts
+ * for better module separation. This module re-exports for backward compatibility.
  */
 
 // Main functions
 export { executeLogin, checkLogin } from './execute';
 
-// Auto-login flow
-export { ensureLogin } from './auto-login';
-export type { EnsureLoginOptions, EnsureLoginResult } from './auto-login';
+// Auto-login flow (re-exported from shared/session for backward compatibility)
+export { ensureLogin, type EnsureLoginOptions, type EnsureLoginResult } from '../shared/session';
 
 // Individual login methods (for advanced usage)
 export { qrLogin, waitForQrScan, captureQrCodeToFile } from './qr';
-export { smsLogin } from './sms';
+export { smsLogin, smsLoginWithCode } from './sms';
 export { verifyExistingSession } from './verify';
 
 // Selectors

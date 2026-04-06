@@ -11,7 +11,7 @@
 
 // Main function
 export { executeScrapeNote } from './note';
-export { extractNoteIdFromUrl } from '../interact/url-utils';
+export { extractNoteIdFromUrl } from '../shared/url-utils';
 
 // Types
 export type {
@@ -30,7 +30,7 @@ export type {
 
 // Main function
 export { executeScrapeUser } from './user';
-export { extractUserIdFromUrl } from '../interact/url-utils';
+export { extractUserIdFromUrl } from '../shared/url-utils';
 
 // Types
 export type {

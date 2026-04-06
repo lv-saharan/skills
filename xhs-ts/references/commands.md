@@ -158,16 +158,102 @@ npm run publish -- --title "标题" --content "正文" --images "img1.jpg" --tag
 
 ---
 
-## Not Yet Implemented
+## Interact Commands
 
-These commands return `NOT_FOUND` error:
+All interact commands require:
+- **Login**: Must be logged in
+- **Valid URL**: URLs must include `xsec_token` parameter
+
+> Use `npm run search` to get complete URLs with tokens.
+
+### like
+
+Like notes (supports batch).
 
 ```bash
-npm run like -- "<url>"           # Like a note
-npm run collect -- "<url>"        # Collect a note
-npm run comment -- "<url>" "text" # Comment on a note
-npm run follow -- "<url>"         # Follow a user
+npm run like -- "https://www.xiaohongshu.com/explore/noteId?xsec_token=xxx"
+npm run like -- "url1" "url2" "url3"  # Batch
+npm run like -- "url1" "url2" --delay 3000  # Custom delay
 ```
+
+**Options:**
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `[urls...]` | (required) | Note URLs |
+| `--delay <ms>` | 2000 | Delay between likes |
+| `--headless` | false | Run in headless mode |
+| `--user <name>` | default | User name |
+
+**Output:**
+
+```json
+{
+  "success": true,
+  "data": {
+    "total": 3,
+    "results": [
+      { "url": "...", "success": true, "noteId": "..." },
+      { "url": "...", "success": true, "noteId": "..." }
+    ]
+  }
+}
+```
+
+### collect
+
+Collect (bookmark) notes (supports batch).
+
+```bash
+npm run collect -- "https://www.xiaohongshu.com/explore/noteId?xsec_token=xxx"
+npm run collect -- "url1" "url2" --delay 3000
+```
+
+**Options:**
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `[urls...]` | (required) | Note URLs |
+| `--delay <ms>` | 2000 | Delay between collects |
+| `--headless` | false | Run in headless mode |
+| `--user <name>` | default | User name |
+
+### comment
+
+Comment on a note.
+
+```bash
+npm run comment -- "https://www.xiaohongshu.com/explore/noteId?xsec_token=xxx" "评论内容"
+```
+
+**Options:**
+
+| Option | Description |
+|--------|-------------|
+| `<url>` | Note URL (required) |
+| `<text>` | Comment text (required) |
+| `--headless` | Run in headless mode |
+| `--user <name>` | User name |
+
+> ⚠️ **Phone Binding Required**: Accounts without phone number cannot comment. Error: `评论受限: 绑定手机`
+
+### follow
+
+Follow users (supports batch).
+
+```bash
+npm run follow -- "https://www.xiaohongshu.com/user/profile/userId"
+npm run follow -- "url1" "url2" --delay 3000
+```
+
+**Options:**
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `[urls...]` | (required) | User profile URLs |
+| `--delay <ms>` | 2000 | Delay between follows |
+| `--headless` | false | Run in headless mode |
+| `--user <name>` | default | User name |
 
 ---
 

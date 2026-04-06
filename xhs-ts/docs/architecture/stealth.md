@@ -27,7 +27,7 @@
 ## 使用方式
 
 ```typescript
-import { generateStealthScript, generateStealthScriptWithLocation } from './browser/stealth';
+import { generateStealthScript, generateStealthScriptWithLocation } from './core/browser/stealth';
 
 // 基本使用
 const script = generateStealthScript(fingerprint);
@@ -85,7 +85,7 @@ interface GeolocationConfig {
 ## 目录结构
 
 ```
-scripts/browser/stealth/
+scripts/core/browser/stealth/
 ├── index.ts          # 主入口：generateStealthScript
 ├── types.ts          # StealthModuleConfig, GeolocationConfig
 ├── utils.ts          # getPolyfillScript, combineScripts
@@ -106,12 +106,10 @@ scripts/browser/stealth/
 
 ---
 
-## 与 Legacy stealth.ts 的关系
+## 架构说明
 
-- `browser/stealth.ts` (legacy) - 旧版单文件脚本生成器
-- `browser/stealth/` (新) - 模块化架构，推荐使用
+反检测模块位于 `scripts/core/browser/stealth/`，采用模块化架构：
 
-新模块提供：
-- 可配置的模块开关
-- 更细粒度的控制
-- 更好的可维护性
+- **15 个独立模块**：每个指纹维度独立生成脚本
+- **可配置开关**：按需启用/禁用特定模块
+- **平台无关**：位于 `core/` 目录，不依赖业务逻辑

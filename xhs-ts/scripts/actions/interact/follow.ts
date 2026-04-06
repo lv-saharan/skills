@@ -8,7 +8,7 @@
 import type { Page, Locator } from 'playwright';
 import type { FollowOptions, FollowResult } from './types';
 import { FOLLOW_SELECTORS } from './selectors';
-import { extractUserIdFromUrl } from './url-utils';
+import { extractUserIdFromUrl } from '../shared/url-utils';
 import { debugLog, gaussianDelay } from '../../core/utils';
 import { humanClick, checkLoginStatus } from '../../core/anti-detect';
 import { outputSuccess, outputFromError } from '../../core/utils/output';

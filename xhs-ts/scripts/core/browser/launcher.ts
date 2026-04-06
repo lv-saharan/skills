@@ -321,21 +321,12 @@ async function setupContext(
   if (contexts.length > 0) {
     context = contexts[0];
 
-    // Inject stealth script (idempotent)
+    // Inject stealth script (idempotent)  不需要反复注入
     await injectStealthToContext(context, fingerprint, geolocation);
 
-    // Clean up extra pages
-    const existingPages = context.pages();
-    if (existingPages.length > 1) {
-      debugLog(`Closing ${existingPages.length - 1} extra page(s)`);
-      for (let i = 1; i < existingPages.length; i++) {
-        try {
-          await existingPages[i].close({ runBeforeUnload: false });
-        } catch {
-          // Page may be already closed
-        }
-      }
-    }
+    // NOTE: Do NOT clean up existing pages!
+    // Each action manages only its own pages (create, use, close).
+    // Cleaning up here would interfere with other concurrent actions.
   } else {
     context = await browser.newContext();
     await injectStealthToContext(context, fingerprint, geolocation);

@@ -16,7 +16,7 @@ import type {
 import { buildSearchUrl, getFilterSelectors } from './url-builder';
 import { SkillError, SkillErrorCode, timeouts, urls } from '../../config';
 import { debugLog, delay, randomDelay } from '../../core/utils';
-import { humanClick } from '../../core/anti-detect';
+import { humanClick, humanType } from '../../core/anti-detect';
 
 // ============================================
 // Constants
@@ -173,14 +173,14 @@ export async function searchViaHomepage(page: Page, keyword: string): Promise<vo
   await searchInput.click();
   await randomDelay(300, 500);
 
-  // Clear existing content and type keyword
-  await searchInput.fill('');
-  await randomDelay(200, 400);
-
   // Type keyword with human-like delays
-  for (const char of keyword) {
-    await searchInput.pressSequentially(char, { delay: 50 + Math.random() * 50 });
-  }
+  await humanType(searchInput, keyword, {
+    minDelay: 40,
+    maxDelay: 100,
+    thinkPauseChance: 0.05,
+    typoChance: 0,
+    clearFirst: true,
+  });
 
   await randomDelay(500, 1000);
 

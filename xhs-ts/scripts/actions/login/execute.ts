@@ -17,7 +17,7 @@ import { verifyExistingSession } from './verify';
 import { createUserDir, userExists, resolveUser } from '../../user';
 
 export async function executeLogin(options: LoginOptions): Promise<void> {
-  const { method = 'qr', headless, timeout = timeouts.login, creator, user } = options;
+  const { method = 'qr', headless, timeout = timeouts.login, creator, user, phone } = options;
   const resolvedUser = resolveUser(user);
 
   debugLog(
@@ -31,7 +31,8 @@ export async function executeLogin(options: LoginOptions): Promise<void> {
   }
 
   // Check if already logged in for this user
-  const isLoggedIn = await verifyExistingSession(resolvedUser);
+  const isHeadless = headless ?? config.headless;
+  const isLoggedIn = await verifyExistingSession(resolvedUser, isHeadless);
   if (isLoggedIn) {
     const result: LoginResult = {
       success: true,
@@ -45,8 +46,6 @@ export async function executeLogin(options: LoginOptions): Promise<void> {
 
   // Session invalid - proceed with login flow
   debugLog('Proceeding with login flow...');
-
-  const isHeadless = headless ?? config.headless;
 
   try {
     await withProfile(
@@ -64,7 +63,7 @@ export async function executeLogin(options: LoginOptions): Promise<void> {
         let result: LoginResult;
         if (method === 'sms') {
           debugLog('Starting SMS login...');
-          result = await smsLogin(session, timeout, resolvedUser);
+          result = await smsLogin(session, timeout, resolvedUser, phone);
         } else {
           debugLog('Starting QR code login...');
           result = await qrLogin(session, timeout, isHeadless, resolvedUser);

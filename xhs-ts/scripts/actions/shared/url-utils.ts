@@ -1,12 +1,12 @@
 /**
- * URL extraction utilities for interact module
+ * URL extraction utilities for shared actions
  *
- * @module interact/url-utils
- * @description Extract IDs from platform URLs
+ * @module actions/shared/url-utils
+ * @description Extract IDs from platform URLs - shared across all action modules
  */
 
 import { isPlatformUrl } from '../../config';
-import type { NoteIdExtraction, UserIdExtraction } from './types';
+import type { NoteIdExtraction, UserIdExtraction } from '../interact/types';
 
 // ============================================
 // Internal Types
@@ -46,12 +46,12 @@ export function extractNoteId(url: string): UrlExtractionResult {
 
     // Short links not supported
     if (urlObj.hostname === 'xhslink.com') {
-      return { success: false, error: '短链接不支持，请使用完整URL' };
+      return { success: false, error: '短链接不支持，请使用完整 URL' };
     }
 
     // Must be platform URL
     if (!isPlatformUrl(url)) {
-      return { success: false, error: '非平台URL' };
+      return { success: false, error: '非平台 URL' };
     }
 
     // Pattern 1: /explore/{noteId}
@@ -66,9 +66,9 @@ export function extractNoteId(url: string): UrlExtractionResult {
       return { success: true, id: discoveryMatch[1] };
     }
 
-    return { success: false, error: '无法从URL提取笔记ID' };
+    return { success: false, error: '无法从 URL 提取笔记 ID' };
   } catch {
-    return { success: false, error: 'URL格式无效' };
+    return { success: false, error: 'URL 格式无效' };
   }
 }
 
@@ -90,12 +90,12 @@ export function extractUserId(url: string): UrlExtractionResult {
 
     // Short links not supported
     if (urlObj.hostname === 'xhslink.com') {
-      return { success: false, error: '短链接不支持，请使用完整URL' };
+      return { success: false, error: '短链接不支持，请使用完整 URL' };
     }
 
     // Must be platform URL
     if (!isPlatformUrl(url)) {
-      return { success: false, error: '非平台URL' };
+      return { success: false, error: '非平台 URL' };
     }
 
     // Pattern: /user/profile/{userId}
@@ -104,9 +104,9 @@ export function extractUserId(url: string): UrlExtractionResult {
       return { success: true, id: match[1] };
     }
 
-    return { success: false, error: '无法从URL提取用户ID' };
+    return { success: false, error: '无法从 URL 提取用户 ID' };
   } catch {
-    return { success: false, error: 'URL格式无效' };
+    return { success: false, error: 'URL 格式无效' };
   }
 }
 

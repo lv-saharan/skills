@@ -1,6 +1,6 @@
 # 小红书自动化 Skill (xhs-ts)
 
-[![Version](https://img.shields.io/badge/version-0.0.9-blue.svg)](https://github.com/lv-saharan/skills/tree/main/xhs-ts)
+[![Version](https://img.shields.io/badge/version-0.1.0-blue.svg)](https://github.com/lv-saharan/skills/tree/main/xhs-ts)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Node](https://img.shields.io/badge/node-%3E%3D22.16.0-brightgreen.svg)](https://nodejs.org/)
 
@@ -319,7 +319,7 @@ npm run browser -- --stop
 - CLI 通过 CDP 连接浏览器实例
 - CLI 退出后浏览器继续运行
 - 实例自动复用（避免重复启动）
-- 30 分钟无活动自动关闭
+- 需手动调用 `browser --stop` 关闭实例
 
 ---
 
@@ -382,20 +382,39 @@ xhs-ts/
 │   ├── commands.md
 │   ├── channel-integration.md
 │   └── troubleshooting.md
-├── scripts/              # 源代码
+├── scripts/              # 源代码（分层架构）
 │   ├── index.ts          # CLI 入口
-│   ├── config/           # 配置模块
-│   ├── browser/          # 浏览器管理 (CDP)
-│   │   ├── cdp/          # CDP 核心模块
-│   │   └── stealth/      # 模块化反检测脚本
-│   ├── user/             # 多用户管理
-│   ├── login/            # 登录模块
-│   ├── search/           # 搜索模块
-│   ├── publish/          # 发布模块
-│   ├── interact/         # 互动模块 (like, collect, comment, follow)
-│   ├── scrape/           # 数据抓取模块
-│   ├── shared/           # 共享模块
-│   └── utils/            # 工具函数
+│   ├── cli/              # CLI 命令入口
+│   │   ├── index.ts      # 命令注册
+│   │   └── commands/     # 各命令实现
+│   │       ├── login.command.ts
+│   │       ├── search.command.ts
+│   │       ├── publish.command.ts
+│   │       ├── interact.command.ts
+│   │       ├── scrape.command.ts
+│   │       ├── browser.command.ts
+│   │       └── user.command.ts
+│   ├── actions/          # 业务操作模块（统一入口）
+│   │   ├── shared/       # Session 管理（withSession API）
+│   │   │   ├── session.ts    # 统一认证入口
+│   │   │   └── browser-launcher.ts
+│   │   ├── login/        # 登录（二维码、短信、自动登录）
+│   │   ├── search/       # 搜索
+│   │   ├── publish/      # 发布（uploader/）
+│   │   ├── interact/     # 互动（点赞、收藏、评论、关注）
+│   │   └── scrape/       # 抓取（笔记、用户）
+│   ├── core/             # 核心基础设施（平台无关）
+│   │   ├── browser/      # CDP 浏览器管理
+│   │   │   ├── cdp/      # CDP 核心模块
+│   │   │   ├── stealth/  # 模块化反检测脚本（15 个模块）
+│   │   │   ├── launcher.ts
+│   │   │   └── stealth-behavior.ts
+│   │   ├── anti-detect/  # 反检测工具
+│   │   ├── fingerprint/  # 设备指纹生成
+│   │   ├── utils/        # 工具函数
+│   │   └── error/        # 错误处理
+│   ├── config/           # 配置（URLs、selectors、timeouts）
+│   └── user/             # 多用户管理（storage-v3、profile-loader、migration）
 └── users/                # 多用户目录
 ```
 

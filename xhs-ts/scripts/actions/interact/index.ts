@@ -46,7 +46,7 @@ export {
   extractNoteIdFromUrl,
   extractUserId,
   extractUserIdFromUrl,
-} from './url-utils';
+} from '../shared/url-utils';
 
 // Types
 export type { FollowOptions, FollowResult, FollowManyResult, UserIdExtraction } from './types';
@@ -65,7 +65,7 @@ export { withAuthenticatedAction, executeBatch, INTERACTION_DELAYS } from './sha
 export {
   extractNoteId as extractNoteIdUtil,
   extractUserId as extractUserIdUtil,
-} from './url-utils';
+} from '../shared/url-utils';
 
 // ============================================
 // Selectors

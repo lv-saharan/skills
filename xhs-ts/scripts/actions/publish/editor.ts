@@ -8,6 +8,7 @@
 import type { Page } from 'playwright';
 import { SkillError, SkillErrorCode } from '../../config';
 import { debugLog, delay, randomDelay } from '../../core/utils';
+import { humanType } from '../../core/anti-detect';
 import { SELECTORS } from './constants';
 
 // ============================================
@@ -15,7 +16,7 @@ import { SELECTORS } from './constants';
 // ============================================
 
 /**
- * Fill in the note title
+ * Fill in the note title with human-like typing
  */
 export async function fillTitle(page: Page, title: string): Promise<void> {
   debugLog(`Filling title: ${title}`);
@@ -38,9 +39,16 @@ export async function fillTitle(page: Page, title: string): Promise<void> {
 
       if (isVisible) {
         debugLog(`Found title input with selector: ${selector}`);
-        await element.click();
-        await delay(100);
-        await element.fill(title);
+
+        // Use human-like typing instead of fill()
+        await humanType(element, title, {
+          minDelay: 25,
+          maxDelay: 80,
+          thinkPauseChance: 0.05,
+          typoChance: 0.01,
+          clearFirst: true,
+        });
+
         found = true;
         debugLog(`Title filled successfully`);
         break;
@@ -92,7 +100,7 @@ export async function fillTitle(page: Page, title: string): Promise<void> {
 // ============================================
 
 /**
- * Fill in the note content
+ * Fill in the note content with human-like typing
  */
 export async function fillContent(page: Page, content: string): Promise<void> {
   debugLog(`Filling content (${content.length} chars)`);
@@ -111,17 +119,14 @@ export async function fillContent(page: Page, content: string): Promise<void> {
     const isVisible = await element.isVisible().catch(() => false);
 
     if (isVisible) {
-      await element.click();
-      await delay(100);
-
-      // Check if it's a contenteditable element
-      const isEditable = await element.getAttribute('contenteditable').catch(() => null);
-
-      if (isEditable === 'true') {
-        await element.fill(content);
-      } else {
-        await element.fill(content);
-      }
+      // Use human-like typing for content (longer text, so faster typing)
+      await humanType(element, content, {
+        minDelay: 15,
+        maxDelay: 50,
+        thinkPauseChance: 0.03,
+        typoChance: 0.005,
+        clearFirst: true,
+      });
 
       found = true;
       debugLog(`Content filled using selector: ${selector}`);
@@ -169,7 +174,7 @@ export async function fillContent(page: Page, content: string): Promise<void> {
 // ============================================
 
 /**
- * Add tags/topics to the note
+ * Add tags/topics to the note with human-like typing
  */
 export async function addTags(page: Page, tags: string[]): Promise<void> {
   if (!tags || tags.length === 0) {
@@ -213,13 +218,19 @@ export async function addTags(page: Page, tags: string[]): Promise<void> {
     return;
   }
 
-  // Add each tag
+  // Add each tag with human-like typing
   for (const tag of tags) {
     await tagInput.click();
     await delay(100);
 
-    // Type the tag
-    await tagInput.fill(tag);
+    // Use human-like typing for tags
+    await humanType(tagInput, tag, {
+      minDelay: 30,
+      maxDelay: 100,
+      thinkPauseChance: 0.05,
+      typoChance: 0,
+      clearFirst: true,
+    });
     await delay(300);
 
     // Press Enter to add tag

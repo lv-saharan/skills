@@ -67,50 +67,63 @@ export async function executePublish(options: PublishOptions): Promise<void> {
           throw new SkillError('Failed to open creator center', SkillErrorCode.BROWSER_ERROR);
         }
 
-        // Check if redirected to login page
-        const currentUrl = publishPage.url();
-        if (currentUrl.includes('login')) {
-          throw new SkillError(
-            'Creator center login required. Please run "xhs login --creator" first.',
-            SkillErrorCode.NOT_LOGGED_IN
-          );
+        // Use try-finally to ensure publishPage is closed (each action manages its own pages)
+        try {
+          // Check if redirected to login page
+          const currentUrl = publishPage.url();
+          if (currentUrl.includes('login')) {
+            throw new SkillError(
+              'Creator center login required. Please run "xhs login --creator" first.',
+              SkillErrorCode.NOT_LOGGED_IN
+            );
+          }
+
+          debugLog('Creator center opened successfully');
+
+          // Upload media
+          debugLog('Uploading media files...');
+          await uploadMedia(publishPage, mediaPaths, mediaValidation.type);
+          debugLog('Media upload complete');
+
+          // Fill in content
+          debugLog('Filling title...');
+          await fillTitle(publishPage, title);
+
+          debugLog('Filling content...');
+          await fillContent(publishPage, content);
+
+          // Add tags if provided
+          if (tags && tags.length > 0) {
+            debugLog('Adding tags...');
+            await addTags(publishPage, tags);
+          }
+
+          // Random delay before submit
+          await randomDelay(1000, 2000);
+
+          // Submit and verify
+          debugLog('Submitting note...');
+          const result = await submitAndVerify(publishPage);
+          result.user = ctx.user;
+
+          debugLog('Publish complete, outputting result...');
+          if (result.success) {
+            outputSuccess(result, 'RELAY:发布成功');
+          } else {
+            outputError(result.message, SkillErrorCode.PUBLISH_FAILED);
+          }
+          debugLog('Result output complete');
+        } finally {
+          // Close own publishPage
+          if (!publishPage.isClosed()) {
+            try {
+              await publishPage.close({ runBeforeUnload: false });
+              debugLog('Closed publishPage');
+            } catch {
+              // Page may already be closed
+            }
+          }
         }
-
-        debugLog('Creator center opened successfully');
-
-        // Upload media
-        debugLog('Uploading media files...');
-        await uploadMedia(publishPage, mediaPaths, mediaValidation.type);
-        debugLog('Media upload complete');
-
-        // Fill in content
-        debugLog('Filling title...');
-        await fillTitle(publishPage, title);
-
-        debugLog('Filling content...');
-        await fillContent(publishPage, content);
-
-        // Add tags if provided
-        if (tags && tags.length > 0) {
-          debugLog('Adding tags...');
-          await addTags(publishPage, tags);
-        }
-
-        // Random delay before submit
-        await randomDelay(1000, 2000);
-
-        // Submit and verify
-        debugLog('Submitting note...');
-        const result = await submitAndVerify(publishPage);
-        result.user = ctx.user;
-
-        debugLog('Publish complete, outputting result...');
-        if (result.success) {
-          outputSuccess(result, 'RELAY:发布成功');
-        } else {
-          outputError(result.message, SkillErrorCode.PUBLISH_FAILED);
-        }
-        debugLog('Result output complete');
       },
       { headless: headless ?? false, autoCreate: true }
     );

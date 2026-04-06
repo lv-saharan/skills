@@ -16,6 +16,7 @@ export function registerLoginCommand(program: Command): void {
     .description('Login to Xiaohongshu and save cookies')
     .option('--qr', 'Use QR code login (default)')
     .option('--sms', 'Use SMS login')
+    .option('--phone <number>', 'Phone number for SMS login')
     .option('--headless', 'Run in headless mode')
     .option('--timeout <ms>', 'Login timeout in milliseconds')
     .option('--user <name>', 'User name')
@@ -29,6 +30,7 @@ export function registerLoginCommand(program: Command): void {
         headless: resolveHeadless(options.headless, config.headless),
         user: resolveUser(options.user),
         timeout,
+        phone: options.phone,
       });
     });
 }

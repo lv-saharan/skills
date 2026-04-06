@@ -8,9 +8,9 @@
 import type { Page } from 'playwright';
 import type { CommentOptions, CommentResult } from './types';
 import { COMMENT_SELECTORS } from './selectors';
-import { extractNoteId } from './url-utils';
+import { extractNoteId } from '../shared/url-utils';
 import { debugLog, delay, gaussianDelay } from '../../core/utils';
-import { humanClick, humanScroll, checkLoginStatus } from '../../core/anti-detect';
+import { humanClick, humanScroll, humanType, checkLoginStatus } from '../../core/anti-detect';
 import { outputSuccess, outputFromError } from '../../core/utils/output';
 import { withSession, preparePageForAction, INTERACTION_DELAYS } from '../shared/session';
 import { resolveUser } from '../../user';
@@ -166,7 +166,13 @@ async function performComment(page: Page, url: string, text: string): Promise<Co
 
   // Type comment text
   debugLog('输入评论内容: ' + text);
-  await inputLocator.pressSequentially(text, { delay: 50 });
+  await humanType(inputLocator, text, {
+    minDelay: 40,
+    maxDelay: 100,
+    thinkPauseChance: 0.1,
+    typoChance: 0.02,
+    clearFirst: false,
+  });
   await delay(500 + Math.random() * 300);
 
   // Find submit button

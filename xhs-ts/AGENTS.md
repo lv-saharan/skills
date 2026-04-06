@@ -31,6 +31,7 @@ scripts/
 ├── core/         # 核心基础设施（平台无关）
 │   ├── browser/  # CDP 浏览器管理
 │   ├── anti-detect/ # 反检测
+│   ├── fingerprint/ # 设备指纹生成
 │   ├── utils/    # 工具函数
 │   └── error/    # 错误处理
 ├── config/       # 配置（URLs, selectors, timeouts）
@@ -127,6 +128,10 @@ const user = resolveUser(options.user);  // --user > current > default
 // 反检测脚本
 import { generateStealthScript } from './core/browser/stealth';
 const script = generateStealthScript(fingerprint);
+
+// 条件等待（替代 while 循环）
+import { waitForCondition } from './core/utils';
+await waitForCondition(async () => page.isVisible('#btn'), { timeout: 10000 });
 ```
 
 ---
@@ -204,7 +209,8 @@ users/
 
 **Error Handling:**
 ```typescript
-throw new XhsError(message, XhsErrorCode.NOT_LOGGED_IN);
+import { SkillError, SkillErrorCode } from './config/errors';
+throw new SkillError(message, SkillErrorCode.NOT_LOGGED_IN);
 ```
 
 ---

@@ -19,7 +19,7 @@ import {
 import { outputSuccess, outputFromError } from '../../core/utils/output';
 import { withSession } from '../shared/session';
 import { resolveUser } from '../../user';
-import { extractNoteIdFromUrl } from './url-utils';
+import { extractNoteIdFromUrl } from '../shared/url-utils';
 
 // ============================================
 // Collect Status Detection

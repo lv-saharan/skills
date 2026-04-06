@@ -27,6 +27,8 @@ export interface LoginOptions {
   creator?: boolean;
   /** User name for multi-user support */
   user?: UserName;
+  /** Phone number for SMS login */
+  phone?: string;
 }
 
 // ============================================
@@ -40,4 +42,6 @@ export interface LoginResult {
   cookieSaved?: boolean;
   /** User name that was logged in */
   user?: UserName;
+  /** Phone number for SMS login */
+  phone?: string;
 }

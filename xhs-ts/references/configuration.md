@@ -33,20 +33,15 @@ DEBUG=false
 | File | Purpose |
 |------|---------|
 | `{baseDir}/users/{user}/user-data/` | Playwright persistent context (auto-saves cookies, localStorage) |
-| `{baseDir}/users/{user}/meta.json` | Profile metadata |
+| `{baseDir}/users/{user}/profile.json` | Unified Profile data (meta + connection) |
 | `{baseDir}/users/{user}/fingerprint.json` | Device fingerprint |
 | `{baseDir}/users/{user}/tmp/` | Temporary files (QR codes) |
-| `{baseDir}/users/{user}/connections/` | CDP browser connection info |
-| `{baseDir}/users.json` | User metadata (current user, profiles) |
+| `{baseDir}/users.json` | User metadata (current user, version: 3) |
 | `{baseDir}/.env` | Environment configuration |
 
 ## Browser Management
 
-Browser instances are managed via CDP (Chrome DevTools Protocol):
-
-| File | Purpose |
-|------|---------|
-| `{baseDir}/users/{user}/connections/meta.json` | CDP connection info (port, PID, timestamps) |
+Browser instances are managed via CDP (Chrome DevTools Protocol). Connection info is stored in `profile.json` under the `connection` field.
 
 **Commands:**
 

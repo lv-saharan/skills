@@ -8,7 +8,7 @@ description: |
 license: MIT
 compatibility: opencode
 metadata:
-  version: "0.0.9"
+  version: "0.1.0"
   homepage: "https://github.com/lv-saharan/skills/tree/main/xhs-ts"
   openclaw:
     emoji: "📕"
@@ -70,19 +70,21 @@ xhs-ts supports multiple Xiaohongshu accounts with isolated cookies and temporar
 ```
 xhs-ts/
 ├── users/                    # Multi-user directory
-│   ├── users.json            # User metadata (current user, version: 2)
+│   ├── users.json            # User metadata (current user, version: 3)
 │   ├── default/              # Default user
 │   │   ├── user-data/        # Playwright persistent context (auto-saves cookies, localStorage)
-│   │   ├── meta.json         # Profile metadata
+│   │   ├── profile.json      # Unified Profile data (meta + connection)
 │   │   ├── fingerprint.json  # Device fingerprint
 │   │   └── tmp/              # Temporary files (QR codes)
 │   ├── 小号/                 # User "小号"
 │   │   ├── user-data/
-│   │   ├── meta.json
+│   │   ├── profile.json
 │   │   ├── fingerprint.json
 │   │   └── tmp/
 │   └── ...
 ```
+
+> **Version 3 Changes**: `meta.json` merged into `profile.json` with `meta` and `connection` fields.
 
 ### User Selection Priority
 
@@ -284,22 +286,26 @@ npm run scrape-user -- "url" --notes --max-notes 24
 
 ### Browser Management
 
+Browser instances run in detached mode and persist after CLI exits. **Agent is responsible for closing idle browsers.**
+
 ```bash
 # Start browser instance
 npm run browser -- --start
 npm run browser -- --start --user "小号"
 npm run browser -- --start --headless
 
-# Show status
+# Show status (includes lastActivityAt timestamp)
 npm run browser -- --status
 
 # List saved connections
 npm run browser -- --list
 
 # Stop instances
-npm run browser -- --stop-user "小号"
-npm run browser -- --stop
+npm run browser -- --stop-user "小号"  # Stop specific user
+npm run browser -- --stop              # Stop all instances
 ```
+
+> **Agent Responsibility**: Check `lastActivityAt` from `--status` output. Close idle browsers (e.g., inactive for 20+ minutes) to free resources.
 
 ---
 

@@ -8,7 +8,7 @@
 import type { UserName } from '../../user';
 import { hasProfile } from '../../user/storage';
 import { withProfile } from '../shared/browser-launcher';
-import { urls } from '../../config';
+import { urls, config } from '../../config';
 import { debugLog } from '../../core/utils';
 import { checkLoginStatus } from '../../core/anti-detect';
 
@@ -20,10 +20,14 @@ import { checkLoginStatus } from '../../core/anti-detect';
  * Supports CDP mode for browser instance reuse.
  *
  * @param user - User name (optional)
+ * @param headless - Run in headless mode (optional, defaults to config.headless)
  * @returns true if valid session exists, false otherwise
  */
-export async function verifyExistingSession(user?: UserName): Promise<boolean> {
-  debugLog(`Checking if already logged in for user: ${user || 'default'}...`);
+export async function verifyExistingSession(user?: UserName, headless?: boolean): Promise<boolean> {
+  const actualHeadless = headless ?? config.headless;
+  debugLog(
+    `Checking if already logged in for user: ${user || 'default'}... (headless: ${actualHeadless})`
+  );
 
   // Check if profile exists first (new users don't have profile)
   if (!hasProfile(user || 'default')) {
@@ -32,8 +36,6 @@ export async function verifyExistingSession(user?: UserName): Promise<boolean> {
   }
 
   // Use withProfile to support both CDP and Persistent Context modes
-  // CRITICAL: Use config.headless instead of forcing headless=true
-  // Forcing headless mode triggers anti-bot detection on Xiaohongshu
   try {
     const result = await withProfile(
       user || 'default',
@@ -50,7 +52,7 @@ export async function verifyExistingSession(user?: UserName): Promise<boolean> {
 
         return isLoggedIn;
       },
-      { headless: false } // Use visible browser to avoid detection
+      { headless: actualHeadless }
     );
 
     if (result) {

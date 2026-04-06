@@ -7,7 +7,7 @@
 
 import type { Page } from 'playwright';
 import type { ScrapeNoteOptions, ScrapeNoteResult } from './types';
-import { extractNoteIdFromUrl } from '../interact/url-utils';
+import { extractNoteIdFromUrl } from '../shared/url-utils';
 import { NOTE_SELECTORS, ERROR_SELECTORS } from './selectors';
 import { withSession, type SessionContext } from '../shared/session';
 import { timeouts } from '../../config/loader';

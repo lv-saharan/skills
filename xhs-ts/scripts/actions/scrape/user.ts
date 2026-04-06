@@ -7,7 +7,7 @@
 
 import type { Page } from 'playwright';
 import type { ScrapeUserOptions, ScrapeUserResult } from './types';
-import { extractUserIdFromUrl } from '../interact/url-utils';
+import { extractUserIdFromUrl } from '../shared/url-utils';
 import { USER_SELECTORS, ERROR_SELECTORS } from './selectors';
 import { withSession, type SessionContext } from '../shared/session';
 import { timeouts } from '../../config/loader';
