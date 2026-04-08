@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Publish module
  *
  * @module publish
@@ -10,9 +10,6 @@ export { executePublish } from './execute';
 
 // Types
 export type { PublishMediaType, PublishOptions, PublishResult, MediaValidation } from './types';
-
-// Validation functions
-export { validateMedia, validateContent } from './validation';
 
 // Constants
 export {
@@ -29,11 +26,7 @@ export {
   CREATOR_PUBLISH_URL,
 } from './constants';
 
-// Timeouts: Use TIMEOUTS from shared/constants
-// import { TIMEOUTS } from '../shared';
-// TIMEOUTS.PAGE_LOAD, TIMEOUTS.UPLOAD
-
-// Upload functions (for advanced usage)
+// Uploader
 export {
   uploadMedia,
   switchToUploadTab,
@@ -42,13 +35,3 @@ export {
   waitForImageUpload,
   waitForVideoUpload,
 } from './uploader';
-
-// Editor functions (for advanced usage)
-export { fillTitle, fillContent, addTags } from './editor';
-
-// Submitter functions (for advanced usage)
-export {
-  submitAndVerify,
-  clickPublishButtonOnHomepage,
-  navigateToPublishPageFromCreatorHome,
-} from './submitter';

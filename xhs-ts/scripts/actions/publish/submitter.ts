@@ -48,6 +48,7 @@ export async function clickPublishButtonOnHomepage(
       debugLog('New tab opened, waiting for it to load...');
 
       // Wait for the new page to load
+      // Safe to ignore - page may already be loaded
       await newPage.waitForLoadState('domcontentloaded', { timeout: 15000 }).catch(() => {});
       await delay(2000);
 

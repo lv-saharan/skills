@@ -241,6 +241,7 @@ export async function addTags(page: Page, tags: string[]): Promise<void> {
   debugLog(`Added ${tags.length} tags`);
 
   // Close the topic panel by clicking elsewhere
+  // Safe to ignore - key press failure is acceptable
   await page.keyboard.press('Escape').catch(() => {});
   await delay(300);
 }

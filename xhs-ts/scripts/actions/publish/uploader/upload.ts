@@ -39,6 +39,7 @@ async function performUpload(
   if (!btnVisible) {
     // Take a screenshot for debugging
     const screenshotPath = getTmpFilePath('upload-btn-not-visible', 'png');
+    // Safe to ignore - screenshot failure does not affect main flow
     await page.screenshot({ path: screenshotPath }).catch(() => {});
 
     // Check if we might be on the wrong tab
@@ -131,6 +132,7 @@ export async function uploadMedia(
 
       // Take a screenshot for debugging
       const screenshotPath = getTmpFilePath('upload-debug', 'png');
+      // Safe to ignore - screenshot failure does not affect main flow
       await page.screenshot({ path: screenshotPath }).catch(() => {});
       debugLog(`Screenshot saved to ${screenshotPath}`);
 
@@ -149,6 +151,7 @@ export async function uploadMedia(
       // Take another screenshot after upload
       await delay(1000);
       const screenshotPath2 = getTmpFilePath('upload-after', 'png');
+      // Safe to ignore - screenshot failure does not affect main flow
       await page.screenshot({ path: screenshotPath2 }).catch(() => {});
       debugLog(`Screenshot after upload saved to ${screenshotPath2}`);
 

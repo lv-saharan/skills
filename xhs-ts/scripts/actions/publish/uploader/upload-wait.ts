@@ -245,6 +245,7 @@ export async function waitForImageUpload(page: Page, imageCount: number): Promis
   } catch (error) {
     // Take screenshot for debugging
     const screenshotPath = getTmpFilePath('upload-timeout-debug', 'png');
+    // Safe to ignore - screenshot failure does not affect main flow
     await page.screenshot({ path: screenshotPath }).catch(() => {});
 
     if (error instanceof SkillError) {

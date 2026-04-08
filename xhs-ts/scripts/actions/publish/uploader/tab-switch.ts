@@ -26,6 +26,7 @@ export async function switchToUploadTab(page: Page, mediaType: PublishMediaType)
     await delay(500);
 
     // Resize viewport to ensure tabs are visible
+    // Safe to ignore - viewport size failure does not affect main flow
     await page.setViewportSize({ width: 1400, height: 1000 }).catch(() => {});
     await delay(300);
 
@@ -83,6 +84,7 @@ export async function switchToUploadTab(page: Page, mediaType: PublishMediaType)
     if (!tabClicked.success) {
       // Take a screenshot for debugging
       const screenshotPath = getTmpFilePath('tab-switch-debug', 'png');
+      // Safe to ignore - screenshot failure does not affect main flow
       await page.screenshot({ path: screenshotPath }).catch(() => {});
 
       // Check if we can find any upload button
@@ -95,6 +97,7 @@ export async function switchToUploadTab(page: Page, mediaType: PublishMediaType)
         debugLog('On video tab, clicking to switch to image tab...');
         // Try clicking the video tab to toggle
         const videoTab = page.locator('text=上传图文').first();
+        // Safe to ignore - click failure is handled by subsequent checks
         await videoTab.click().catch(() => {});
         await delay(1000);
 
@@ -109,6 +112,7 @@ export async function switchToUploadTab(page: Page, mediaType: PublishMediaType)
       if (mediaType === 'video' && imageBtnCount > 0 && videoBtnCount === 0) {
         debugLog('On image tab, clicking to switch to video tab...');
         const imageTab = page.locator('text=上传视频').first();
+        // Safe to ignore - click failure is handled by subsequent checks
         await imageTab.click().catch(() => {});
         await delay(1000);
 
@@ -145,6 +149,7 @@ export async function switchToUploadTab(page: Page, mediaType: PublishMediaType)
           window.location.href.includes('publish'),
         { timeout: 5000 }
       )
+      // Safe to ignore - operation is optional
       .catch(() => {});
 
     // Wait for the upload button to appear
