@@ -7,7 +7,7 @@
 import type { Command } from 'commander';
 import { resolveUser } from '../../user';
 import { config, timeouts } from '../../config';
-import { resolveHeadless } from '../utils';
+import { parseNumberOption, resolveHeadless } from '../utils';
 import type { LoginCommandOptions } from '../types';
 
 export function registerLoginCommand(program: Command): void {
@@ -23,7 +23,7 @@ export function registerLoginCommand(program: Command): void {
     .action(async (options: LoginCommandOptions) => {
       const { executeLogin } = await import('../../actions/login');
       const method = options.sms ? 'sms' : 'qr';
-      const timeout = options.timeout ? parseInt(options.timeout, 10) : timeouts.login;
+      const timeout = parseNumberOption(options.timeout, timeouts.login);
 
       await executeLogin({
         method,

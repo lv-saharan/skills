@@ -10,38 +10,19 @@
 
 import type { Command } from 'commander';
 import { config } from '../../config';
-import { resolveHeadless } from '../utils';
+import { resolveHeadless, outputFromError } from '../utils';
+import type { BrowserCommandOptions, BrowserStatusResult } from '../types';
 import {
   launchProfileBrowser,
-  closeCDPInstance,
-  hasCDPInstance,
-  checkCDPConnection,
+  closeBrowserInstance,
+  hasBrowserInstance,
+  checkBrowserEndpointHealth,
   loadConnectionInfo,
-} from '../../actions/shared/browser-launcher';
+} from '../../actions';
 
 import { listUsers, resolveUser } from '../../user';
-// NOTE: Moved import to actions/shared/browser-launcher to fix layering violation
-import { outputSuccess, outputError } from '../../core/utils/output';
-import { SkillErrorCode } from '../../config/errors';
+import { outputSuccess } from '../../core/utils/output';
 import type { UserName } from '../../user/types';
-
-// ============================================
-// Types
-// ============================================
-
-interface BrowserCommandOptions {
-  user?: string;
-  headless?: boolean;
-}
-
-interface BrowserStatusResult {
-  total: number;
-  alive: number;
-  instances: Record<
-    string,
-    { cdpPort: number; pid?: number; headless?: boolean; lastActivityAt?: string; isAlive: boolean }
-  >;
-}
 
 // ============================================
 // Command Handlers
@@ -70,14 +51,14 @@ async function startBrowser(options: BrowserCommandOptions): Promise<void> {
   outputSuccess(
     {
       user,
-      cdpPort: result.cdpPort,
+      port: result.port,
       pid: connection?.pid,
       headless: connection?.headless ?? false,
     },
     'RELAY:已为用户 ' +
       user +
       ' 启动浏览器实例 (端口：' +
-      result.cdpPort +
+      result.port +
       ', headless: ' +
       (connection?.headless ?? false) +
       ')'
@@ -93,19 +74,19 @@ async function startBrowser(options: BrowserCommandOptions): Promise<void> {
 /**
  * Stop a browser instance for a specific user
  *
- * Uses closeCDPInstance API which implements layered shutdown:
- * 1. CDP graceful close
+ * Uses closeBrowserInstance API which implements layered shutdown:
+ * 1. Graceful close via WebSocket
  * 2. Process kill fallback
  * 3. Connection cleanup
  */
 async function stopBrowserForUser(user: UserName): Promise<{ stopped: boolean; error?: string }> {
-  const isRunning = await hasCDPInstance(user);
+  const isRunning = await hasBrowserInstance(user);
   if (!isRunning) {
     return { stopped: false, error: 'Browser not running' };
   }
 
   try {
-    await closeCDPInstance(user);
+    await closeBrowserInstance(user);
     return { stopped: true };
   } catch (error) {
     return { stopped: false, error: error instanceof Error ? error.message : 'Unknown error' };
@@ -136,7 +117,7 @@ async function stopAllBrowsers(): Promise<void> {
 /**
  * Get browser status
  *
- * Scans all users and checks their CDP connection status.
+ * Scans all users and checks their browser connection status.
  * State is loaded from profile.json (no in-memory state).
  */
 async function getBrowserStatus(): Promise<BrowserStatusResult> {
@@ -147,10 +128,10 @@ async function getBrowserStatus(): Promise<BrowserStatusResult> {
 
   for (const user of users.users) {
     const conn = await loadConnectionInfo(user.name);
-    if (conn?.cdpPort) {
-      const isAlive = await checkCDPConnection(conn.cdpPort);
+    if (conn?.port) {
+      const isAlive = await checkBrowserEndpointHealth(conn.port);
       instances[user.name] = {
-        cdpPort: conn.cdpPort,
+        port: conn.port,
         pid: conn.pid,
         headless: conn.headless,
         lastActivityAt: conn.lastActivityAt,
@@ -172,15 +153,7 @@ async function getBrowserStatus(): Promise<BrowserStatusResult> {
 /**
  * Handle browser command from CLI
  */
-async function handleBrowserCommand(options: {
-  start?: boolean;
-  stop?: boolean;
-  stopUser?: string;
-  status?: boolean;
-  list?: boolean;
-  user?: string;
-  headless?: boolean;
-}): Promise<void> {
+async function handleBrowserCommand(options: BrowserCommandOptions): Promise<void> {
   try {
     if (options.start) {
       return await startBrowser({ user: options.user, headless: options.headless });
@@ -223,10 +196,7 @@ async function handleBrowserCommand(options: {
     const status = await getBrowserStatus();
     outputSuccess(status, 'PARSE:browserStatus');
   } catch (error) {
-    outputError(
-      error instanceof Error ? error.message : String(error),
-      SkillErrorCode.BROWSER_ERROR
-    );
+    outputFromError(error);
     process.exit(1);
   }
 }
@@ -238,7 +208,7 @@ async function handleBrowserCommand(options: {
 export function registerBrowserCommand(program: Command): void {
   program
     .command('browser')
-    .description('Manage CDP browser instances')
+    .description('Manage browser instances')
     .option('--start', 'Start a browser instance')
     .option('--stop', 'Stop all browser instances')
     .option('--stop-user <name>', 'Stop browser for specific user')

@@ -152,6 +152,24 @@ export interface BrowserCommandOptions extends BaseCommandOptions {
 }
 
 /**
+ * Browser status result - returned by getBrowserStatus()
+ */
+export interface BrowserStatusResult {
+  total: number;
+  alive: number;
+  instances: Record<
+    string,
+    {
+      port: number;
+      pid?: number;
+      headless?: boolean;
+      lastActivityAt?: string;
+      isAlive: boolean;
+    }
+  >;
+}
+
+/**
  * User command options (no base options - standalone)
  */
 export interface UserCommandOptions {
@@ -160,17 +178,3 @@ export interface UserCommandOptions {
   /** Reset to default user (--set-default flag) */
   setDefault?: boolean;
 }
-
-// ============================================
-// Helper Functions (Moved)
-// ============================================
-
-/**
- * Helper functions moved to cli/utils.ts
- *
- * - parseNumberOption
- * - resolveHeadless
- * - resolveBoolFlag
- *
- * @see cli/utils.ts
- */

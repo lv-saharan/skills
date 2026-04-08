@@ -2,8 +2,11 @@
  * CLI utility functions
  *
  * @module cli/utils
- * @description Helper functions for CLI command option parsing
+ * @description Helper functions for CLI command option parsing and validation
  */
+
+import { outputError } from '../core/utils/output';
+import { SkillErrorCode } from '../config';
 
 // ============================================
 // Number Parsing
@@ -36,4 +39,35 @@ export function resolveHeadless(cliValue: boolean | undefined, configDefault: bo
  */
 export function resolveBoolFlag(value: boolean | undefined, defaultValue = false): boolean {
   return value ?? defaultValue;
+}
+
+// ============================================
+// Validation
+// ============================================
+
+/**
+ * Validate that URLs array is not empty
+ * Outputs error and exits process if validation fails.
+ */
+export function validateUrls(urls: string[] | undefined, errorMsg: string): void {
+  if (!urls?.length) {
+    outputError(errorMsg, SkillErrorCode.NOT_FOUND);
+    process.exit(1);
+  }
+}
+
+// ============================================
+// Error Handling
+// ============================================
+
+/**
+ * Convert unknown error to message and output
+ * Standardized error output for CLI command handlers.
+ */
+export function outputFromError(
+  error: unknown,
+  code: (typeof SkillErrorCode)[keyof typeof SkillErrorCode] = SkillErrorCode.BROWSER_ERROR
+): void {
+  const message = error instanceof Error ? error.message : String(error);
+  outputError(message, code);
 }

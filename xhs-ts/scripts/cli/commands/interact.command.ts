@@ -7,9 +7,7 @@
 import type { Command } from 'commander';
 import { resolveUser } from '../../user';
 import { config } from '../../config';
-import { outputError } from '../../core/utils/output';
-import { SkillErrorCode } from '../../config';
-import { parseNumberOption, resolveHeadless } from '../utils';
+import { parseNumberOption, resolveHeadless, validateUrls } from '../utils';
 import type {
   LikeCommandOptions,
   CollectCommandOptions,
@@ -32,10 +30,7 @@ function registerLikeCommand(program: Command): void {
     .option('--user <name>', 'User name')
     .option('--delay <ms>', 'Delay between likes', '2000')
     .action(async (urls: string[], options: LikeCommandOptions) => {
-      if (!urls?.length) {
-        outputError('请提供至少一个笔记 URL', SkillErrorCode.NOT_FOUND);
-        process.exit(1);
-      }
+      validateUrls(urls, '请提供至少一个笔记 URL');
       const { executeLike } = await import('../../actions/interact');
       await executeLike({
         urls,
@@ -54,10 +49,7 @@ function registerCollectCommand(program: Command): void {
     .option('--user <name>', 'User name')
     .option('--delay <ms>', 'Delay between collects', '2000')
     .action(async (urls: string[], options: CollectCommandOptions) => {
-      if (!urls?.length) {
-        outputError('请提供至少一个笔记 URL', SkillErrorCode.NOT_FOUND);
-        process.exit(1);
-      }
+      validateUrls(urls, '请提供至少一个笔记 URL');
       const { executeCollect } = await import('../../actions/interact');
       await executeCollect({
         urls,
@@ -93,10 +85,7 @@ function registerFollowCommand(program: Command): void {
     .option('--user <name>', 'User name')
     .option('--delay <ms>', 'Delay between follows', '2000')
     .action(async (urls: string[], options: FollowCommandOptions) => {
-      if (!urls?.length) {
-        outputError('请提供至少一个用户主页 URL', SkillErrorCode.NOT_FOUND);
-        process.exit(1);
-      }
+      validateUrls(urls, '请提供至少一个用户主页 URL');
       const { executeFollow } = await import('../../actions/interact');
       await executeFollow({
         urls,
