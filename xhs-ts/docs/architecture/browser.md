@@ -30,12 +30,13 @@ Browser 模块采用 **CDP (Chrome DevTools Protocol)** 架构。
 ## 端口分配
 
 ```typescript
-port = 9222 + (hash(user) % 100)  // 范围: 9222-9322
+port = 18900 + (hash(user) % 100)  // 范围: 18900-18999
 ```
 
 - 同一用户始终获得相同端口
 - 冲突时遍历范围内寻找可用端口
 - 分配前检查 `/json/version` 端点
+- 使用 18900+ 范围，避免与 Chrome 默认 CDP 端口 (9222) 冲突
 
 ---
 

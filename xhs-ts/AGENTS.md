@@ -22,8 +22,8 @@ npm run test                            # Run tests
 ```
 scripts/
 ├── actions/      # 所有操作模块（统一入口）
-│   ├── shared/   # 共享 Session 管理（withSession API）
-│   ├── login/    # 登录 (qr, sms, auto-login)
+│   ├── shared/   # 共享基础设施（Session管理、AutoLogin、页面准备）（withSession API）
+│   ├── login/    # 登录 (qr, sms) (qr, sms, auto-login)
 │   ├── search/   # 搜索
 │   ├── publish/  # 发布 (uploader/)
 │   ├── interact/ # 互动 (like, collect, comment, follow)
@@ -240,6 +240,22 @@ cli ──────► actions ──────► (user, config, core)
                       core
 ```
 
+**actions 内部层次**：
+
+```
+operations (login, search, publish, interact, scrape)
+       │
+       ├──► auth (状态检测：ensureLoginStatus, checkErrorPage, verifySession)
+       │
+       └──► shared (基础设施)
+              ├── session.ts      # withSession API
+              ├── auto-login.ts   # 自动登录编排 (从 login/ 移入)
+              ├── page-prep.ts    # 页面准备
+              ├── browser-launcher.ts
+              ├── selectors.ts
+              └── url-utils.ts
+```
+
 **分层规则**：
 - `cli` → 只依赖 `actions`
 - `actions` → 可依赖 `user`, `config`, `core`
@@ -247,10 +263,17 @@ cli ──────► actions ──────► (user, config, core)
 - `config` → 只依赖 `core/error`（无业务逻辑）
 - `core` → 无外部依赖（平台无关）
 
+**actions 内部规则**：
+- `operations` (login, search, etc.) → 可依赖 `auth` 和 `shared`
+- `auth` → 只依赖 `shared/selectors`（纯状态检测，无登录操作）
+- `shared` → 依赖 `auth`（状态检测）和 `login/qr`（QR 实现）
+- `login/auto-login.ts` → 重导出 `shared/auto-login`（向后兼容）
+
 **关键原则**：
 - 上层可依赖下层，下层不可依赖上层
 - `config` 模块只包含配置数据，不包含业务逻辑
 - Session 相关函数（`withSession`, `ensureLoginStatus`, `checkErrorPage`）在 `actions/shared/session.ts`
+- `autoLogin` 已移至 `shared/auto-login.ts`（解决循环依赖）
 - 禁止循环依赖
 
 ---
