@@ -229,37 +229,3 @@ export async function smsLogin(
  * @param phone - Phone number
  * @param code - SMS verification code (6 digits)
  */
-export async function smsLoginWithCode(page: Page, phone: string, code: string): Promise<boolean> {
-  debugLog('Attempting SMS login with phone and code...');
-
-  // Navigate to login page
-  await page.goto(urls.login);
-  await randomDelay(1000, 2000);
-
-  // Click SMS login tab
-  const smsTabClicked = await humanClick(page, 'text=手机登录, text=短信登录, [class*="sms"]');
-  if (!smsTabClicked) {
-    return false;
-  }
-
-  await delay(1000);
-
-  // Enter phone number
-  await enterPhoneNumber(page, phone);
-
-  // Send SMS code
-  await sendSmsCode(page);
-
-  // Wait a moment for user to receive the code
-  await delay(2000);
-
-  // Enter verification code
-  await enterSmsCode(page, code);
-
-  // Wait for login to complete
-  await delay(2000);
-
-  // Check if login successful
-  const isLoggedIn = await checkLoginStatus(page);
-  return isLoggedIn;
-}

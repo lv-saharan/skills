@@ -2,32 +2,28 @@
  * Login module selectors
  *
  * @module login/selectors
- * @description CSS selectors for login functionality on Xiaohongshu
+ * @description CSS selectors for login-specific functionality on Xiaohongshu
  *
- * NOTE: These selectors are used by:
- * - actions/login/* - Login operations
- * - core/anti-detect - checkLoginStatus() (via parameter injection)
- * - config/session - ensureLoginStatus() (will migrate)
+ * NOTE: Shared login selectors (LOGIN_MODAL_SELECTOR, USER_COMPONENT_SELECTOR,
+ * LOGIN_BUTTON_SELECTORS, LOGIN_MODAL_SELECTORS) are now in shared/selectors.ts
  *
- * Verified: 2026-04-05
+ * This file only contains login-method-specific selectors:
+ * - QR code login selectors
+ * - SMS login selectors
+ *
+ * Verified: 2026-04-07
  */
 
 import type { LoginSelectors } from '../../core/anti-detect';
 
 // ============================================
-// Login Selectors
+// Login Selectors Structure
 // ============================================
 
 /**
  * Login selectors for Xiaohongshu
  *
- * @description Selectors for login modal, buttons, QR code, and SMS login
- *
- * Structure:
- * - Login modal: .login-container
- * - Login buttons: Multiple fallback patterns
- * - User component (logged in): .user.side-bar-component
- * - QR code: Canvas element inside login container
+ * @description Selectors structure for login functionality
  */
 export const LOGIN_SELECTORS: LoginSelectors = {
   /** Login modal container */
@@ -41,7 +37,7 @@ export const LOGIN_SELECTORS: LoginSelectors = {
 } as const;
 
 // ============================================
-// QR Code Selectors
+// QR Code Selectors (Login-specific)
 // ============================================
 
 /**
@@ -53,7 +49,7 @@ export const QR_SELECTORS: string[] = ['[class*="qr"]', '.login-container canvas
 export const QR_TAB_SELECTOR = '[class*="qr"]';
 
 // ============================================
-// SMS Login Selectors
+// SMS Login Selectors (Login-specific)
 // ============================================
 
 /**
@@ -69,35 +65,6 @@ export const SMS_SELECTORS = {
   /** SMS code input */
   smsCodeInput: 'input[maxlength="6"]',
 } as const;
-
-// ============================================
-// Convenience Arrays
-// ============================================
-
-/**
- * Login button selectors as array
- */
-export const LOGIN_BUTTON_SELECTORS = LOGIN_SELECTORS.button;
-
-/**
- * Login modal selector (single string)
- */
-export const LOGIN_MODAL_SELECTOR = LOGIN_SELECTORS.modal;
-
-/**
- * User component selector
- */
-export const USER_COMPONENT_SELECTOR = LOGIN_SELECTORS.userComponent;
-
-/**
- * All login-related selectors as flat array
- * Useful for waiting for any login element to appear
- */
-export const LOGIN_MODAL_SELECTORS = [
-  LOGIN_SELECTORS.modal,
-  ...LOGIN_SELECTORS.button,
-  LOGIN_SELECTORS.userComponent,
-];
 
 // ============================================
 // Type Exports

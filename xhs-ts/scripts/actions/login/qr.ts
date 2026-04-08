@@ -1,4 +1,4 @@
-/**
+﻿/**
  * QR Code login implementation
  *
  * @module login/qr
@@ -8,12 +8,13 @@
 import type { Page } from 'playwright';
 import { SkillError, SkillErrorCode, urls } from '../../config';
 import { getTmpFilePath } from '../../core/utils';
-import { QR_SELECTORS, LOGIN_MODAL_SELECTORS, LOGIN_BUTTON_SELECTORS } from './selectors';
+import { QR_SELECTORS } from './selectors';
+import { LOGIN_MODAL_SELECTORS, LOGIN_BUTTON_SELECTORS } from '../shared/selectors';
 import type { BrowserInstance } from '../../core/browser/types';
 import type { UserName } from '../../user';
 import { debugLog, delay, randomDelay, waitForCondition } from '../../core/utils';
 import { humanClick, checkCaptcha } from '../../core/anti-detect';
-import { checkErrorPage } from '../shared/session';
+import { checkErrorPage } from '../auth';
 import { outputQrCode } from '../../core/utils/output';
 import { writeFile } from 'fs/promises';
 import type { LoginResult } from './types';
@@ -32,7 +33,7 @@ const QR_EXPIRED_PATTERNS = /二维码.*过期|已失效|请刷新|二维码已�
 /**
  * Capture QR code and save to file (for headless mode)
  */
-export async function captureQrCodeToFile(page: Page, user?: UserName): Promise<string> {
+async function captureQrCodeToFile(page: Page, user?: UserName): Promise<string> {
   try {
     for (const selector of QR_SELECTORS) {
       const qrElement = page.locator(selector).first();
@@ -175,7 +176,7 @@ export async function waitForQrScan(page: Page, timeout: number): Promise<void> 
 /**
  * Trigger login modal from home page
  */
-async function triggerLoginModal(page: Page): Promise<void> {
+export async function triggerLoginModal(page: Page): Promise<void> {
   debugLog('Navigating to home page...');
   await page.goto(urls.home, { waitUntil: 'domcontentloaded', timeout: 30000 });
   await randomDelay(2000, 3000);
