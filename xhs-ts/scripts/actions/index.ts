@@ -9,39 +9,31 @@
  */
 
 // ============================================
-// Login Actions
+// Auth - Authentication State Management
 // ============================================
 
 export {
-  executeLogin,
-  checkLogin,
-  ensureLogin,
-  qrLogin,
-  smsLogin,
-  verifyExistingSession,
-  waitForQrScan,
-  captureQrCodeToFile,
-} from './login';
+  ensureLoginStatus,
+  ensureLoginStatusWithTrigger,
+  checkErrorPage,
+  verifySession,
+} from './auth';
+
+export type { EnsureLoginStatusResult, ErrorPageResult } from './auth';
+
+// ============================================
+// Login Actions
+// ============================================
+
+export { executeLogin, autoLogin, qrLogin, smsLogin } from './login';
 
 export type {
   LoginMethod,
   LoginOptions,
   LoginResult,
-  EnsureLoginOptions,
-  EnsureLoginResult,
-  LoginSelectors,
+  AutoLoginOptions,
+  AutoLoginResult,
   QrCodeOutput,
-} from './login';
-
-export {
-  LOGIN_SELECTORS,
-  QR_SELECTORS,
-  QR_TAB_SELECTOR,
-  SMS_SELECTORS,
-  LOGIN_BUTTON_SELECTORS,
-  LOGIN_MODAL_SELECTOR,
-  USER_COMPONENT_SELECTOR,
-  LOGIN_MODAL_SELECTORS,
 } from './login';
 
 // ============================================
@@ -62,25 +54,11 @@ export type {
   SearchResultAuthor,
   NoteStats,
   BuildSearchUrlOptions,
-  SearchFilters,
 } from './search';
 
-export {
-  buildSearchUrl,
-  getFilterSelectors,
-  navigateToSearch,
-  isVerificationPage,
-  hasSearchResults,
-  searchViaHomepage,
-  applyFiltersViaUI,
-} from './search';
+export { buildSearchUrl, navigateToSearch, isVerificationPage, hasSearchResults } from './search';
 
-export {
-  hoverNotesForTokens,
-  loadMoreResults,
-  NOTES_PER_SCROLL,
-  extractSearchResults,
-} from './search';
+export { hoverNotesForTokens, loadMoreResults, NOTES_PER_SCROLL } from './search';
 
 // ============================================
 // Publish Actions
@@ -91,8 +69,6 @@ export { executePublish } from './publish';
 export type { PublishMediaType, PublishOptions, PublishResult, MediaValidation } from './publish';
 
 export {
-  validateMedia,
-  validateContent,
   MAX_TITLE_LENGTH,
   MAX_CONTENT_LENGTH,
   MAX_IMAGES,
@@ -113,14 +89,6 @@ export {
   waitForUserLogin,
   waitForImageUpload,
   waitForVideoUpload,
-} from './publish';
-
-export { fillTitle, fillContent, addTags } from './publish';
-
-export {
-  submitAndVerify,
-  clickPublishButtonOnHomepage,
-  navigateToPublishPageFromCreatorHome,
 } from './publish';
 
 // ============================================
@@ -145,23 +113,6 @@ export type {
   UserIdExtraction,
 } from './interact';
 
-export {
-  extractNoteId,
-  extractNoteIdFromUrl,
-  extractUserId,
-  extractUserIdFromUrl,
-} from './interact';
-
-export { withAuthenticatedAction, executeBatch, INTERACTION_DELAYS } from './interact';
-
-export {
-  NOTE_SELECTORS,
-  LIKE_SELECTORS,
-  COLLECT_SELECTORS,
-  COMMENT_SELECTORS,
-  FOLLOW_SELECTORS,
-} from './interact';
-
 // ============================================
 // Scrape Actions
 // ============================================
@@ -181,46 +132,71 @@ export type {
   ScrapeUserRecentNote,
 } from './scrape';
 
-export { NOTE_SELECTORS as SCRAPE_NOTE_SELECTORS, USER_SELECTORS, ERROR_SELECTORS } from './scrape';
+// ============================================
+// Selectors - Unified Export
+// ============================================
+
+// Login/Auth selectors
+export {
+  LOGIN_MODAL_SELECTOR,
+  USER_COMPONENT_SELECTOR,
+  LOGIN_BUTTON_SELECTORS,
+  LOGIN_MODAL_SELECTORS,
+} from './shared/selectors';
+
+// Login-specific selectors
+export { LOGIN_SELECTORS, QR_SELECTORS, QR_TAB_SELECTOR, SMS_SELECTORS } from './login';
+export type { LoginSelectors } from './login';
+
+// Note/User selectors
+export {
+  NOTE_SELECTORS,
+  LIKE_SELECTORS,
+  COLLECT_SELECTORS,
+  COMMENT_SELECTORS,
+  FOLLOW_SELECTORS,
+  USER_SELECTORS,
+} from './shared/selectors';
 
 // ============================================
-// Shared Session Management
+// Shared - Session Management
+// ============================================
+
+export { withSession, withAuthenticatedAction, INTERACTION_DELAYS } from './shared/session';
+
+export type { SessionContext, SessionOptions, AuthenticatedActionOptions } from './shared/session';
+
+// ============================================
+// Shared - Page Preparation
 // ============================================
 
 export {
-  withSession,
-  withAuthenticatedAction as withAuthenticatedActionSession,
+  preparePageForAction,
   navigateTo,
   checkPageHealth,
-  preparePageForAction,
-  executeBatch as executeBatchSession,
-  waitForStable,
-  humanScroll,
-  ensureLoginStatus,
-  checkErrorPage,
-} from './shared/session';
+  checkContentErrors,
+} from './shared/page-prep';
 
 export type {
-  SessionContext,
-  SessionOptions,
-  AuthenticatedActionOptions,
-  BatchOptions,
-} from './shared/session';
-
-export { INTERACTION_DELAYS as SESSION_DELAYS } from './shared/session';
+  PageHealthStatus,
+  PageErrorType,
+  PreparePageResult,
+  PreparePageOptions,
+} from './shared/page-prep';
 
 // ============================================
-// Browser Launcher
+// Shared - Browser Launcher
 // ============================================
 
 export {
   launchProfileBrowser,
   withProfile,
   randomStealthDelay,
-  hasCDPInstance,
-  getCDPPort,
-  closeCDPInstance,
-  checkCDPConnection,
+  hasBrowserInstance,
+  getBrowserPort,
+  closeBrowserInstance,
+  checkServerConnection,
+  checkBrowserEndpointHealth,
   loadConnectionInfo,
   saveConnectionInfo,
   clearConnectionInfo,
