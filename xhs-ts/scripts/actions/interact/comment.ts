@@ -7,12 +7,13 @@
 
 import type { Page } from 'playwright';
 import type { CommentOptions, CommentResult } from './types';
-import { COMMENT_SELECTORS } from './selectors';
+import { COMMENT_SELECTORS } from '../shared/selectors';
 import { extractNoteId } from '../shared/url-utils';
 import { debugLog, delay, gaussianDelay } from '../../core/utils';
 import { humanClick, humanScroll, humanType, checkLoginStatus } from '../../core/anti-detect';
 import { outputSuccess, outputFromError } from '../../core/utils/output';
-import { withSession, preparePageForAction, INTERACTION_DELAYS } from '../shared/session';
+import { withSession, INTERACTION_DELAYS } from '../shared/session';
+import { preparePageForAction } from '../shared/page-prep';
 import { resolveUser } from '../../user';
 
 // ============================================
@@ -109,7 +110,12 @@ async function checkCommentError(page: Page): Promise<string | null> {
 // Core Comment Logic
 // ============================================
 
-async function performComment(page: Page, url: string, text: string): Promise<CommentResult> {
+async function performComment(
+  page: Page,
+  url: string,
+  text: string,
+  user: string
+): Promise<CommentResult> {
   debugLog('开始执行评论...');
 
   const extraction = extractNoteId(url);
@@ -119,9 +125,9 @@ async function performComment(page: Page, url: string, text: string): Promise<Co
   const noteId = extraction.id!;
 
   // Prepare page (navigate + check errors + simulate reading)
-  const pageError = await preparePageForAction(page, url);
-  if (pageError) {
-    return { success: false, url, noteId, text, error: pageError };
+  const prep = await preparePageForAction(page, url, user);
+  if (!prep.success) {
+    return { success: false, url, noteId, text, error: prep.error };
   }
 
   // Scroll down to find comment section
@@ -247,7 +253,7 @@ export async function executeComment(options: CommentOptions): Promise<void> {
       async (ctx) => {
         const { page } = ctx;
 
-        const result = await performComment(page, url, text);
+        const result = await performComment(page, url, text, ctx.user);
         result.user = resolvedUser;
 
         if (!result.success && result.error) {

@@ -7,12 +7,13 @@
 
 import type { Page, Locator } from 'playwright';
 import type { FollowOptions, FollowResult } from './types';
-import { FOLLOW_SELECTORS } from './selectors';
+import { FOLLOW_SELECTORS } from '../shared/selectors';
 import { extractUserIdFromUrl } from '../shared/url-utils';
 import { debugLog, gaussianDelay } from '../../core/utils';
 import { humanClick, checkLoginStatus } from '../../core/anti-detect';
 import { outputSuccess, outputFromError } from '../../core/utils/output';
-import { withSession, preparePageForAction, INTERACTION_DELAYS } from '../shared/session';
+import { withSession, INTERACTION_DELAYS } from '../shared/session';
+import { preparePageForAction } from '../shared/page-prep';
 import { resolveUser } from '../../user';
 
 // ============================================
@@ -90,7 +91,7 @@ async function checkFollowStatus(page: Page): Promise<{ visible: boolean; follow
 // Core Follow Logic
 // ============================================
 
-async function performFollow(page: Page, url: string): Promise<FollowResult> {
+async function performFollow(page: Page, url: string, user: string): Promise<FollowResult> {
   debugLog('开始执行关注...');
 
   const extraction = extractUserIdFromUrl(url);
@@ -101,14 +102,14 @@ async function performFollow(page: Page, url: string): Promise<FollowResult> {
 
   // Prepare page (navigate + check errors + simulate reading)
   // Note: For user pages, we need to check for different error messages
-  const pageError = await preparePageForAction(page, url);
-  if (pageError) {
+  const prep = await preparePageForAction(page, url, user);
+  if (!prep.success) {
     // Check for user-specific errors
     const pageContent = await page.content();
     if (pageContent.includes('用户不存在')) {
       return { success: false, url, userId, following: false, error: '用户不存在' };
     }
-    return { success: false, url, userId, following: false, error: pageError };
+    return { success: false, url, userId, following: false, error: prep.error };
   }
 
   // Check current follow status
@@ -187,7 +188,7 @@ export async function executeFollow(options: FollowOptions): Promise<void> {
         let failed = 0;
 
         for (let i = 0; i < urls.length; i++) {
-          const result = await performFollow(page, urls[i]);
+          const result = await performFollow(page, urls[i], ctx.user);
           result.user = resolvedUser;
           results.push(result);
 

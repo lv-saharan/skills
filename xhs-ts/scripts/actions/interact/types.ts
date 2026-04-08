@@ -8,6 +8,34 @@
 import type { UserName } from '../../user';
 
 // ============================================
+// Note ID Extraction
+// ============================================
+
+/** Result of extracting note ID from URL */
+export interface NoteIdExtraction {
+  /** Successfully extracted */
+  success: boolean;
+  /** Note ID if found */
+  noteId?: string;
+  /** Error message if failed */
+  error?: string;
+}
+
+// ============================================
+// User ID Extraction
+// ============================================
+
+/** Result of extracting user ID from URL */
+export interface UserIdExtraction {
+  /** Successfully extracted */
+  success: boolean;
+  /** User ID if found */
+  userId?: string;
+  /** Error message if failed */
+  error?: string;
+}
+
+// ============================================
 // Like Options
 // ============================================
 
@@ -59,20 +87,6 @@ export interface LikeManyResult {
   results: LikeResult[];
   /** User name that performed the action */
   user?: UserName;
-}
-
-// ============================================
-// Note ID Extraction
-// ============================================
-
-/** Result of extracting note ID from URL */
-export interface NoteIdExtraction {
-  /** Successfully extracted */
-  success: boolean;
-  /** Note ID if found */
-  noteId?: string;
-  /** Error message if failed */
-  error?: string;
 }
 
 // ============================================
@@ -163,20 +177,6 @@ export interface CommentResult {
   error?: string;
   /** User name that performed the action */
   user?: UserName;
-}
-
-// ============================================
-// User ID Extraction
-// ============================================
-
-/** Result of extracting user ID from URL */
-export interface UserIdExtraction {
-  /** Successfully extracted */
-  success: boolean;
-  /** User ID if found */
-  userId?: string;
-  /** Error message if failed */
-  error?: string;
 }
 
 // ============================================
