@@ -1,12 +1,13 @@
-/**
+﻿/**
  * Shared Module - Unified utilities for all Xiaohongshu actions
  *
  * @module actions/shared
  * @description This is the SINGLE source of truth for:
  *              - Session management (withSession, withAuthenticatedAction)
- *              - Page utilities (navigateTo, checkPageHealth, preparePageForAction)
- *              - Batch operations (executeBatch)
- *              - Human simulation (humanScroll, waitForStable)
+ *              - Page preparation (preparePageForAction, checkPageHealth)
+ *              - URL utilities (extractNoteIdFromUrl, extractUserIdFromUrl)
+ *              - Browser launching (withProfile, launchProfileBrowser)
+ *              - Cross-module selectors
  *
  * All actions should import from this module for session handling.
  */
@@ -15,43 +16,51 @@
 // Session Management (Primary API)
 // ============================================
 
-export {
-  withSession,
-  withAuthenticatedAction,
-  type SessionContext,
-  type SessionOptions,
-  type AuthenticatedActionOptions,
+export { withSession, withAuthenticatedAction, INTERACTION_DELAYS } from './session';
+
+export type {
+  SessionContext,
+  SessionOptions,
+  AuthenticatedActionOptions,
+  PageErrorType,
+  PreparePageResult,
 } from './session';
 
 // ============================================
-// Page Utilities
+// Page Preparation (Unified API)
 // ============================================
 
-export { navigateTo, checkPageHealth, preparePageForAction } from './session';
+export { preparePageForAction, navigateTo, checkPageHealth, checkContentErrors } from './page-prep';
+
+export type { PageHealthStatus, PreparePageOptions } from './page-prep';
 
 // ============================================
-// Batch Operations
+// Browser Launcher
 // ============================================
 
-export { executeBatch, type BatchOptions } from './session';
+export {
+  launchProfileBrowser,
+  withProfile,
+  randomStealthDelay,
+  hasBrowserInstance,
+  getBrowserPort,
+  closeBrowserInstance,
+  checkServerConnection,
+  loadConnectionInfo,
+  saveConnectionInfo,
+  clearConnectionInfo,
+} from './browser-launcher';
+
+export type {
+  ProfileLaunchOptions,
+  ProfileBrowserResult,
+  StealthBehaviorConfig,
+} from './browser-launcher';
 
 // ============================================
-// Human Simulation
+// URL Utilities (Single Source)
 // ============================================
 
-export { waitForStable, humanScroll } from './session';
-
-// ============================================
-// Constants
-// ============================================
-
-export { INTERACTION_DELAYS } from './session';
-
-// ============================================
-// Re-export from other modules for convenience
-// ============================================
-
-// URL utilities (now in shared)
 export {
   extractNoteId,
   extractNoteIdFromUrl,
@@ -59,17 +68,21 @@ export {
   extractUserIdFromUrl,
 } from './url-utils';
 
-// Delay utilities (from core)\r\nexport { delay, randomDelay, gaussianDelay } from '../../core/utils';\r\n\r\n// ============================================\r\n// Human-like Interaction Utilities\r\n// ============================================\r\n\r\nexport {\r\n  humanType,\r\n  retryWithHesitation,\r\n  type HumanTypeOptions,\r\n  type HumanScrollOptions,\r\n  type RetryOptions,\r\n} from '../../core/anti-detect';
-
 // ============================================
-// Shared Selectors
+// Selectors (Cross-Module)
 // ============================================
 
 export {
   LOGIN_MODAL_SELECTOR,
   USER_COMPONENT_SELECTOR,
   LOGIN_BUTTON_SELECTORS,
-  QR_CODE_SELECTORS,
-  QR_TAB_SELECTOR,
   LOGIN_MODAL_SELECTORS,
 } from './selectors';
+
+// ============================================
+// Auto Login (moved from login/auto-login.ts)
+// ============================================
+
+export { autoLogin } from './auto-login';
+
+export type { AutoLoginOptions, AutoLoginResult } from './auto-login';

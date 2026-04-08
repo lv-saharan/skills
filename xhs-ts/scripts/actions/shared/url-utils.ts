@@ -6,21 +6,7 @@
  */
 
 import { isPlatformUrl } from '../../config';
-import type { NoteIdExtraction, UserIdExtraction } from '../interact/types';
-
-// ============================================
-// Internal Types
-// ============================================
-
-/** Generic result of extracting an ID from URL (internal use) */
-interface UrlExtractionResult {
-  /** Successfully extracted */
-  success: boolean;
-  /** Extracted ID if found */
-  id?: string;
-  /** Error message if failed */
-  error?: string;
-}
+import type { NoteIdExtraction, UserIdExtraction, UrlExtractionResult } from './url-types';
 
 // ============================================
 // Core URL Extraction
