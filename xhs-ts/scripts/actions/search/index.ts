@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Search module
  *
  * @module search
@@ -23,23 +23,11 @@ export type {
 } from './types';
 
 // URL builder
-export { buildSearchUrl, getFilterSelectors } from './url-builder';
+export { buildSearchUrl } from './url-builder';
 export type { BuildSearchUrlOptions } from './url-builder';
 
 // Navigation
-export {
-  navigateToSearch,
-  isVerificationPage,
-  hasSearchResults,
-  searchViaHomepage,
-  applyFiltersViaUI,
-  SEARCH_CONTAINER_SELECTOR,
-  NOTE_ITEM_SELECTOR,
-} from './navigation';
-export type { SearchFilters } from './navigation';
+export { navigateToSearch, isVerificationPage, hasSearchResults } from './navigation';
 
 // Extraction helpers
 export { hoverNotesForTokens, loadMoreResults, NOTES_PER_SCROLL } from './extraction';
-
-// Result extractor
-export { extractSearchResults } from './result-extractor';
