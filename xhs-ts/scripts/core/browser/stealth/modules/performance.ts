@@ -1,3 +1,4 @@
+﻿import type { UserFingerprint } from '../types';
 /**
  * Performance stealth module
  *
@@ -49,3 +50,21 @@ export function generatePerformanceScript(): string {
 })();
 `;
 }
+
+import type { StealthModule } from '../types';
+import { autoRegister } from '../registry';
+
+/**
+ * performance stealth module implementation
+ */
+export const performanceModule: StealthModule = {
+  name: 'performance',
+  enabledByDefault: true,
+
+  generate(fp: UserFingerprint, config?: unknown): string {
+    return generatePerformanceScript();
+  },
+};
+
+// Auto-register module
+autoRegister(performanceModule);

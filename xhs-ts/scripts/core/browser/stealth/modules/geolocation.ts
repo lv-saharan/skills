@@ -1,17 +1,21 @@
 ﻿/**
  * Geolocation stealth module
  *
- * @module browser/stealth/geolocation
- * @description Mock Geolocation API with configurable location
+ * @module browser/stealth/modules/geolocation
+ * @description Mock geolocation API with configurable location
  */
 
-import type { GeolocationConfig } from './types';
-import { DEFAULT_GEOLOCATION } from './constants';
+import type { UserFingerprint, GeolocationConfig } from '../types';
+import type { StealthModule } from '../types';
+import { autoRegister } from '../registry';
+import { DEFAULT_GEOLOCATION } from '../constants';
 
 /**
  * Generate Geolocation mock script
  */
-export function generateGeolocationScript(config: GeolocationConfig = DEFAULT_GEOLOCATION): string {
+function generateGeolocationScriptInternal(
+  config: GeolocationConfig = DEFAULT_GEOLOCATION
+): string {
   const {
     latitude,
     longitude,
@@ -88,4 +92,29 @@ export function generateGeolocationScript(config: GeolocationConfig = DEFAULT_GE
   }
 })();
 `;
+}
+
+/**
+ * Geolocation stealth module implementation
+ */
+export const geolocationModule: StealthModule = {
+  name: 'geolocation',
+  enabledByDefault: true,
+
+  generate(fp: UserFingerprint, config?: unknown): string {
+    // Config for geolocation is GeolocationConfig, not StealthModuleConfig
+    const geoConfig = config as GeolocationConfig | undefined;
+    return generateGeolocationScriptInternal(geoConfig);
+  },
+};
+
+// Auto-register module
+autoRegister(geolocationModule);
+
+/**
+ * Generate geolocation stealth script (legacy export for backward compatibility)
+ * @deprecated Use geolocationModule.generate() instead
+ */
+export function generateGeolocationScript(config?: GeolocationConfig): string {
+  return geolocationModule.generate({} as UserFingerprint, config);
 }

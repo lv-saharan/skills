@@ -1,11 +1,11 @@
-/**
+﻿/**
  * Canvas stealth module
  *
  * @module browser/stealth/canvas
  * @description Add noise to canvas fingerprint
  */
 
-import type { UserFingerprint } from './types';
+import type { UserFingerprint } from '../types';
 
 /**
  * Generate Canvas fingerprint noise script
@@ -42,3 +42,21 @@ export function generateCanvasScript(fp: UserFingerprint): string {
 })();
 `;
 }
+
+import type { StealthModule } from '../types';
+import { autoRegister } from '../registry';
+
+/**
+ * canvas stealth module implementation
+ */
+export const canvasModule: StealthModule = {
+  name: 'canvas',
+  enabledByDefault: true,
+
+  generate(fp: UserFingerprint, config?: unknown): string {
+    return generateCanvasScript(fp);
+  },
+};
+
+// Auto-register module
+autoRegister(canvasModule);

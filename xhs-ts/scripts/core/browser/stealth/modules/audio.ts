@@ -1,11 +1,11 @@
-/**
+﻿/**
  * Audio stealth module
  *
  * @module browser/stealth/audio
  * @description Add noise to audio fingerprint
  */
 
-import type { UserFingerprint } from './types';
+import type { UserFingerprint } from '../types';
 
 /**
  * Generate Audio fingerprint noise script
@@ -49,3 +49,21 @@ export function generateAudioScript(fp: UserFingerprint): string {
 })();
 `;
 }
+
+import type { StealthModule } from '../types';
+import { autoRegister } from '../registry';
+
+/**
+ * audio stealth module implementation
+ */
+export const audioModule: StealthModule = {
+  name: 'audio',
+  enabledByDefault: true,
+
+  generate(fp: UserFingerprint, config?: unknown): string {
+    return generateAudioScript(fp);
+  },
+};
+
+// Auto-register module
+autoRegister(audioModule);

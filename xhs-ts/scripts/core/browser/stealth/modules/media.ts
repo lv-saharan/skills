@@ -1,3 +1,4 @@
+﻿import type { UserFingerprint } from '../types';
 /**
  * Media stealth module
  *
@@ -49,3 +50,21 @@ try {
 } catch (e) {}
 `;
 }
+
+import type { StealthModule } from '../types';
+import { autoRegister } from '../registry';
+
+/**
+ * media stealth module implementation
+ */
+export const mediaModule: StealthModule = {
+  name: 'media',
+  enabledByDefault: true,
+
+  generate(fp: UserFingerprint, config?: unknown): string {
+    return generateMediaScript();
+  },
+};
+
+// Auto-register module
+autoRegister(mediaModule);

@@ -1,11 +1,11 @@
-/**
+﻿/**
  * Font stealth module
  *
  * @module browser/stealth/font
  * @description Protect against font fingerprinting
  */
 
-import type { UserFingerprint } from './types';
+import type { UserFingerprint } from '../types';
 
 /**
  * Generate font fingerprint protection script
@@ -45,3 +45,21 @@ export function generateFontScript(fp: UserFingerprint): string {
 })();
 `;
 }
+
+import type { StealthModule } from '../types';
+import { autoRegister } from '../registry';
+
+/**
+ * font stealth module implementation
+ */
+export const fontModule: StealthModule = {
+  name: 'font',
+  enabledByDefault: true,
+
+  generate(fp: UserFingerprint, config?: unknown): string {
+    return generateFontScript(fp);
+  },
+};
+
+// Auto-register module
+autoRegister(fontModule);

@@ -1,3 +1,4 @@
+﻿import type { UserFingerprint } from '../types';
 /**
  * Battery stealth module
  *
@@ -28,3 +29,21 @@ if ('getBattery' in navigator) {
 }
 `;
 }
+
+import type { StealthModule } from '../types';
+import { autoRegister } from '../registry';
+
+/**
+ * battery stealth module implementation
+ */
+export const batteryModule: StealthModule = {
+  name: 'battery',
+  enabledByDefault: true,
+
+  generate(fp: UserFingerprint, config?: unknown): string {
+    return generateBatteryScript();
+  },
+};
+
+// Auto-register module
+autoRegister(batteryModule);

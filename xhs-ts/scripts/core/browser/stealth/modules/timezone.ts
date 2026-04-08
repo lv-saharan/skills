@@ -1,3 +1,4 @@
+﻿import type { UserFingerprint } from '../types';
 /**
  * Timezone stealth module
  *
@@ -35,3 +36,21 @@ export function generateTimezoneScript(): string {
 })();
 `;
 }
+
+import type { StealthModule } from '../types';
+import { autoRegister } from '../registry';
+
+/**
+ * timezone stealth module implementation
+ */
+export const timezoneModule: StealthModule = {
+  name: 'timezone',
+  enabledByDefault: true,
+
+  generate(fp: UserFingerprint, config?: unknown): string {
+    return generateTimezoneScript();
+  },
+};
+
+// Auto-register module
+autoRegister(timezoneModule);

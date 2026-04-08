@@ -1,17 +1,23 @@
-/**
+﻿/**
  * Navigator stealth module
  *
- * @module browser/stealth/navigator
+ * @module browser/stealth/modules/navigator
  * @description Spoof navigator properties to hide automation
  */
 
-import type { UserFingerprint } from './types';
+import type { UserFingerprint } from '../types';
+import type { StealthModule } from '../types';
+import { autoRegister } from '../registry';
 
 /**
- * Generate navigator stealth script
+ * Navigator stealth module implementation
  */
-export function generateNavigatorScript(fp: UserFingerprint): string {
-  return `
+export const navigatorModule: StealthModule = {
+  name: 'navigator',
+  enabledByDefault: true,
+
+  generate(fp: UserFingerprint): string {
+    return `
 // Navigator properties spoofing
 
 // Hide webdriver property
@@ -124,4 +130,16 @@ if (originalQuery) {
 }
 
 `;
+  },
+};
+
+// Auto-register module
+autoRegister(navigatorModule);
+
+/**
+ * Generate navigator stealth script (legacy export for backward compatibility)
+ * @deprecated Use navigatorModule.generate() instead
+ */
+export function generateNavigatorScript(fp: UserFingerprint): string {
+  return navigatorModule.generate(fp);
 }

@@ -1,11 +1,11 @@
-/**
+﻿/**
  * Screen stealth module
  *
  * @module browser/stealth/screen
  * @description Spoof screen properties and CSS media queries
  */
 
-import type { UserFingerprint } from './types';
+import type { UserFingerprint } from '../types';
 
 /**
  * Generate screen stealth script
@@ -83,3 +83,21 @@ Object.defineProperty(window, 'devicePixelRatio', { get: () => ${fp.screen.devic
 })();
 `;
 }
+
+import type { StealthModule } from '../types';
+import { autoRegister } from '../registry';
+
+/**
+ * screen stealth module implementation
+ */
+export const screenModule: StealthModule = {
+  name: 'screen',
+  enabledByDefault: true,
+
+  generate(fp: UserFingerprint, config?: unknown): string {
+    return generateScreenScript(fp);
+  },
+};
+
+// Auto-register module
+autoRegister(screenModule);

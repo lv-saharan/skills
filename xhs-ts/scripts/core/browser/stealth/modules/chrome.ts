@@ -1,3 +1,4 @@
+﻿import type { UserFingerprint } from '../types';
 /**
  * Chrome API stealth module
  *
@@ -84,3 +85,21 @@ export function generateChromeScript(): string {
 })();
 `;
 }
+
+import type { StealthModule } from '../types';
+import { autoRegister } from '../registry';
+
+/**
+ * chrome stealth module implementation
+ */
+export const chromeModule: StealthModule = {
+  name: 'chrome',
+  enabledByDefault: true,
+
+  generate(fp: UserFingerprint, config?: unknown): string {
+    return generateChromeScript();
+  },
+};
+
+// Auto-register module
+autoRegister(chromeModule);

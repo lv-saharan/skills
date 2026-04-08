@@ -1,3 +1,4 @@
+﻿import type { UserFingerprint } from '../types';
 /**
  * WebRTC stealth module
  *
@@ -29,3 +30,21 @@ export function generateWebRTCScript(): string {
 })();
 `;
 }
+
+import type { StealthModule } from '../types';
+import { autoRegister } from '../registry';
+
+/**
+ * webrtc stealth module implementation
+ */
+export const webrtcModule: StealthModule = {
+  name: 'webrtc',
+  enabledByDefault: true,
+
+  generate(fp: UserFingerprint, config?: unknown): string {
+    return generateWebRTCScript();
+  },
+};
+
+// Auto-register module
+autoRegister(webrtcModule);

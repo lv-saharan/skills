@@ -1,11 +1,11 @@
-/**
+﻿/**
  * WebGL stealth module
  *
  * @module browser/stealth/webgl
  * @description Spoof WebGL fingerprint to hide automation
  */
 
-import type { UserFingerprint } from './types';
+import type { UserFingerprint } from '../types';
 
 /**
  * Generate WebGL stealth script
@@ -44,3 +44,21 @@ if (typeof WebGL2RenderingContext !== 'undefined') {
 }
 `;
 }
+
+import type { StealthModule } from '../types';
+import { autoRegister } from '../registry';
+
+/**
+ * webgl stealth module implementation
+ */
+export const webglModule: StealthModule = {
+  name: 'webgl',
+  enabledByDefault: true,
+
+  generate(fp: UserFingerprint, config?: unknown): string {
+    return generateWebGLScript(fp);
+  },
+};
+
+// Auto-register module
+autoRegister(webglModule);
