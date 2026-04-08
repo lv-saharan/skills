@@ -18,8 +18,9 @@ export async function loadDevicePresets(configPath?: string): Promise<DevicePres
   try {
     const fs = await import('fs/promises');
     const content = await fs.readFile(filePath, 'utf-8');
-    const config = JSON.parse(content) as { presets?: DevicePreset[] };
-    return config.presets || [];
+    const config = JSON.parse(content) as { presets?: DevicePreset[]; devicePresets?: DevicePreset[] };
+    // Support both 'presets' and 'devicePresets' keys
+    return config.presets || config.devicePresets || [];
   } catch (error) {
     console.warn('Failed to load device presets:', error);
     return [];

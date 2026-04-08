@@ -13,7 +13,7 @@ import type {
   BrowserConfig,
   UserFingerprint,
 } from '../core/fingerprint/types';
-import type { GeolocationConfig } from '../core/browser/stealth/types';
+import type { GeolocationConfig, EnvironmentType } from '../core/browser/types';
 
 // Re-export types for backward compatibility
 export type {
@@ -24,6 +24,7 @@ export type {
   BrowserConfig,
   UserFingerprint,
   GeolocationConfig,
+  EnvironmentType,
 };
 
 // ============================================
@@ -34,18 +35,8 @@ export type {
 export type UserName = string;
 
 // ============================================
-// Environment Types (Task 1)
+// Fingerprint Source
 // ============================================
-
-/**
- * Environment detection type
- *
- * - gui-native: Real GUI environment with display
- * - gui-virtual: Virtual GUI (e.g., Xvfb, WSLg)
- * - headless-smart: Headless with smart preset matching
- * - headless-custom: Headless with custom configuration
- */
-export type EnvironmentType = 'gui-native' | 'gui-virtual' | 'headless-smart' | 'headless-custom';
 
 /**
  * Fingerprint source type
@@ -111,21 +102,21 @@ export interface UserListResult {
 }
 
 // ============================================
-// Connection Info (CDP) - NEW
+// Connection Info - NEW
 // ============================================
 
 /**
- * Browser connection information for CDP mode
+ * Browser connection information
  *
  * Stored within UserProfileData.connection field.
- * Only present when CDP browser instance is running.
+ * Only present when browser instance is running.
  */
 export interface ConnectionInfo {
-  /** CDP debugging port */
-  cdpPort: number;
+  /** Browser debugging port */
+  port: number;
   /** Browser process ID (0 on Windows due to 'start' command limitation) */
   pid?: number;
-  /** WebSocket endpoint URL for CDP connection */
+  /** WebSocket endpoint URL */
   wsEndpoint?: string;
   /** Headless mode the browser was started with */
   headless?: boolean;
@@ -166,14 +157,14 @@ export interface ProfileMeta {
  *
  * Replaces the previous two-file structure:
  * - users/{user}/meta.json (Profile metadata)
- * - users/{user}/connections/meta.json (CDP connection info)
+ * - users/{user}/connections/meta.json (browser connection info)
  */
 export interface UserProfileData {
   /** Schema version */
   version: 1;
   /** Profile metadata */
   meta: ProfileMeta;
-  /** CDP connection info (optional, only when CDP browser is running) */
+  /** Browser connection info (optional, only when browser is running) */
   connection?: ConnectionInfo;
   /** User geolocation config (optional, defaults to Shanghai) */
   geolocation?: GeolocationConfig;

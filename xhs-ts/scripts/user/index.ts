@@ -61,7 +61,7 @@ export {
 // Profile loading
 export { loadUserProfile } from './profile-loader';
 
-// v3 Unified Storage API (recommended for CDP connections)
+// v3 Unified Storage API (recommended for browser connections)
 export {
   getProfilePath,
   loadUserProfileData,

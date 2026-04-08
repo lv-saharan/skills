@@ -2,14 +2,14 @@
  * Unified Profile Storage (v3)
  *
  * @module user/storage-v3
- * @description Unified storage API for user profiles and CDP connections
+ * @description Unified storage API for user profiles and browser connections
  *
  * This module provides a single-file storage structure for user data:
- * - users/{user}/profile.json contains both profile metadata and CDP connection info
+ * - users/{user}/profile.json contains both profile metadata and browser connection info
  *
  * Replaces the previous two-file structure:
  * - users/{user}/meta.json (Profile metadata)
- * - users/{user}/connections/meta.json (CDP connection info)
+ * - users/{user}/connections/meta.json (browser connection info)
  */
 
 import { readFile, writeFile, mkdir, unlink, rename } from 'fs/promises';
@@ -233,7 +233,7 @@ export async function saveConnectionInfo(user: UserName, info: ConnectionInfo): 
 
   data.connection = info;
   await saveUserProfileData(user, data);
-  debugLog(`Saved connection info for user: ${user}`, { port: info.cdpPort });
+  debugLog(`Saved connection info for user: ${user}`, { port: info.port });
 }
 
 /**
@@ -333,7 +333,7 @@ async function migrateLegacyProfile(user: UserName): Promise<UserProfileData> {
       const content = await readFile(legacyConnPath, 'utf-8');
       const legacyConn = JSON.parse(content) as ConnectionInfo;
       connection = {
-        cdpPort: legacyConn.cdpPort,
+        port: legacyConn.port,
         pid: legacyConn.pid,
         wsEndpoint: legacyConn.wsEndpoint,
         startedAt: legacyConn.startedAt || new Date().toISOString(),
