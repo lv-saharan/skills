@@ -6,7 +6,7 @@
  */
 
 import type { UserName } from '../../user';
-import type { NoteIdExtraction, UserIdExtraction } from '../interact/types';
+import type { NoteIdExtraction, UserIdExtraction } from '../shared/url-types';
 
 // Re-export extraction types for convenience
 export type { NoteIdExtraction, UserIdExtraction };

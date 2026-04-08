@@ -11,7 +11,6 @@
 
 // Main function
 export { executeScrapeNote } from './note';
-export { extractNoteIdFromUrl } from '../shared/url-utils';
 
 // Types
 export type {
@@ -30,7 +29,6 @@ export type {
 
 // Main function
 export { executeScrapeUser } from './user';
-export { extractUserIdFromUrl } from '../shared/url-utils';
 
 // Types
 export type {
@@ -42,7 +40,3 @@ export type {
 } from './types';
 
 // ============================================
-// Selectors (for advanced usage)
-// ============================================
-
-export { NOTE_SELECTORS, USER_SELECTORS, ERROR_SELECTORS } from './selectors';

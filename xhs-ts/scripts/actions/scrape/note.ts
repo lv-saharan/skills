@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Note scraping functionality
  *
  * @module actions/scrape/note
@@ -7,12 +7,12 @@
 
 import type { Page } from 'playwright';
 import type { ScrapeNoteOptions, ScrapeNoteResult } from './types';
+import type { UserName } from '../../user';
 import { extractNoteIdFromUrl } from '../shared/url-utils';
-import { NOTE_SELECTORS, ERROR_SELECTORS } from './selectors';
+import { NOTE_SELECTORS } from '../shared/selectors';
 import { withSession, type SessionContext } from '../shared/session';
-import { timeouts } from '../../config/loader';
-import { debugLog, delay, outputSuccess, outputFromError } from '../../core/utils';
-import { checkCaptcha, checkLoginStatus, simulateReading } from '../../core/anti-detect';
+import { preparePageForAction, checkContentErrors } from '../shared/page-prep';
+import { debugLog, outputSuccess, outputFromError } from '../../core/utils';
 
 // ============================================
 // Constants
@@ -240,38 +240,6 @@ async function extractNoteData(
   );
 }
 
-/**
- * Check for error states on the page
- */
-async function checkPageErrors(page: Page): Promise<string | null> {
-  const content = await page.content();
-
-  // Check for various error states
-  if (content.includes('当前笔记暂时无法浏览') || content.includes('页面不见了')) {
-    return '笔记不可访问';
-  }
-  if (content.includes('内容不存在')) {
-    return '笔记不存在';
-  }
-  if (content.includes('该内容因违规无法查看')) {
-    return '笔记因违规无法查看';
-  }
-
-  // Check for error selectors
-  for (const sel of Object.values(ERROR_SELECTORS)) {
-    const isVisible = await page
-      .locator(sel)
-      .first()
-      .isVisible()
-      .catch(() => false);
-    if (isVisible) {
-      return '页面出现错误';
-    }
-  }
-
-  return null;
-}
-
 // ============================================
 // Main Scrape Function
 // ============================================
@@ -282,6 +250,7 @@ async function checkPageErrors(page: Page): Promise<string | null> {
 async function scrapeNote(
   page: Page,
   url: string,
+  user: UserName,
   options: { includeComments: boolean; maxComments: number }
 ): Promise<ScrapeNoteResult> {
   debugLog('开始抓取笔记详情...');
@@ -307,69 +276,21 @@ async function scrapeNote(
   const noteId = extraction.noteId!;
 
   try {
-    // 1. Navigate to page
-    debugLog('导航到: ' + url);
-    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: timeouts.pageLoad });
-    await page.waitForLoadState('networkidle', { timeout: timeouts.networkIdle }).catch(() => {});
-    await delay(1500 + Math.random() * 1000);
+    // 1. Prepare page using unified API
+    debugLog('Preparing page for scraping...');
+    const prep = await preparePageForAction(page, url, user);
 
-    // 2. Check for errors
-    if (!(await checkLoginStatus(page))) {
-      return {
-        success: false,
-        noteId,
-        url,
-        error: '需要登录才能查看此笔记',
-        title: '',
-        content: '',
-        images: [],
-        type: 'image',
-        author: { id: '', name: '' },
-        stats: { likes: 0, collects: 0, comments: 0, shares: 0 },
-        tags: [],
-        scrapedAt: new Date().toISOString(),
-      };
+    if (!prep.success) {
+      return createErrorResult(noteId, url, prep.error || '页面准备失败');
     }
 
-    if (await checkCaptcha(page)) {
-      return {
-        success: false,
-        noteId,
-        url,
-        error: '检测到验证码',
-        title: '',
-        content: '',
-        images: [],
-        type: 'image',
-        author: { id: '', name: '' },
-        stats: { likes: 0, collects: 0, comments: 0, shares: 0 },
-        tags: [],
-        scrapedAt: new Date().toISOString(),
-      };
+    // 2. Check for content-specific errors
+    const contentError = await checkContentErrors(page, 'note');
+    if (contentError) {
+      return createErrorResult(noteId, url, contentError);
     }
 
-    const pageError = await checkPageErrors(page);
-    if (pageError) {
-      return {
-        success: false,
-        noteId,
-        url,
-        error: pageError,
-        title: '',
-        content: '',
-        images: [],
-        type: 'image',
-        author: { id: '', name: '' },
-        stats: { likes: 0, collects: 0, comments: 0, shares: 0 },
-        tags: [],
-        scrapedAt: new Date().toISOString(),
-      };
-    }
-
-    // 3. Simulate human reading
-    await simulateReading(page);
-
-    // 4. Extract data
+    // 3. Extract data
     debugLog('提取笔记数据...');
     const data = await extractNoteData(page, options);
 
@@ -381,21 +302,28 @@ async function scrapeNote(
       scrapedAt: new Date().toISOString(),
     } as ScrapeNoteResult;
   } catch (e) {
-    return {
-      success: false,
-      noteId,
-      url,
-      error: e instanceof Error ? e.message : '未知错误',
-      title: '',
-      content: '',
-      images: [],
-      type: 'image',
-      author: { id: '', name: '' },
-      stats: { likes: 0, collects: 0, comments: 0, shares: 0 },
-      tags: [],
-      scrapedAt: new Date().toISOString(),
-    };
+    return createErrorResult(noteId, url, e instanceof Error ? e.message : '未知错误');
   }
+}
+
+/**
+ * Create error result object
+ */
+function createErrorResult(noteId: string, url: string, error: string): ScrapeNoteResult {
+  return {
+    success: false,
+    noteId,
+    url,
+    error,
+    title: '',
+    content: '',
+    images: [],
+    type: 'image',
+    author: { id: '', name: '' },
+    stats: { likes: 0, collects: 0, comments: 0, shares: 0 },
+    tags: [],
+    scrapedAt: new Date().toISOString(),
+  };
 }
 
 // ============================================
@@ -427,7 +355,7 @@ export async function executeScrapeNote(options: ScrapeNoteOptions): Promise<voi
         const { page } = ctx;
 
         // Scrape the note
-        const result = await scrapeNote(page, url, { includeComments, maxComments });
+        const result = await scrapeNote(page, url, ctx.user, { includeComments, maxComments });
         result.user = ctx.user;
 
         // Output result

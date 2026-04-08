@@ -1,4 +1,4 @@
-/**
+﻿/**
  * User profile scraping functionality
  *
  * @module actions/scrape/user
@@ -7,12 +7,13 @@
 
 import type { Page } from 'playwright';
 import type { ScrapeUserOptions, ScrapeUserResult } from './types';
+import type { UserName } from '../../user';
 import { extractUserIdFromUrl } from '../shared/url-utils';
-import { USER_SELECTORS, ERROR_SELECTORS } from './selectors';
+import { USER_SELECTORS } from '../shared/selectors';
 import { withSession, type SessionContext } from '../shared/session';
-import { timeouts } from '../../config/loader';
+import { preparePageForAction, checkContentErrors } from '../shared/page-prep';
 import { debugLog, delay, outputSuccess, outputFromError } from '../../core/utils';
-import { checkCaptcha, simulateReading, humanScroll } from '../../core/anti-detect';
+import { humanScroll } from '../../core/anti-detect';
 
 // ============================================
 // Constants
@@ -215,37 +216,6 @@ async function extractUserData(
 }
 
 /**
- * Check for error states on the page
- */
-async function checkPageErrors(page: Page): Promise<string | null> {
-  const content = await page.content();
-
-  if (content.includes('页面不见了') || content.includes('用户不存在')) {
-    return '用户不存在';
-  }
-  if (content.includes('该用户已设为私密')) {
-    return '该用户账号已设为私密';
-  }
-  if (content.includes('账号已封禁') || content.includes('该用户已被封禁')) {
-    return '该用户账号已被封禁';
-  }
-
-  // Check for error selectors
-  for (const sel of Object.values(ERROR_SELECTORS)) {
-    const isVisible = await page
-      .locator(sel)
-      .first()
-      .isVisible()
-      .catch(() => false);
-    if (isVisible) {
-      return '页面出现错误';
-    }
-  }
-
-  return null;
-}
-
-/**
  * Load more notes by scrolling
  */
 async function loadMoreNotes(page: Page, targetCount: number): Promise<void> {
@@ -283,6 +253,7 @@ async function loadMoreNotes(page: Page, targetCount: number): Promise<void> {
 async function scrapeUser(
   page: Page,
   url: string,
+  user: UserName,
   options: { includeNotes: boolean; maxNotes: number }
 ): Promise<ScrapeUserResult> {
   debugLog('开始抓取用户主页...');
@@ -303,47 +274,26 @@ async function scrapeUser(
   const userId = extraction.userId!;
 
   try {
-    // 1. Navigate to page
-    debugLog('导航到: ' + url);
-    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: timeouts.pageLoad });
-    await page.waitForLoadState('networkidle', { timeout: timeouts.networkIdle }).catch(() => {});
-    await delay(1500 + Math.random() * 1000);
+    // 1. Prepare page using unified API
+    debugLog('Preparing page for scraping...');
+    const prep = await preparePageForAction(page, url, user);
 
-    // 2. Check for errors
-    if (await checkCaptcha(page)) {
-      return {
-        success: false,
-        userId,
-        url,
-        error: '检测到验证码',
-        name: '',
-        stats: { follows: 0, fans: 0, liked: 0, notes: 0 },
-        scrapedAt: new Date().toISOString(),
-      };
+    if (!prep.success) {
+      return createErrorResult(userId, url, prep.error || '页面准备失败');
     }
 
-    const pageError = await checkPageErrors(page);
-    if (pageError) {
-      return {
-        success: false,
-        userId,
-        url,
-        error: pageError,
-        name: '',
-        stats: { follows: 0, fans: 0, liked: 0, notes: 0 },
-        scrapedAt: new Date().toISOString(),
-      };
+    // 2. Check for content-specific errors
+    const contentError = await checkContentErrors(page, 'user');
+    if (contentError) {
+      return createErrorResult(userId, url, contentError);
     }
 
-    // 3. Simulate human browsing
-    await simulateReading(page);
-
-    // 4. Load more notes if needed
+    // 3. Load more notes if needed
     if (options.includeNotes && options.maxNotes > NOTES_PER_SCROLL) {
       await loadMoreNotes(page, options.maxNotes);
     }
 
-    // 5. Hover on note items to get xsec_token
+    // 4. Hover on note items to get xsec_token
     if (options.includeNotes) {
       const noteLocator = page.locator(USER_SELECTORS.noteItem);
       const count = await noteLocator.count().catch(() => 0);
@@ -363,7 +313,7 @@ async function scrapeUser(
       }
     }
 
-    // 6. Extract data
+    // 5. Extract data
     debugLog('提取用户数据...');
     const data = await extractUserData(page, options);
 
@@ -388,6 +338,21 @@ async function scrapeUser(
 }
 
 // ============================================
+
+/**
+ * Create error result object
+ */
+function createErrorResult(userId: string, url: string, error: string): ScrapeUserResult {
+  return {
+    success: false,
+    userId,
+    url,
+    error,
+    name: '',
+    stats: { follows: 0, fans: 0, liked: 0, notes: 0 },
+    scrapedAt: new Date().toISOString(),
+  };
+}
 // Execute Function
 // ============================================
 
@@ -411,7 +376,7 @@ export async function executeScrapeUser(options: ScrapeUserOptions): Promise<voi
         const { page } = ctx;
 
         // Scrape the user
-        const result = await scrapeUser(page, url, { includeNotes, maxNotes });
+        const result = await scrapeUser(page, url, ctx.user, { includeNotes, maxNotes });
         result.user = ctx.user;
 
         // Output result
