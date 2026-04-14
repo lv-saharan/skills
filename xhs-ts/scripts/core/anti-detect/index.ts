@@ -366,24 +366,25 @@ export async function checkLoginStatus(page: Page, selectors?: LoginSelectors): 
       ...(avatar ? (Array.isArray(avatar) ? avatar : [avatar]) : []),
     ].join(', ');
 
-    const userVisible = await page
-      .locator(userSelectors)
-      .first()
-      .isVisible({ timeout: 2000 })
-      .catch(() => false);
-
-    if (userVisible) {
-      return true;
-    }
-
-    // Check login modal
+    // Check login modal first - if visible, definitely not logged in
     const modalVisible = await page
       .locator(modal)
       .first()
       .isVisible({ timeout: 2000 })
       .catch(() => false);
 
-    return !modalVisible;
+    if (modalVisible) {
+      return false;
+    }
+
+    // Modal not visible - check user component to confirm login
+    const userVisible = await page
+      .locator(userSelectors)
+      .first()
+      .isVisible({ timeout: 2000 })
+      .catch(() => false);
+
+    return userVisible;
   } catch (error) {
     debugLog('Error checking login status:', error);
     return false;
