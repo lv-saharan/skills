@@ -27,6 +27,8 @@ export enum BrowserErrorCode {
   ENDPOINT_NOT_READY = 'BROWSER_ENDPOINT_NOT_READY',
   /** Invalid configuration */
   INVALID_CONFIG = 'BROWSER_INVALID_CONFIG',
+  /** User data directory corrupted */
+  USER_DATA_CORRUPTED = 'USER_DATA_CORRUPTED',
 }
 
 // ============================================
@@ -61,6 +63,57 @@ export class BrowserError extends Error {
       message: this.message,
       code: this.code,
       ...(this.cause ? { cause: this.cause } : {}),
+    };
+  }
+}
+
+/**
+ * User data corrupted error - includes cleanup suggestion
+ */
+export class UserDataCorruptedError extends BrowserError {
+  /**
+   * User name affected
+   */
+  public readonly user: string;
+
+  /**
+   * Path to user data directory
+   */
+  public readonly userDataPath: string;
+
+  /**
+   * Create a UserDataCorruptedError
+   * @param user - User name affected
+   * @param userDataPath - Path to user data directory
+   */
+  constructor(user: string, userDataPath: string) {
+    super(
+      `User data directory may be corrupted for user "${user}". Browser process died immediately after startup. This is likely due to corrupted browser profile data in: ${userDataPath}`,
+      BrowserErrorCode.USER_DATA_CORRUPTED
+    );
+    this.name = 'UserDataCorruptedError';
+    this.user = user;
+    this.userDataPath = userDataPath;
+  }
+
+  /**
+   * Convert to plain object for serialization
+   */
+  toJSON(): {
+    name: string;
+    message: string;
+    code: string;
+    user: string;
+    userDataPath: string;
+    suggestCleanup: boolean;
+  } {
+    return {
+      name: this.name,
+      message: this.message,
+      code: this.code,
+      user: this.user,
+      userDataPath: this.userDataPath,
+      suggestCleanup: true,
     };
   }
 }
@@ -130,6 +183,13 @@ export function createProcessTerminationFailedError(pid: number): BrowserError {
   );
 }
 
+/**
+ * Create user data corrupted error
+ */
+export function createUserDataCorruptedError(user: string, userDataPath: string): UserDataCorruptedError {
+  return new UserDataCorruptedError(user, userDataPath);
+}
+
 // ============================================
 // Type Guards
 // ============================================
@@ -146,4 +206,11 @@ export function isBrowserError(error: unknown): error is BrowserError {
  */
 export function isBrowserErrorCode(error: unknown, code: BrowserErrorCode): error is BrowserError {
   return isBrowserError(error) && error.code === code;
+}
+
+/**
+ * Check if error is UserDataCorruptedError
+ */
+export function isUserDataCorruptedError(error: unknown): error is UserDataCorruptedError {
+  return error instanceof UserDataCorruptedError;
 }

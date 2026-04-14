@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Browser Launcher - Spawn Independent Process + CDP Mode
  *
  * @module core/browser/launcher/browser-launcher
@@ -18,7 +18,10 @@ import type { UserFingerprint, GeolocationConfig } from '../types';
 import type { BrowserLaunchOptions } from '../types';
 import { findBrowserExecutablePath } from './executable-finder';
 import { generateStealthScript } from '../stealth';
-import { createBrowserError, BrowserErrorCode } from '../errors';
+import { createBrowserError, BrowserErrorCode, UserDataCorruptedError, isBrowserErrorCode } from '../errors';
+import * as path from 'path';
+import * as fs from 'fs';
+import * as os from 'os';
 
 // ============================================
 // Types
@@ -241,10 +244,7 @@ async function injectStealthToContext(
  * @param browser - Browser instance to disconnect from
  * @param pagesToClose - Pages created by this CLI session
  */
-export async function disconnectFromBrowser(
-  browser: Browser,
-  pagesToClose: Page[]
-): Promise<void> {
+export async function disconnectFromBrowser(browser: Browser, pagesToClose: Page[]): Promise<void> {
   // Close our own pages first
   for (const page of pagesToClose) {
     if (!page.isClosed()) {
@@ -269,3 +269,60 @@ export async function disconnectFromBrowser(
   // Alternative: manually disconnect by closing the underlying connection
   // For now, we just close our pages and let the browser run
 }
+/**
+ * Diagnose if user data directory is corrupted
+ *
+ * Tests browser startup with a fresh temporary directory.
+ * If the browser starts successfully with temp dir, it indicates
+ * the original user data directory is corrupted.
+ *
+ * @param options - Original launch options (to reuse browser path, etc.)
+ * @param originalUserDataDir - The suspected corrupted user data directory
+ * @returns true if diagnosis confirms user data is corrupted, false otherwise
+ */
+export async function diagnoseCorruptedUserData(
+  options: BrowserLaunchOptions,
+  originalUserDataDir: string
+): Promise<boolean> {
+  // Create a temporary directory for testing
+  const tempDir = path.join(os.tmpdir(), 'xhs-browser-diagnostic-' + Date.now());
+  
+  try {
+    fs.mkdirSync(tempDir, { recursive: true });
+    
+    // Try launching with the temporary directory (same browser, different user data)
+    const diagnosticOptions: BrowserLaunchOptions = {
+      ...options,
+      userDataDir: tempDir,
+      port: options.port + 1000, // Use different port to avoid conflicts
+    };
+    
+    // Attempt to launch browser with temp directory
+    const result = await launchBrowserServer(diagnosticOptions);
+    
+    // If successful, browser itself is fine - the original user data is corrupted
+    if (result.pid) {
+      // Clean up: kill the diagnostic browser
+      try {
+        process.kill(result.pid, 'SIGTERM');
+      } catch {
+        // Process might already be dead
+      }
+      return true; // Confirmed: user data is corrupted
+    }
+    
+    return false;
+  } catch (diagnosticError) {
+    // If diagnostic launch also fails, it's NOT a user data issue
+    // Could be: missing browser executable, port issue, permission issue, etc.
+    return false;
+  } finally {
+    // Clean up temp directory
+    try {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    } catch {
+      // Ignore cleanup errors
+    }
+  }
+}
+

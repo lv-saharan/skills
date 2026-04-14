@@ -110,10 +110,7 @@ export async function checkServerConnection(
  * @param timeout - Connection timeout in milliseconds
  * @returns True if endpoint is reachable
  */
-export async function checkCDPConnection(
-  port: number,
-  timeout: number = 5000
-): Promise<boolean> {
+export async function checkCDPConnection(port: number, timeout: number = 5000): Promise<boolean> {
   return checkBrowserEndpointHealth(port, timeout);
 }
 

@@ -13,9 +13,14 @@
  */
 
 import type { Browser, Page } from 'playwright';
-import { connectToServer, connectOverCDP, checkServerConnection, checkCDPConnection } from './connection/connector';
+import {
+  connectToServer,
+  connectOverCDP,
+  checkServerConnection,
+  checkCDPConnection,
+} from './connection/connector';
 import { launchBrowserServer, setupBrowserContext } from './launcher/browser-launcher';
-import { forceKillProcess } from './launcher/process-manager';
+import { forceKillProcess, isProcessRunning, waitForProcessExit } from './launcher/process-manager';
 import type {
   BrowserInstance,
   BrowserLaunchOptions,
@@ -30,8 +35,8 @@ export type { BrowserLaunchOptions, SavedConnection, LaunchBrowserOptions } from
 
 // Re-export from launcher/ subdirectory
 export { findBrowserExecutablePath } from './launcher/executable-finder';
-export { launchBrowserServer, setupBrowserContext } from './launcher/browser-launcher';
-export { forceKillProcess } from './launcher/process-manager';
+export { launchBrowserServer, setupBrowserContext, diagnoseCorruptedUserData } from './launcher/browser-launcher';
+export { forceKillProcess, isProcessRunning, waitForProcessExit } from './launcher/process-manager';
 
 // ============================================
 // Reconnection
@@ -117,7 +122,7 @@ export async function launchBrowser(
 
   // No reconnection possible, launch new browser with persistent context
   const launched = await launchBrowserServer(options);
-  
+
   // Connect via CDP to get Browser instance
   const cdpEndpoint = 'http://127.0.0.1:' + launched.port;
   const browser = await connectOverCDP(cdpEndpoint);
@@ -145,6 +150,7 @@ export async function launchBrowser(
  * Close a browser instance
  *
  * Uses graceful close via CDP connection, with PID kill fallback.
+ * Waits for process to fully exit before returning to prevent user-data-dir lock conflicts.
  *
  * @param wsEndpoint - WebSocket endpoint (not used for CDP, kept for compatibility)
  * @param pid - Process ID (for kill fallback)
@@ -158,6 +164,8 @@ export async function closeBrowser(wsEndpoint?: string, pid?: number): Promise<v
       port = parseInt(match[1], 10);
     }
   }
+
+  let closedViaCDP = false;
 
   // Method 1: Try graceful close via CDP connection
   if (port) {
@@ -181,20 +189,37 @@ export async function closeBrowser(wsEndpoint?: string, pid?: number): Promise<v
           }
         }
         await browser.close();
+        closedViaCDP = true;
         debugLog('Closed browser via CDP connection');
-        return;
       }
     } catch {
       debugLog('CDP close failed, falling back to PID kill');
     }
   }
 
-  // Method 2: Force kill via PID (fallback)
+  // Method 2: Force kill via PID (fallback or if CDP didn't fully terminate)
   if (pid && pid > 0) {
     const stillAlive = port ? await checkCDPConnection(port) : false;
-    if (stillAlive) {
-      debugLog('Browser still alive, force killing PID ' + pid);
+    const processAlive = isProcessRunning(pid);
+    if (stillAlive || (closedViaCDP && processAlive)) {
+      if (stillAlive) {
+        debugLog('Browser still alive, force killing PID ' + pid);
+      } else if (processAlive) {
+        debugLog('Browser process still running after CDP close, force killing PID ' + pid);
+      }
+      await forceKillProcess(pid);
+    }
+  }
+
+  // Wait for process to fully exit (prevents user-data-dir lock race condition)
+  // Chromium needs time to release file locks (SingletonLock, SingletonCookie) after close
+  if (pid && pid > 0 && isProcessRunning(pid)) {
+    debugLog('Waiting for browser process to exit...');
+    const exited = await waitForProcessExit(pid, 5000);
+    if (!exited) {
+      debugLog('Browser process did not exit in time, force killing');
       await forceKillProcess(pid);
     }
   }
 }
+

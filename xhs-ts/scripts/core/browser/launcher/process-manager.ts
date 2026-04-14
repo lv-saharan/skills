@@ -58,7 +58,7 @@ export function isProcessRunning(pid: number): boolean {
  * @param timeout - Timeout in milliseconds
  * @returns True if process exited
  */
-async function waitForProcessExit(pid: number, timeout: number): Promise<boolean> {
+export async function waitForProcessExit(pid: number, timeout: number): Promise<boolean> {
   const startTime = Date.now();
 
   while (Date.now() - startTime < timeout) {
