@@ -1,4 +1,4 @@
-﻿/**
+/**
  * QR Code login implementation
  *
  * @module login/qr
@@ -13,7 +13,7 @@ import { LOGIN_MODAL_SELECTORS, LOGIN_BUTTON_SELECTORS } from '../shared/selecto
 import type { BrowserInstance } from '../../core/browser/types';
 import type { UserName } from '../../user';
 import { debugLog, delay, randomDelay, waitForCondition } from '../../core/utils';
-import { humanClick, checkCaptcha } from '../../core/anti-detect';
+import { humanClick, checkCaptcha, checkLoginStatus } from '../../core/anti-detect';
 import { checkErrorPage } from '../auth';
 import { outputQrCode } from '../../core/utils/output';
 import { writeFile } from 'fs/promises';
@@ -85,27 +85,36 @@ async function isQrCodeExpired(page: Page): Promise<boolean> {
 
 /**
  * Wait for QR code scan and login completion
+ *
+ * Detection logic (robust against page refresh):
+ * - QR code element disappears AND login modal disappears
+ * - Then verify with checkLoginStatus() to confirm actual login
+ *
+ * NOTE: Xiaohongshu may refresh the page 1-2 times after QR scan.
+ * We use waitForCondition with proper element checks instead of page.isClosed()
+ * to avoid false positives during page refresh.
  */
 export async function waitForQrScan(page: Page, timeout: number): Promise<void> {
   debugLog('Waiting for QR code scan...');
-  debugLog('Detection: QR disappeared + (URL changed OR modal disappeared)');
+  debugLog('Detection: QR + modal disappeared, then verify login status');
 
   const startTime = Date.now();
   let loggedQrGone = false;
   let loggedModalGone = false;
-  let loggedUrlChanged = false;
 
   await waitForCondition(
     async () => {
       const elapsed = Math.floor((Date.now() - startTime) / 1000);
 
-      if (page.isClosed()) {
+      // Check for QR expired
+      if (await isQrCodeExpired(page)) {
         throw new SkillError(
-          'Browser window closed by user. Login cancelled.',
+          'QR code expired. Please refresh and try again.',
           SkillErrorCode.LOGIN_FAILED
         );
       }
 
+      // Check for CAPTCHA
       const hasCaptcha = await checkCaptcha(page);
       if (hasCaptcha) {
         throw new SkillError(
@@ -114,14 +123,6 @@ export async function waitForQrScan(page: Page, timeout: number): Promise<void> 
         );
       }
 
-      if (await isQrCodeExpired(page)) {
-        throw new SkillError(
-          'QR code expired. Please refresh and try again.',
-          SkillErrorCode.LOGIN_FAILED
-        );
-      }
-
-      const currentUrl = page.url();
       const qrVisible = await isAnyVisible(page, QR_SELECTORS);
       const modalVisible = await isAnyVisible(page, LOGIN_MODAL_SELECTORS);
 
@@ -133,25 +134,26 @@ export async function waitForQrScan(page: Page, timeout: number): Promise<void> 
         debugLog('[' + elapsed + 's] Login modal disappeared');
         loggedModalGone = true;
       }
-      if (!currentUrl.includes('/login') && !loggedUrlChanged) {
-        debugLog('[' + elapsed + 's] URL changed to: ' + currentUrl);
-        loggedUrlChanged = true;
-      }
 
-      const qrGone = !qrVisible;
-      const urlChanged = !currentUrl.includes('/login');
-      const modalGone = !modalVisible;
+      // Login detected: both QR and modal are gone
+      if (!qrVisible && !modalVisible) {
+        debugLog('[' + elapsed + 's] Login UI cleared, verifying login status...');
 
-      if (qrGone && (urlChanged || modalGone)) {
-        debugLog('[' + elapsed + 's] Login detected!');
-        debugLog('  - QR gone: ' + qrGone);
-        debugLog('  - URL changed: ' + urlChanged);
-        debugLog('  - Modal gone: ' + modalGone);
+        // Wait for page to stabilize (handle auto-refresh)
+        await page.waitForLoadState('domcontentloaded', { timeout: 10000 }).catch(() => {});
+        await delay(2000);
 
-        await delay(1500);
+        // CRITICAL: Verify actual login status, not just URL change
+        const isLoggedIn = await checkLoginStatus(page);
+        if (isLoggedIn) {
+          debugLog('[' + elapsed + 's] Login verified successfully!');
+          return true;
+        }
 
-        debugLog('Login successful!');
-        return true;
+        debugLog('[' + elapsed + 's] Login status not confirmed yet, continuing to wait...');
+        // Reset flags so we keep checking
+        loggedQrGone = false;
+        loggedModalGone = false;
       }
 
       return false;
@@ -260,7 +262,17 @@ export async function qrLogin(
 
   await waitForQrScan(page, timeout);
 
-  debugLog('Navigating to home page to finalize login...');
+  // CRITICAL: Final login verification before returning success
+  debugLog('Final login verification...');
+  const isLoggedIn = await checkLoginStatus(page);
+  if (!isLoggedIn) {
+    throw new SkillError(
+      'Login verification failed. QR scan may not have completed successfully.',
+      SkillErrorCode.LOGIN_FAILED
+    );
+  }
+
+  debugLog('Login verified. Navigating to home page...');
   await page.goto(urls.home, { waitUntil: 'networkidle', timeout: 30000 }).catch(() => {
     debugLog('Navigation to home page timed out, continuing...');
   });

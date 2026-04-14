@@ -53,7 +53,7 @@ export interface PlatformConfig {
 // ============================================
 
 /** Login method type */
-export type LoginMethod = 'qr' | 'sms';
+export type LoginMethod = 'qr' | 'sms' | 'cookie';
 
 // ============================================
 // Application Configuration

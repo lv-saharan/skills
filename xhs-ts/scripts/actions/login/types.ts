@@ -17,7 +17,7 @@ export type { LoginMethod } from '../../config';
 
 /** Login options */
 export interface LoginOptions {
-  /** Login method: 'qr' or 'sms' */
+  /** Login method: 'qr', 'sms', or 'cookie' */
   method: LoginMethod;
   /** Headless mode override */
   headless?: boolean;
@@ -29,6 +29,8 @@ export interface LoginOptions {
   user?: UserName;
   /** Phone number for SMS login */
   phone?: string;
+  /** Cookie string for cookie login (format: "name1=value1; name2=value2") */
+  cookieString?: string;
 }
 
 // ============================================

@@ -15,6 +15,7 @@ export type { AutoLoginOptions, AutoLoginResult } from './auto-login';
 // Individual login methods (internal helpers also exported for auto-login)
 export { qrLogin, waitForQrScan, triggerLoginModal } from './qr';
 export { smsLogin } from './sms';
+export { cookieLogin, parseCookieString, injectCookies } from './cookie';
 
 // Selectors
 export { LOGIN_SELECTORS, QR_SELECTORS, QR_TAB_SELECTOR, SMS_SELECTORS } from './selectors';
