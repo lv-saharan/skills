@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Browser Launcher with User Orchestration
  *
  * @module actions/shared/browser-launcher
@@ -16,8 +16,10 @@ import type { StealthBehaviorConfig } from '../../core/browser/stealth-behavior'
 import {
   launchBrowser as launchBrowserCore,
   closeBrowser,
+  diagnoseCorruptedUserData,
   type SavedConnection,
 } from '../../core/browser/launcher';
+import { isBrowserErrorCode, BrowserErrorCode, createUserDataCorruptedError } from '../../core/browser/errors';
 import { allocatePortForIdentifier } from '../../core/browser/port-utils';
 import { checkServerConnection } from '../../core/browser/connection';
 import { getStealthBehavior } from '../../core/browser/stealth-behavior';
@@ -95,30 +97,30 @@ export async function randomStealthDelay(
 /**
  * Check if a browser instance is running for a user
  *
- * Supports BrowserServer (wsEndpoint) mode.
+ * Supports both CDP and BrowserServer modes.
+ * CDP browsers are launched with --remote-debugging-port, detected via HTTP endpoint.
+ * BrowserServer browsers are launched via chromium.launchServer(), detected via WebSocket.
+ *
+ * IMPORTANT: CDP endpoints should use HTTP check or connectOverCDP, not BrowserServer WebSocket.
  */
 export async function hasBrowserInstance(user: UserName): Promise<boolean> {
   const connection = await loadConnectionInfo(user);
 
-  // Prefer BrowserServer mode
-  if (connection?.wsEndpoint) {
-    return checkServerConnection(connection.wsEndpoint);
+  if (!connection?.port) {
+    return false;
   }
 
-  // Check via HTTP endpoint
-  if (connection?.port) {
-    try {
-      const response = await fetch(`http://localhost:${connection.port}/json/version`, {
-        method: 'GET',
-        signal: AbortSignal.timeout(5000),
-      });
-      return response.ok;
-    } catch {
-      return false;
-    }
+  // Always use HTTP endpoint check for CDP-launched browsers
+  // This is more reliable than WebSocket connection for CDP mode
+  try {
+    const response = await fetch(`http://127.0.0.1:${connection.port}/json/version`, {
+      method: 'GET',
+      signal: AbortSignal.timeout(5000),
+    });
+    return response.ok;
+  } catch {
+    return false;
   }
-
-  return false;
 }
 
 /**
@@ -232,20 +234,53 @@ export async function launchProfileBrowser(
       : null;
 
   // Launch browser using core launcher (now uses BrowserServer by default)
-  const result = await launchBrowserCore(
-    {
-      userDataDir: getUserDataDir(user),
-      port,
-      headless: actualHeadless,
-      proxy: actualProxy,
-      browserPath: actualBrowserPath,
-      browserChannel: actualBrowserChannel,
-      fingerprint: profile.fingerprint,
-      behavior,
-      geolocation: profile.geolocation,
-    },
-    connectionForReconnect
-  );
+  // Wrap in try-catch to detect and diagnose user data corruption
+  const userDataDir = getUserDataDir(user);
+  let result;
+  try {
+    result = await launchBrowserCore(
+      {
+        userDataDir,
+        port,
+        headless: actualHeadless,
+        proxy: actualProxy,
+        browserPath: actualBrowserPath,
+        browserChannel: actualBrowserChannel,
+        fingerprint: profile.fingerprint,
+        behavior,
+        geolocation: profile.geolocation,
+      },
+      connectionForReconnect
+    );
+  } catch (launchError) {
+    // Check if browser process died immediately - this indicates corrupted user data
+    if (isBrowserErrorCode(launchError, BrowserErrorCode.PROCESS_TERMINATION_FAILED)) {
+      debugLog('Browser process died during startup, diagnosing user data corruption...');
+      
+      // Diagnose by testing with a fresh temp directory
+      const isCorrupted = await diagnoseCorruptedUserData(
+        {
+          userDataDir,
+          port,
+          headless: actualHeadless,
+          proxy: actualProxy,
+          browserPath: actualBrowserPath,
+        },
+        userDataDir
+      );
+      
+      if (isCorrupted) {
+        debugLog('Diagnosis confirmed: user data directory is corrupted');
+        throw createUserDataCorruptedError(user, userDataDir);
+      }
+      
+      // If not corrupted, re-throw original error
+      throw launchError;
+    }
+    
+    // For other errors, just re-throw
+    throw launchError;
+  }
 
   // Save connection info
   await saveConnectionInfo(user, {
@@ -320,3 +355,5 @@ export async function withProfile<T>(
     }
   }
 }
+
+
