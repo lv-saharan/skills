@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Session Management - Unified Authentication Entry
  *
  * @module actions/shared/session
@@ -18,7 +18,7 @@ import { withProfile, randomStealthDelay } from './browser-launcher';
 import { resolveUser } from '../../user';
 import { SkillError, SkillErrorCode } from '../../config/errors';
 import { timeouts, urls } from '../../config/loader';
-import { ensureLoginStatus } from '../auth/ensure-status';
+import { detectLoginStatus } from '../auth/status';
 import { autoLogin } from './auto-login';
 
 // Import types from page-prep for consistency
@@ -80,7 +80,7 @@ export async function withSession<T>(
       }
 
       if (!skipLogin) {
-        const status = await ensureLoginStatus(page);
+        const status = await detectLoginStatus(page);
 
         if (!status.isLoggedIn) {
           const loginResult = await autoLogin(page, {

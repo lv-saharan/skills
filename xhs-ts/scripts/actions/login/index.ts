@@ -8,9 +8,9 @@
 // Main function
 export { executeLogin } from './execute';
 
-// Auto login
-export { autoLogin } from './auto-login';
-export type { AutoLoginOptions, AutoLoginResult } from './auto-login';
+// Auto login (re-exported from shared)
+export { autoLogin } from '../shared/auto-login';
+export type { AutoLoginOptions, AutoLoginResult } from '../shared/auto-login';
 
 // Individual login methods (internal helpers also exported for auto-login)
 export { qrLogin, waitForQrScan, triggerLoginModal } from './qr';

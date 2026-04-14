@@ -41,7 +41,7 @@ export const webrtcModule: StealthModule = {
   name: 'webrtc',
   enabledByDefault: true,
 
-  generate(fp: UserFingerprint, config?: unknown): string {
+  generate(_fp: UserFingerprint, _config?: unknown): string {
     return generateWebRTCScript();
   },
 };

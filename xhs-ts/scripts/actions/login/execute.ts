@@ -14,7 +14,7 @@ import { cookieLogin } from './cookie';
 import { verifySession } from '../auth/verify-session';
 import { createUserDir, userExists, resolveUser } from '../../user';
 import { isUserDataCorruptedError } from '../../core/browser/errors';
-import { cleanupUserData, canCleanupUserData } from '../../user/storage';
+import { canCleanupUserData } from '../../user/storage';
 
 export async function executeLogin(options: LoginOptions): Promise<void> {
   const {
@@ -96,31 +96,26 @@ export async function executeLogin(options: LoginOptions): Promise<void> {
     );
   } catch (error) {
     debugLog('Login error:', error);
-    
+
     // Handle UserDataCorruptedError specially
     if (isUserDataCorruptedError(error)) {
       debugLog('User data corrupted, suggesting cleanup...');
-      
+
       // Check if cleanup is safe
       const canCleanup = await canCleanupUserData(resolvedUser);
-      
-      outputError(
-        error.message,
-        error.code,
-        {
-          user: error.user,
-          userDataPath: error.userDataPath,
-          suggestCleanup: true,
-          canCleanup,
-          hint: canCleanup 
-            ? '用户数据可能已损坏。请运行 "npm run login -- --reset-user-data" 清理并重新登录。'
-            : '用户数据可能已损坏，但浏览器正在运行。请先关闭浏览器后再尝试清理。',
-        }
-      );
+
+      outputError(error.message, error.code, {
+        user: error.user,
+        userDataPath: error.userDataPath,
+        suggestCleanup: true,
+        canCleanup,
+        hint: canCleanup
+          ? '用户数据可能已损坏。请运行 "npm run login -- --reset-user-data" 清理并重新登录。'
+          : '用户数据可能已损坏，但浏览器正在运行。请先关闭浏览器后再尝试清理。',
+      });
       return;
     }
-    
+
     outputFromError(error);
   }
 }
-

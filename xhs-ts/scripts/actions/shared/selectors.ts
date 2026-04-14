@@ -21,7 +21,6 @@ export const LOGIN_BUTTON_SELECTORS = [
   'button:has-text("登录")',
 ] as const;
 
-export const LOGIN_MODAL_SELECTORS = [LOGIN_MODAL_SELECTOR, USER_COMPONENT_SELECTOR];
 
 // ============================================
 // Note Page Selectors (Unified)

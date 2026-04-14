@@ -96,7 +96,7 @@ export const chromeModule: StealthModule = {
   name: 'chrome',
   enabledByDefault: true,
 
-  generate(fp: UserFingerprint, config?: unknown): string {
+  generate(_fp: UserFingerprint, _config?: unknown): string {
     return generateChromeScript();
   },
 };

@@ -65,7 +65,9 @@ export class PlatformError extends Error {
  * throw new XhsError('Login required', XhsErrorCode.NOT_LOGGED_IN);
  * ```
  */
-export function createPlatformError<T extends StandardErrorCode>(config: PlatformErrorConfig<T>) {
+export function createPlatformError<T extends StandardErrorCode>(
+  config: PlatformErrorConfig<T>
+): typeof PlatformError {
   return class extends PlatformError {
     static readonly codes = config.codes;
 

@@ -171,28 +171,9 @@ export interface UserProfileData {
 }
 
 // ============================================
-// User Meta (Legacy - kept for backward compatibility)
+// User Meta (Legacy - removed, was kept for backward compatibility)
 // ============================================
-
-/**
- * User metadata stored in meta.json within each user's profile directory
- *
- * @deprecated Use ProfileMeta instead. This type is kept for migration purposes.
- */
-export interface UserMeta {
-  /** Meta schema version */
-  version: 1;
-  /** User creation timestamp (ISO 8601) */
-  createdAt: string;
-  /** Last used timestamp (ISO 8601) */
-  lastUsedAt: string;
-  /** Environment type when profile was created */
-  environmentType: EnvironmentType;
-  /** Fingerprint source used */
-  fingerprintSource: FingerprintSource;
-  /** Description of preset used (if applicable) */
-  presetDescription?: string;
-}
+// UserMeta interface has been removed. Use ProfileMeta instead.
 
 /**
  * User Profile - complete profile data for a user
@@ -239,10 +220,10 @@ export interface ProfileStatusInfo {
 // ============================================
 
 /**
- * Profile reference in users.json
+ * Profile reference in users.json (legacy - for migration only)
  *
  * @deprecated In v3, profiles are no longer stored in users.json.
- * All profile data is in users/{user}/profile.json
+ * This type is kept for migration compatibility.
  */
 export interface ProfileRef {
   /** Profile creation timestamp */
@@ -264,6 +245,6 @@ export interface UsersMeta {
   current: UserName;
   /** Data version for future migrations (now 3) */
   version: number;
-  /** Profile references for each user (deprecated, kept for migration) */
+  /** Profile references for each user (deprecated, migration only) */
   profiles?: Record<UserName, ProfileRef>;
 }

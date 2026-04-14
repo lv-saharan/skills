@@ -186,7 +186,10 @@ export function createProcessTerminationFailedError(pid: number): BrowserError {
 /**
  * Create user data corrupted error
  */
-export function createUserDataCorruptedError(user: string, userDataPath: string): UserDataCorruptedError {
+export function createUserDataCorruptedError(
+  user: string,
+  userDataPath: string
+): UserDataCorruptedError {
   return new UserDataCorruptedError(user, userDataPath);
 }
 

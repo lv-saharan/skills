@@ -10,7 +10,7 @@ import type { BrowserInstance } from '../../core/browser/types';
 import type { UserName } from '../../user';
 import { SkillError, SkillErrorCode, urls } from '../../config';
 import { debugLog, delay } from '../../core/utils';
-import { checkLoginStatus } from '../../core/anti-detect';
+import { isLoggedIn } from '../auth/status';
 import type { LoginResult } from './types';
 
 // ============================================
@@ -146,9 +146,9 @@ export async function cookieLogin(
   await delay(1000);
 
   // Step 5: Verify login status
-  const isLoggedIn = await checkLoginStatus(page);
+  const loggedIn = await isLoggedIn(page);
 
-  if (!isLoggedIn) {
+  if (!loggedIn) {
     debugLog('Cookie login failed - not logged in after injection');
     return {
       success: false,

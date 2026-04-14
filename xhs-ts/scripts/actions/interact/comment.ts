@@ -10,7 +10,8 @@ import type { CommentOptions, CommentResult } from './types';
 import { COMMENT_SELECTORS } from '../shared/selectors';
 import { extractNoteId } from '../shared/url-utils';
 import { debugLog, delay, gaussianDelay } from '../../core/utils';
-import { humanClick, humanScroll, humanType, checkLoginStatus } from '../../core/anti-detect';
+import { humanClick, humanScroll, humanType } from '../../core/anti-detect';
+import { isLoggedIn } from '../auth/status';
 import { outputSuccess, outputFromError } from '../../core/utils/output';
 import { withSession, INTERACTION_DELAYS } from '../shared/session';
 import { preparePageForAction } from '../shared/page-prep';
@@ -208,7 +209,7 @@ async function performComment(
   }
 
   // Check if still logged in after submitting
-  if (!(await checkLoginStatus(page))) {
+  if (!(await isLoggedIn(page))) {
     return { success: false, url, noteId, text, error: '需要登录才能评论' };
   }
 

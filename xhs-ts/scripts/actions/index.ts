@@ -13,13 +13,14 @@
 // ============================================
 
 export {
-  ensureLoginStatus,
-  ensureLoginStatusWithTrigger,
+  detectLoginStatus,
+  isLoggedIn,
+  triggerLoginModal,
   checkErrorPage,
   verifySession,
 } from './auth';
 
-export type { EnsureLoginStatusResult, ErrorPageResult } from './auth';
+export type { LoginStatus, ErrorPageResult, TriggerModalResult } from './auth';
 
 // ============================================
 // Login Actions
@@ -141,7 +142,6 @@ export {
   LOGIN_MODAL_SELECTOR,
   USER_COMPONENT_SELECTOR,
   LOGIN_BUTTON_SELECTORS,
-  LOGIN_MODAL_SELECTORS,
 } from './shared/selectors';
 
 // Login-specific selectors

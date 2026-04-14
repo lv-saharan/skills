@@ -10,7 +10,7 @@ import { hasProfile } from '../../user/storage';
 import { withProfile } from '../shared/browser-launcher';
 import { urls, config } from '../../config';
 import { debugLog } from '../../core/utils';
-import { checkLoginStatus } from '../../core/anti-detect';
+import { isLoggedIn } from '../auth/status';
 
 export async function verifySession(user?: UserName, headless?: boolean): Promise<boolean> {
   const actualHeadless = headless ?? config.headless;
@@ -32,9 +32,9 @@ export async function verifySession(user?: UserName, headless?: boolean): Promis
       user || 'default',
       async (page) => {
         await page.goto(urls.home, { waitUntil: 'networkidle', timeout: 30000 });
-        const isLoggedIn = await checkLoginStatus(page);
-        debugLog('checkLoginStatus result: ' + isLoggedIn);
-        return isLoggedIn;
+        const loggedIn = await isLoggedIn(page);
+        debugLog('isLoggedIn result: ' + loggedIn);
+        return loggedIn;
       },
       { headless: actualHeadless }
     );

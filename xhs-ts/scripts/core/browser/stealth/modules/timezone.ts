@@ -47,7 +47,7 @@ export const timezoneModule: StealthModule = {
   name: 'timezone',
   enabledByDefault: true,
 
-  generate(fp: UserFingerprint, config?: unknown): string {
+  generate(_fp: UserFingerprint, _config?: unknown): string {
     return generateTimezoneScript();
   },
 };

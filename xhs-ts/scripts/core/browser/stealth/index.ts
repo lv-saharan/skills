@@ -15,7 +15,7 @@
  * const script = generateStealthScript(fingerprint, { canvas: false });
  *
  * // List registered modules
- * const modules = stealthRegistry.getModuleNames();
+ * const modules = stealthRegistry.getAll().map(m => m.name);
  * `
  */
 
@@ -26,31 +26,31 @@ export * from './types';
 export { DEFAULT_STEALTH_CONFIG, DEFAULT_GEOLOCATION } from './constants';
 
 // Re-export registry
-export { stealthRegistry, autoRegister, getModuleNames } from './registry';
+export { stealthRegistry, autoRegister } from './registry';
 
 // Re-export generator
-export { generateStealthScript, getEnabledModuleNames } from './generator';
+export { generateStealthScript } from './generator';
 
 // Re-export utilities
-export { combineScripts, getIframeFixScript, getSourceURLScript } from './utils';
+export { combineScripts } from './utils';
 
 // ============================================
 // Auto-register all stealth modules
 // ============================================
 // Importing these modules automatically registers them with the registry
 
-import { navigatorModule } from './modules/navigator';
-import { screenModule } from './modules/screen';
-import { webglModule } from './modules/webgl';
-import { canvasModule } from './modules/canvas';
-import { audioModule } from './modules/audio';
-import { chromeModule } from './modules/chrome';
-import { webrtcModule } from './modules/webrtc';
-import { mediaModule } from './modules/media';
-import { timezoneModule } from './modules/timezone';
-import { fontModule } from './modules/font';
-import { batteryModule } from './modules/battery';
-import { geolocationModule } from './modules/geolocation';
-import { performanceModule } from './modules/performance';
+import './modules/navigator';
+import './modules/screen';
+import './modules/webgl';
+import './modules/canvas';
+import './modules/audio';
+import './modules/chrome';
+import './modules/webrtc';
+import './modules/media';
+import './modules/timezone';
+import './modules/font';
+import './modules/battery';
+import './modules/geolocation';
+import './modules/performance';
 
 // Modules are auto-registered when imported

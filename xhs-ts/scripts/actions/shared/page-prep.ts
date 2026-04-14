@@ -9,7 +9,8 @@
 import type { Page } from 'playwright';
 import type { UserName } from '../../user';
 import { timeouts, delays } from '../../config/loader';
-import { checkCaptcha, checkLoginStatus, simulateReading } from '../../core/anti-detect';
+import { checkCaptcha, simulateReading } from '../../core/anti-detect';
+import { isLoggedIn } from '../auth/status';
 import { checkErrorPage } from '../auth/check-error';
 import { autoLogin } from './auto-login';
 import { gaussianDelay, debugLog } from '../../core/utils';
@@ -107,8 +108,8 @@ export async function navigateTo(page: Page, url: string): Promise<void> {
  */
 export async function checkPageHealth(page: Page): Promise<PageHealthStatus> {
   // Check login status
-  const isLoggedIn = await checkLoginStatus(page);
-  if (!isLoggedIn) {
+  const loggedIn = await isLoggedIn(page);
+  if (!loggedIn) {
     return {
       isHealthy: false,
       isLoggedIn: false,

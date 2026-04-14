@@ -101,20 +101,12 @@ export const geolocationModule: StealthModule = {
   name: 'geolocation',
   enabledByDefault: true,
 
-  generate(fp: UserFingerprint, config?: unknown): string {
+  generate(_fp: UserFingerprint, _config?: unknown): string {
     // Config for geolocation is GeolocationConfig, not StealthModuleConfig
-    const geoConfig = config as GeolocationConfig | undefined;
+    const geoConfig = _config as GeolocationConfig | undefined;
     return generateGeolocationScriptInternal(geoConfig);
   },
 };
 
 // Auto-register module
 autoRegister(geolocationModule);
-
-/**
- * Generate geolocation stealth script (legacy export for backward compatibility)
- * @deprecated Use geolocationModule.generate() instead
- */
-export function generateGeolocationScript(config?: GeolocationConfig): string {
-  return geolocationModule.generate({} as UserFingerprint, config);
-}

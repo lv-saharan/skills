@@ -45,9 +45,6 @@ export function buildPath(...segments: string[]): string {
 /** Users directory name */
 const USERS_DIR = 'users';
 
-/** Config file name */
-const CONFIG_FILE = 'config.json';
-
 // ============================================
 // Timestamp Generation
 // ============================================

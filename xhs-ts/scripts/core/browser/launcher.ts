@@ -12,22 +12,11 @@
  * Implementation details are delegated to launcher/ subdirectory.
  */
 
-import type { Browser, Page } from 'playwright';
-import {
-  connectToServer,
-  connectOverCDP,
-  checkServerConnection,
-  checkCDPConnection,
-} from './connection/connector';
+import type { Browser } from 'playwright';
+import { connectOverCDP, checkCDPConnection } from './connection/connector';
 import { launchBrowserServer, setupBrowserContext } from './launcher/browser-launcher';
 import { forceKillProcess, isProcessRunning, waitForProcessExit } from './launcher/process-manager';
-import type {
-  BrowserInstance,
-  BrowserLaunchOptions,
-  SavedConnection,
-  LaunchBrowserOptions,
-  GeolocationConfig,
-} from './types';
+import type { BrowserInstance, SavedConnection, LaunchBrowserOptions } from './types';
 import { debugLog } from '../utils';
 
 // Re-export types for convenience
@@ -35,7 +24,11 @@ export type { BrowserLaunchOptions, SavedConnection, LaunchBrowserOptions } from
 
 // Re-export from launcher/ subdirectory
 export { findBrowserExecutablePath } from './launcher/executable-finder';
-export { launchBrowserServer, setupBrowserContext, diagnoseCorruptedUserData } from './launcher/browser-launcher';
+export {
+  launchBrowserServer,
+  setupBrowserContext,
+  diagnoseCorruptedUserData,
+} from './launcher/browser-launcher';
 export { forceKillProcess, isProcessRunning, waitForProcessExit } from './launcher/process-manager';
 
 // ============================================
@@ -121,7 +114,14 @@ export async function launchBrowser(
   }
 
   // No reconnection possible, launch new browser with persistent context
-  const launched = await launchBrowserServer(options);
+  // Pass fingerprint userAgent to override HeadlessChrome HTTP header
+  // Pass fingerprint screen dimensions to match --window-size with stealth screen spoofing
+  const launched = await launchBrowserServer({
+    ...options,
+    userAgent: fingerprint.browser.userAgent,
+    viewportWidth: fingerprint.screen.width,
+    viewportHeight: fingerprint.screen.height,
+  });
 
   // Connect via CDP to get Browser instance
   const cdpEndpoint = 'http://127.0.0.1:' + launched.port;
@@ -222,4 +222,3 @@ export async function closeBrowser(wsEndpoint?: string, pid?: number): Promise<v
     }
   }
 }
-

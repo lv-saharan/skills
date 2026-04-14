@@ -5,9 +5,6 @@
  * @description Browser process lifecycle management
  */
 
-import { spawn } from 'child_process';
-import { checkServerConnection } from '../connection/connector';
-
 // ============================================
 // Process Termination
 // ============================================

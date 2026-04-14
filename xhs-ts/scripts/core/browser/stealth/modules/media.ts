@@ -47,7 +47,7 @@ try {
       configurable: true
     });
   }
-} catch (e) {}
+} catch (e) { /* ignore notification permission errors */ }
 `;
 }
 
@@ -61,7 +61,7 @@ export const mediaModule: StealthModule = {
   name: 'media',
   enabledByDefault: true,
 
-  generate(fp: UserFingerprint, config?: unknown): string {
+  generate(_fp: UserFingerprint, _config?: unknown): string {
     return generateMediaScript();
   },
 };

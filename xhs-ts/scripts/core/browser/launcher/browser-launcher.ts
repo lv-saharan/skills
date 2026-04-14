@@ -11,14 +11,13 @@
  * - Multiple CLI commands share the same browser instance
  */
 
-import { spawn, ChildProcess } from 'child_process';
-import { chromium } from 'playwright';
+import { spawn } from 'child_process';
 import type { Browser, BrowserContext, Page } from 'playwright';
 import type { UserFingerprint, GeolocationConfig } from '../types';
 import type { BrowserLaunchOptions } from '../types';
 import { findBrowserExecutablePath } from './executable-finder';
 import { generateStealthScript } from '../stealth';
-import { createBrowserError, BrowserErrorCode, UserDataCorruptedError, isBrowserErrorCode } from '../errors';
+import { createBrowserError, BrowserErrorCode } from '../errors';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
@@ -69,13 +68,31 @@ const CDP_POLL_INTERVAL = 500; // 500ms between checks
 export async function launchBrowserServer(
   options: BrowserLaunchOptions
 ): Promise<BrowserServerLaunchResult> {
-  const { userDataDir, port, headless = false, proxy, browserPath, browserChannel } = options;
+  const {
+    userDataDir,
+    port,
+    headless = false,
+    proxy,
+    browserPath,
+    browserChannel: _browserChannel,
+    userAgent,
+    viewportWidth,
+    viewportHeight,
+  } = options;
 
   // Find browser executable
   const executablePath = await findBrowserExecutablePath(browserPath);
 
   // Build browser args
-  const args = buildBrowserArgs(port, userDataDir, headless, proxy);
+  const args = buildBrowserArgs(
+    port,
+    userDataDir,
+    headless,
+    proxy,
+    userAgent,
+    viewportWidth,
+    viewportHeight
+  );
 
   // Spawn browser process (detached, independent)
   const browserProcess = spawn(executablePath, args, {
@@ -103,7 +120,10 @@ function buildBrowserArgs(
   port: number,
   userDataDir: string,
   headless: boolean,
-  proxy?: string
+  proxy?: string,
+  userAgent?: string,
+  viewportWidth?: number,
+  viewportHeight?: number
 ): string[] {
   const args: string[] = [
     '--remote-debugging-port=' + port,
@@ -128,7 +148,16 @@ function buildBrowserArgs(
     args.push('--start-maximized');
   } else {
     args.push('--headless=new');
-    args.push('--window-size=1280,720');
+    // Use fingerprint screen dimensions to avoid JS/screen size mismatch detection
+    const w = viewportWidth ?? 1280;
+    const h = viewportHeight ?? 720;
+    args.push('--window-size=' + w + ',' + h);
+    // Override User-Agent to remove HeadlessChrome marker
+    if (userAgent) {
+      args.push('--user-agent=' + userAgent);
+    }
+    // Remove automation control marker
+    args.push('--disable-blink-features=AutomationControlled');
   }
 
   if (proxy) {
@@ -282,24 +311,24 @@ export async function disconnectFromBrowser(browser: Browser, pagesToClose: Page
  */
 export async function diagnoseCorruptedUserData(
   options: BrowserLaunchOptions,
-  originalUserDataDir: string
+  _originalUserDataDir: string
 ): Promise<boolean> {
   // Create a temporary directory for testing
   const tempDir = path.join(os.tmpdir(), 'xhs-browser-diagnostic-' + Date.now());
-  
+
   try {
     fs.mkdirSync(tempDir, { recursive: true });
-    
+
     // Try launching with the temporary directory (same browser, different user data)
     const diagnosticOptions: BrowserLaunchOptions = {
       ...options,
       userDataDir: tempDir,
       port: options.port + 1000, // Use different port to avoid conflicts
     };
-    
+
     // Attempt to launch browser with temp directory
     const result = await launchBrowserServer(diagnosticOptions);
-    
+
     // If successful, browser itself is fine - the original user data is corrupted
     if (result.pid) {
       // Clean up: kill the diagnostic browser
@@ -310,9 +339,9 @@ export async function diagnoseCorruptedUserData(
       }
       return true; // Confirmed: user data is corrupted
     }
-    
+
     return false;
-  } catch (diagnosticError) {
+  } catch {
     // If diagnostic launch also fails, it's NOT a user data issue
     // Could be: missing browser executable, port issue, permission issue, etc.
     return false;
@@ -325,4 +354,3 @@ export async function diagnoseCorruptedUserData(
     }
   }
 }
-

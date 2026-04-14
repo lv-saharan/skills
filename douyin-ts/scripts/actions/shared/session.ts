@@ -207,7 +207,7 @@ async function waitForQrScan(
     await waitForCondition(
       async () => {
         // Check for login success
-        const loggedIn = await checkLoginStatus(page);
+        const loggedIn = await isLoggedIn(page);
         if (loggedIn) {
           return true;
         }
@@ -371,7 +371,7 @@ export async function navigateTo(page: Page, url: string): Promise<void> {
  */
 export async function checkPageHealth(page: Page): Promise<string | null> {
   // Check login status
-  if (!(await checkLoginStatus(page))) {
+  if (!(await isLoggedIn(page))) {
     return '需要登录';
   }
 

@@ -32,7 +32,7 @@ export function generatePerformanceScript(): string {
       get: () => Date.now() - Math.floor(originalNow.call(performance)),
       configurable: true
     });
-  } catch (e) {}
+  } catch (e) { /* ignore performance API errors */ }
 
   // Memory API mock (Chrome only)
   if ('memory' in performance) {
@@ -45,7 +45,7 @@ export function generatePerformanceScript(): string {
         }),
         configurable: true
       });
-    } catch (e) {}
+    } catch (e) { /* ignore performance API errors */ }
   }
 })();
 `;
@@ -61,7 +61,7 @@ export const performanceModule: StealthModule = {
   name: 'performance',
   enabledByDefault: true,
 
-  generate(fp: UserFingerprint, config?: unknown): string {
+  generate(_fp: UserFingerprint, _config?: unknown): string {
     return generatePerformanceScript();
   },
 };

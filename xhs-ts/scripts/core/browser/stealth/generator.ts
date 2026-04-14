@@ -45,15 +45,3 @@ export function generateStealthScript(
 
   return combineScripts(...scripts);
 }
-
-/**
- * Get list of enabled module names for debugging
- *
- * @param config - Stealth module configuration
- * @returns Array of enabled module names
- */
-export function getEnabledModuleNames(
-  config: StealthModuleConfig = DEFAULT_STEALTH_CONFIG
-): string[] {
-  return stealthRegistry.getEnabled(config).map((m) => m.name);
-}

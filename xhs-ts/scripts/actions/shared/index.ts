@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Shared Module - Unified utilities for all Xiaohongshu actions
  *
  * @module actions/shared
@@ -76,7 +76,6 @@ export {
   LOGIN_MODAL_SELECTOR,
   USER_COMPONENT_SELECTOR,
   LOGIN_BUTTON_SELECTORS,
-  LOGIN_MODAL_SELECTORS,
 } from './selectors';
 
 // ============================================

@@ -135,11 +135,3 @@ if (originalQuery) {
 
 // Auto-register module
 autoRegister(navigatorModule);
-
-/**
- * Generate navigator stealth script (legacy export for backward compatibility)
- * @deprecated Use navigatorModule.generate() instead
- */
-export function generateNavigatorScript(fp: UserFingerprint): string {
-  return navigatorModule.generate(fp);
-}

@@ -14,7 +14,7 @@
  * Verified: 2026-04-07
  */
 
-import type { LoginSelectors } from '../../core/anti-detect';
+import type { LoginSelectors } from '../../core/browser/auth';
 
 // ============================================
 // Login Selectors Structure

@@ -5,7 +5,7 @@
  * @description Orchestrates automatic login flow: detect state -> trigger modal -> wait for scan
  *
  * This module bridges the gap between:
- * - auth/ensure-status.ts (state detection)
+ * - auth/status.ts (state detection)
  * - login/qr.ts (QR login implementation)
  *
  * IMPORTANT: This module was moved from login/auto-login.ts to resolve
@@ -19,7 +19,7 @@ import type { UserName } from '../../user';
 import { timeouts } from '../../config/loader';
 import { delay, debugLog } from '../../core/utils';
 import { humanClick } from '../../core/anti-detect';
-import { ensureLoginStatus } from '../auth/ensure-status';
+import { detectLoginStatus } from '../auth/status';
 import { waitForQrScan } from '../login/qr';
 import { LOGIN_BUTTON_SELECTORS } from './selectors';
 import { urls } from '../../config';
@@ -66,7 +66,7 @@ export async function autoLogin(page: Page, options: AutoLoginOptions): Promise<
   const { timeout = timeouts.login } = options;
 
   // Step 1: Check current status
-  const status = await ensureLoginStatus(page);
+  const status = await detectLoginStatus(page);
 
   if (status.isLoggedIn) {
     debugLog('User already logged in');

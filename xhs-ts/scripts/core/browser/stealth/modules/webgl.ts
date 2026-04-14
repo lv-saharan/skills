@@ -55,7 +55,7 @@ export const webglModule: StealthModule = {
   name: 'webgl',
   enabledByDefault: true,
 
-  generate(fp: UserFingerprint, config?: unknown): string {
+  generate(fp: UserFingerprint, _config?: unknown): string {
     return generateWebGLScript(fp);
   },
 };

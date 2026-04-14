@@ -10,7 +10,8 @@ import type { FollowOptions, FollowResult } from './types';
 import { FOLLOW_SELECTORS } from '../shared/selectors';
 import { extractUserIdFromUrl } from '../shared/url-utils';
 import { debugLog, gaussianDelay } from '../../core/utils';
-import { humanClick, checkLoginStatus } from '../../core/anti-detect';
+import { humanClick } from '../../core/anti-detect';
+import { isLoggedIn } from '../auth/status';
 import { outputSuccess, outputFromError } from '../../core/utils/output';
 import { withSession, INTERACTION_DELAYS } from '../shared/session';
 import { preparePageForAction } from '../shared/page-prep';
@@ -149,7 +150,7 @@ async function performFollow(page: Page, url: string, user: string): Promise<Fol
   await gaussianDelay(INTERACTION_DELAYS.batchInterval);
 
   // Check if login required after click
-  if (!(await checkLoginStatus(page))) {
+  if (!(await isLoggedIn(page))) {
     return { success: false, url, userId, following: false, error: '需要登录才能关注' };
   }
 

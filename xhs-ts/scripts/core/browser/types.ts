@@ -55,6 +55,12 @@ export interface BrowserLaunchOptions {
   browserPath?: string;
   /** Browser channel */
   browserChannel?: string;
+  /** User-Agent string for HTTP header override (critical for headless mode) */
+  userAgent?: string;
+  /** Viewport width for headless mode (should match fingerprint screen.width) */
+  viewportWidth?: number;
+  /** Viewport height for headless mode (should match fingerprint screen.height) */
+  viewportHeight?: number;
 }
 
 /**

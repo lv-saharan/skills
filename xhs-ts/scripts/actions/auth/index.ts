@@ -2,15 +2,13 @@
  * Auth Module - Unified Entry Point
  *
  * @module actions/auth
- * @description Authentication state management (detection and verification only)
+ * @description Authentication state management (detection, verification, and modal triggering)
  *
  * This module provides the SINGLE source of truth for:
- * - Login state detection (ensureLoginStatus)
+ * - Login state detection (detectLoginStatus, isLoggedIn)
  * - Session verification (verifySession)
  * - Error page detection (checkErrorPage)
- *
- * IMPORTANT: This module does NOT perform login operations.
- * For login actions, use login/auto-login.ts or login/execute.ts
+ * - Login modal triggering (triggerLoginModal)
  */
 
 // ============================================
@@ -22,12 +20,20 @@ export { checkErrorPage } from './check-error';
 export type { ErrorPageResult } from './check-error';
 
 // ============================================
-// Login State Detection
+// Login Status Detection
 // ============================================
 
-export { ensureLoginStatus, ensureLoginStatusWithTrigger } from './ensure-status';
+export { detectLoginStatus, isLoggedIn } from './status';
 
-export type { EnsureLoginStatusResult } from './ensure-status';
+export type { LoginStatus } from './status';
+
+// ============================================
+// Login Modal Trigger
+// ============================================
+
+export { triggerLoginModal } from './modal-trigger';
+
+export type { TriggerModalResult } from './modal-trigger';
 
 // ============================================
 // Session Verification

@@ -19,9 +19,12 @@ import {
   diagnoseCorruptedUserData,
   type SavedConnection,
 } from '../../core/browser/launcher';
-import { isBrowserErrorCode, BrowserErrorCode, createUserDataCorruptedError } from '../../core/browser/errors';
+import {
+  isBrowserErrorCode,
+  BrowserErrorCode,
+  createUserDataCorruptedError,
+} from '../../core/browser/errors';
 import { allocatePortForIdentifier } from '../../core/browser/port-utils';
-import { checkServerConnection } from '../../core/browser/connection';
 import { getStealthBehavior } from '../../core/browser/stealth-behavior';
 import { hasProfile, createUserProfile, getUserDataDir } from '../../user/storage';
 import { loadUserProfile } from '../../user/profile-loader';
@@ -256,7 +259,7 @@ export async function launchProfileBrowser(
     // Check if browser process died immediately - this indicates corrupted user data
     if (isBrowserErrorCode(launchError, BrowserErrorCode.PROCESS_TERMINATION_FAILED)) {
       debugLog('Browser process died during startup, diagnosing user data corruption...');
-      
+
       // Diagnose by testing with a fresh temp directory
       const isCorrupted = await diagnoseCorruptedUserData(
         {
@@ -268,16 +271,16 @@ export async function launchProfileBrowser(
         },
         userDataDir
       );
-      
+
       if (isCorrupted) {
         debugLog('Diagnosis confirmed: user data directory is corrupted');
         throw createUserDataCorruptedError(user, userDataDir);
       }
-      
+
       // If not corrupted, re-throw original error
       throw launchError;
     }
-    
+
     // For other errors, just re-throw
     throw launchError;
   }
@@ -355,5 +358,3 @@ export async function withProfile<T>(
     }
   }
 }
-
-

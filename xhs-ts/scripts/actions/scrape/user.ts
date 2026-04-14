@@ -21,7 +21,7 @@ import { humanScroll } from '../../core/anti-detect';
 
 const DEFAULT_MAX_NOTES = 12;
 const MAX_NOTES = 50;
-const NOTES_PER_SCROLL = 12;
+const USER_NOTES_PER_SCROLL = 12;
 
 // ============================================
 // Data Extraction
@@ -222,7 +222,7 @@ async function loadMoreNotes(page: Page, targetCount: number): Promise<void> {
   const itemSelector = USER_SELECTORS.noteItem;
 
   let scrollCount = 0;
-  const maxScrolls = Math.ceil(targetCount / NOTES_PER_SCROLL) + 2;
+  const maxScrolls = Math.ceil(targetCount / USER_NOTES_PER_SCROLL) + 2;
 
   while (scrollCount < maxScrolls) {
     const currentCount = await page
@@ -289,7 +289,7 @@ async function scrapeUser(
     }
 
     // 3. Load more notes if needed
-    if (options.includeNotes && options.maxNotes > NOTES_PER_SCROLL) {
+    if (options.includeNotes && options.maxNotes > USER_NOTES_PER_SCROLL) {
       await loadMoreNotes(page, options.maxNotes);
     }
 

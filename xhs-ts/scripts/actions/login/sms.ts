@@ -10,7 +10,8 @@ import type { BrowserInstance } from '../../core/browser/types';
 import type { UserName } from '../../user';
 import { SkillError, SkillErrorCode, urls, isPlatformUrl } from '../../config';
 import { debugLog, delay, randomDelay, waitForCondition } from '../../core/utils';
-import { humanClick, humanType, checkLoginStatus } from '../../core/anti-detect';
+import { humanClick, humanType } from '../../core/anti-detect';
+import { isLoggedIn } from '../auth/status';
 import { SMS_SELECTORS } from './selectors';
 import type { LoginResult } from './types';
 
@@ -195,8 +196,8 @@ export async function smsLogin(
         debugLog('Redirected from login page, checking login status...');
         await delay(2000);
 
-        const isLoggedIn = await checkLoginStatus(page);
-        if (isLoggedIn) {
+        const loggedIn = await isLoggedIn(page);
+        if (loggedIn) {
           debugLog('Login successful via SMS');
           return true;
         }

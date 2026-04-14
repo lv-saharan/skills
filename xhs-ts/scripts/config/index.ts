@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Config module entry
  *
  * @module config
@@ -14,7 +14,7 @@
  * - Session management: actions/shared/session.ts
  *
  * ARCHITECTURE NOTE:
- * Session-related functions (withSession, ensureLoginStatus, checkErrorPage, etc.)
+ * Session-related functions (withSession, detectLoginStatus, checkErrorPage, etc.)
  * have been moved to actions/shared/session.ts to eliminate the reverse dependency
  * (config should not depend on actions). Import directly from actions/shared/session.
  *

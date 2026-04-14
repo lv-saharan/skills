@@ -29,7 +29,7 @@ export function generateCanvasScript(fp: UserFingerprint): string {
           imageData.data[i + 2] = Math.max(0, Math.min(255, imageData.data[i + 2] + noise(i + 2)));
         }
         context.putImageData(imageData, 0, 0);
-      } catch (e) {}
+      } catch (e) { /* ignore canvas noise errors */ }
     }
     return originalToDataURL.apply(this, arguments);
   };
@@ -53,7 +53,7 @@ export const canvasModule: StealthModule = {
   name: 'canvas',
   enabledByDefault: true,
 
-  generate(fp: UserFingerprint, config?: unknown): string {
+  generate(fp: UserFingerprint, _config?: unknown): string {
     return generateCanvasScript(fp);
   },
 };

@@ -28,7 +28,7 @@ export function registerLoginCommand(program: Command): void {
         const { cleanupUserData, canCleanupUserData } = await import('../../user/storage');
         const { outputSuccess, outputError } = await import('../../core/utils/output');
         const user = resolveUser(options.user);
-        
+
         const canCleanup = await canCleanupUserData(user);
         if (!canCleanup) {
           outputError(
@@ -37,15 +37,12 @@ export function registerLoginCommand(program: Command): void {
           );
           return;
         }
-        
+
         const cleanedPath = await cleanupUserData(user, false);
-        outputSuccess(
-          { user, cleanedPath },
-          'RELAY:已清理用户数据，请重新登录'
-        );
+        outputSuccess({ user, cleanedPath }, 'RELAY:已清理用户数据，请重新登录');
         return;
       }
-      
+
       const { executeLogin } = await import('../../actions/login');
       // Determine login method: cookie > sms > qr
       const method = options.cookieString ? 'cookie' : options.sms ? 'sms' : 'qr';
@@ -61,4 +58,3 @@ export function registerLoginCommand(program: Command): void {
       });
     });
 }
-

@@ -124,11 +124,3 @@ export function autoRegister(module: StealthModule): void {
     stealthRegistry.register(module);
   }
 }
-
-/**
- * Get all module names
- * @returns Array of module names
- */
-export function getModuleNames(): string[] {
-  return stealthRegistry.getAll().map((m) => m.name);
-}

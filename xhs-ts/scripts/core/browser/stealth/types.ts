@@ -6,7 +6,7 @@
  */
 
 import type { UserFingerprint } from '../../fingerprint/types';
-import type { StealthModuleConfig, GeolocationConfig } from '../types';
+import type { StealthModuleConfig } from '../types';
 
 // ============================================
 // Stealth Module Interface

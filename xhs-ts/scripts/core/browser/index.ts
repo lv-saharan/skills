@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Browser module entry
  *
  * @module core/browser
@@ -59,3 +59,11 @@ export { getStealthBehavior } from './stealth-behavior';
 
 export { generateStealthScript } from './stealth';
 export { DEFAULT_STEALTH_CONFIG, DEFAULT_GEOLOCATION } from './stealth/constants';
+
+// ============================================
+// Authentication
+// ============================================
+
+export { checkLoginStatus } from './auth';
+
+export type { LoginSelectors } from './auth';

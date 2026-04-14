@@ -40,7 +40,7 @@ export const batteryModule: StealthModule = {
   name: 'battery',
   enabledByDefault: true,
 
-  generate(fp: UserFingerprint, config?: unknown): string {
+  generate(_fp: UserFingerprint, _config?: unknown): string {
     return generateBatteryScript();
   },
 };
