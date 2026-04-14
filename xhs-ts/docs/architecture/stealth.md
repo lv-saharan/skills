@@ -27,13 +27,17 @@
 ## 使用方式
 
 ```typescript
-import { generateStealthScript, generateStealthScriptWithLocation } from './core/browser/stealth';
+import { generateStealthScript, stealthRegistry } from './core/browser/stealth';
 
-// 基本使用
+// 基本使用（所有模块启用）
 const script = generateStealthScript(fingerprint);
 
-// 自定义地理位置
-const script = generateStealthScriptWithLocation(fingerprint, 31.2304, 121.4737);
+// 自定义地理位置（通过第三参数）
+const script = generateStealthScript(fingerprint, undefined, {
+  latitude: 31.2304,
+  longitude: 121.4737,
+  accuracy: 100
+});
 
 // 自定义模块配置
 const script = generateStealthScript(fingerprint, {
@@ -47,6 +51,9 @@ const script = generateStealthScript(fingerprint, {
     accuracy: 100 
   }
 });
+
+// 使用注册表查询模块
+const modules = stealthRegistry.getAll().map(m => m.name);
 
 // 注入到页面
 await context.addInitScript(script);
@@ -86,22 +93,26 @@ interface GeolocationConfig {
 
 ```
 scripts/core/browser/stealth/
-├── index.ts          # 主入口：generateStealthScript
-├── types.ts          # StealthModuleConfig, GeolocationConfig
-├── utils.ts          # getPolyfillScript, combineScripts
-├── navigator.ts      # navigator 伪装
-├── screen.ts         # screen 伪装
-├── webgl.ts          # WebGL 指纹
-├── canvas.ts         # Canvas 指纹噪声
-├── audio.ts          # Audio 指纹噪声
-├── chrome.ts         # Chrome API mock
-├── webrtc.ts         # WebRTC 泄露防护
-├── media.ts          # Media 伪装
-├── timezone.ts       # 时区一致性
-├── font.ts           # 字体指纹防护
-├── battery.ts        # Battery API mock
-├── geolocation.ts    # 地理位置 mock
-└── performance.ts    # Performance API 一致性
+├── index.ts              # 主入口：generateStealthScript
+├── types.ts              # StealthModule, StealthModuleConfig, GeolocationConfig
+├── constants.ts          # DEFAULT_STEALTH_CONFIG, DEFAULT_GEOLOCATION
+├── registry.ts           # stealthRegistry 模块注册表
+├── generator.ts          # generateStealthScript 实现
+├── utils.ts              # combineScripts 等工具函数
+└── modules/              # 模块子目录
+    ├── navigator.ts      # navigator 伪装
+    ├── screen.ts         # screen 伪装
+    ├── webgl.ts          # WebGL 指纹
+    ├── canvas.ts         # Canvas 指纹噪声
+    ├── audio.ts          # Audio 指纹噪声
+    ├── chrome.ts         # Chrome API mock
+    ├── webrtc.ts         # WebRTC 泄露防护
+    ├── media.ts          # Media 伪装
+    ├── timezone.ts       # 时区一致性
+    ├── font.ts           # 字体指纹防护
+    ├── battery.ts        # Battery API mock
+    ├── geolocation.ts    # 地理位置 mock
+    └── performance.ts    # Performance API 一致性
 ```
 
 ---
@@ -110,6 +121,6 @@ scripts/core/browser/stealth/
 
 反检测模块位于 `scripts/core/browser/stealth/`，采用模块化架构：
 
-- **15 个独立模块**：每个指纹维度独立生成脚本
-- **可配置开关**：按需启用/禁用特定模块
+- **13 个独立模块**：每个指纹维度独立生成脚本
+- **注册表模式**：使用 `stealthRegistry` 管理模块，支持动态启用/禁用
 - **平台无关**：位于 `core/` 目录，不依赖业务逻辑

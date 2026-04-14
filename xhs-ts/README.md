@@ -329,7 +329,7 @@ xhs-ts 内置多层反检测防护：
 
 | 技术 | 说明 |
 |------|------|
-| **模块化 Stealth 脚本** | 15 个独立模块：navigator、screen、webgl、canvas、audio、webrtc 等 |
+| **模块化 Stealth 脚本** | 13 个独立模块：navigator、screen、webgl、canvas、audio、chrome、webrtc 等 |
 | **设备指纹伪装** | UserAgent、Viewport、WebGL、Canvas 噪声 |
 | **人类行为模拟** | 贝塞尔曲线鼠标轨迹、物理滚动、随机延迟 |
 | **时区/语言一致性** | 确保指纹参数与行为匹配 |
@@ -406,7 +406,7 @@ xhs-ts/
 │   ├── core/             # 核心基础设施（平台无关）
 │   │   ├── browser/      # CDP 浏览器管理
 │   │   │   ├── cdp/      # CDP 核心模块
-│   │   │   ├── stealth/  # 模块化反检测脚本（15 个模块）
+│   │   │   ├── stealth/  # 模块化反检测脚本（13 个模块）
 │   │   │   ├── launcher.ts
 │   │   │   └── stealth-behavior.ts
 │   │   ├── anti-detect/  # 反检测工具
@@ -454,7 +454,7 @@ xhs-ts/
 
 ### 开发文档
 - [浏览器架构](docs/architecture/browser.md) — CDP 实例管理
-- [反检测模块](docs/architecture/stealth.md) — 15 个 stealth 模块
+- [反检测模块](docs/architecture/stealth.md) — 13 个 stealth 模块
 - [多用户架构](docs/architecture/multi-user.md) — Profile 存储设计
 - [开发指南](AGENTS.md) — 核心规范与 API
 

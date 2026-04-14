@@ -340,6 +340,6 @@ Built-in protection:
 
 - [Installation Guide](references/installation.md)
 - [Configuration](references/configuration.md)
-- [Command Reference](references/commands.md)
+
 - [Channel Integration](references/channel-integration.md)
 - [Troubleshooting](references/troubleshooting.md)

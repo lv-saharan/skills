@@ -142,14 +142,19 @@ await waitForCondition(async () => page.isVisible('#btn'), { timeout: 10000 });
 
 - **进程分离**：detached mode，CLI 退出后浏览器继续运行
 - **实例复用**：跨命令共享浏览器实例
-- **端口分配**：`9222 + hash(user) % 100`
+- **端口分配**：`18900 + hash(user) % 100`（范围: 18900-18999）
 - **持久化**：`users/{user}/profile.json`
 
 > 详见 [docs/architecture/browser.md](docs/architecture/browser.md)
 
 ### Stealth Module
 
-模块化反检测脚本：navigator, screen, webgl, canvas, audio, webrtc 等 15 个模块。
+模块化反检测脚本（13 个模块）：navigator, screen, webgl, canvas, audio, chrome, webrtc, media, timezone, font, battery, geolocation, performance
+
+**架构特点**：
+- 目录结构：`stealth/modules/*.ts`（每个模块独立文件）
+- 注册表模式：使用 `stealthRegistry` 管理模块，支持动态启用/禁用
+- 接口统一：所有模块实现 `StealthModule` 接口
 
 > 详见 [docs/architecture/stealth.md](docs/architecture/stealth.md)
 

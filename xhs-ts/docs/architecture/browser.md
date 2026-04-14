@@ -113,6 +113,6 @@ await withProfile('user', callback, { keepAlive: false });
 | `actions/shared/browser-launcher.ts` | 实例获取入口（连接复用 + 新建实例） |
 | `cli/commands/browser.command.ts` | CLI 命令处理 |
 | `core/browser/launcher.ts` | 浏览器进程启动 |
-| `core/browser/cdp/connector.ts` | CDP 连接管理 |
+| `core/browser/connection/connector.ts` | CDP 连接管理 |
 | `core/browser/port-utils.ts` | 端口分配 |
 | `user/storage-v3.ts` | 连接信息持久化（profile.json） |
