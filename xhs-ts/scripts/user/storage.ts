@@ -19,6 +19,7 @@ import type {
 import { hasDisplaySupport } from './environment';
 import { getUserFingerprint } from './fingerprint';
 import { debugLog } from '../core/utils';
+import { buildPath } from '../core/utils/path';
 
 // ============================================
 // Constants
@@ -43,7 +44,7 @@ const INVALID_CHARS = /[\\/:\*?"<>|]/;
  * Get users directory path
  */
 export function getUsersDir(): string {
-  return path.resolve(process.cwd(), USERS_DIR);
+  return buildPath(USERS_DIR);
 }
 
 /**
@@ -314,4 +315,68 @@ export async function updateLastUsed(user: UserName): Promise<void> {
       debugLog(`Failed to update lastUsedAt for user: ${user}`, error);
     }
   }
+}
+
+// ============================================
+// Cleanup Operations
+// ============================================
+
+/**
+ * Clean up corrupted user data directory
+ *
+ * Removes the user-data directory (Playwright persistent context).
+ * This forces a fresh login on next launch.
+ *
+ * @param user - User name
+ * @param fullCleanup - If true, also removes entire user directory (including fingerprint, profile)
+ * @returns Path that was cleaned up
+ */
+export async function cleanupUserData(user: UserName, fullCleanup = false): Promise<string> {
+  validateUserName(user);
+
+  const userDataDir = getUserDataDir(user);
+  const userDir = getUserDir(user);
+
+  const targetPath = fullCleanup ? userDir : userDataDir;
+
+  if (!existsSync(targetPath)) {
+    debugLog('No directory to clean up for user: ' + user);
+    return targetPath;
+  }
+
+  // Use fs/promises rm for recursive deletion
+  const { rm } = await import('fs/promises');
+  await rm(targetPath, { recursive: true, force: true });
+
+  debugLog('Cleaned up user data for user: ' + user + ' at ' + targetPath);
+
+  return targetPath;
+}
+
+/**
+ * Check if user data cleanup is safe to perform
+ *
+ * Verifies that:
+ * - User directory exists
+ * - No browser process is running for this user
+ *
+ * @param user - User name
+ * @returns true if cleanup is safe, false otherwise
+ */
+export async function canCleanupUserData(user: UserName): Promise<boolean> {
+  if (!userExists(user)) {
+    return false;
+  }
+
+  // Check if browser is running for this user
+  // Import dynamically to avoid circular dependency
+  const { hasBrowserInstance } = await import('../actions/shared/browser-launcher');
+  const isRunning = await hasBrowserInstance(user);
+
+  if (isRunning) {
+    debugLog('Browser is running for user: ' + user + ', cleanup not safe');
+    return false;
+  }
+
+  return true;
 }

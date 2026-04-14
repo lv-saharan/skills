@@ -15,7 +15,7 @@ export { waitForCondition, type WaitForConditionOptions } from './wait';
 export { debugLog } from './logging';
 
 // Path utilities
-export { generateTimestamp, getTmpDir, getTmpFilePath } from './path';
+export { generateTimestamp, getTmpDir, getTmpFilePath, SKILL_ROOT, buildPath } from './path';
 
 // Output
 export { outputSuccess, outputError, outputQrCode, outputFromError } from './output';

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Path utilities
  *
  * @module core/utils/path
@@ -9,11 +9,44 @@ import path from 'path';
 import { existsSync, mkdirSync } from 'fs';
 
 // ============================================
+// Root & Path Builder
+// ============================================
+
+/**
+ * Skill project root directory (captured at module load time)
+ *
+ * All project-relative path resolution starts from here.
+ */
+export const SKILL_ROOT = process.cwd();
+
+/**
+ * Build absolute path from project root + relative segments
+ *
+ * @param segments - Path segments relative to project root
+ * @returns Resolved absolute path
+ *
+ * @example
+ * `	ypescript
+ * buildPath('config.json')
+ * // -> /path/to/xhs-ts/config.json
+ *
+ * buildPath('users', 'alice', 'profile.json')
+ * // -> /path/to/xhs-ts/users/alice/profile.json
+ * `
+ */
+export function buildPath(...segments: string[]): string {
+  return path.resolve(SKILL_ROOT, ...segments);
+}
+
+// ============================================
 // Constants
 // ============================================
 
 /** Users directory name */
 const USERS_DIR = 'users';
+
+/** Config file name */
+const CONFIG_FILE = 'config.json';
 
 // ============================================
 // Timestamp Generation
@@ -49,7 +82,7 @@ export function generateTimestamp(): string {
  */
 export function getTmpDir(user?: string): string {
   const userName = user || 'default';
-  const tmpDir = path.resolve(process.cwd(), USERS_DIR, userName, 'tmp');
+  const tmpDir = buildPath(USERS_DIR, userName, 'tmp');
   if (!existsSync(tmpDir)) {
     mkdirSync(tmpDir, { recursive: true });
   }
@@ -67,10 +100,10 @@ export function getTmpDir(user?: string): string {
  * @returns Absolute path to the file
  *
  * @example
- * ```typescript
+ * `	ypescript
  * const filePath = getTmpFilePath('qr_login', 'png', 'alice');
  * // Returns: /path/to/users/alice/tmp/qr_login_20240405_143022.png
- * ```
+ * `
  */
 export function getTmpFilePath(category: string, ext: string, user?: string): string {
   const fileName = category + '_' + generateTimestamp() + '.' + ext;

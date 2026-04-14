@@ -10,7 +10,7 @@ import { readFile, writeFile, mkdir } from 'fs/promises';
 import path from 'path';
 import type { UserName, UserFingerprint } from './types';
 import { getUserDir } from './storage';
-// NOTE: getProjectRoot import removed to eliminate circular dependency
+// NOTE: path resolution handled by core/utils (buildPath)
 import {
   loadDevicePresets,
   selectPresetByWeight,
@@ -44,7 +44,7 @@ function getFingerprintPath(user: UserName): string {
  * Generate a new fingerprint using weighted preset selection
  */
 async function generateFingerprint(): Promise<UserFingerprint> {
-  const presets = await loadDevicePresets(process.cwd());
+  const presets = await loadDevicePresets();
   const preset = selectPresetByWeight(presets);
   if (!preset) {
     throw new Error('No presets available');

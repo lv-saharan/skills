@@ -12,6 +12,7 @@ import { getUsersDir, getUserDir, getUserTmpDir } from './storage';
 import { saveUsersMeta } from './users-meta';
 import type { UsersMeta } from './types';
 import { debugLog } from '../core/utils';
+import { SKILL_ROOT } from '../core/utils/path';
 
 // ============================================
 // Constants
@@ -139,7 +140,7 @@ export async function migrateToMultiUser(): Promise<void> {
 
   debugLog('Starting migration to multi-user structure...');
 
-  const projectRoot = process.cwd();
+  const projectRoot = SKILL_ROOT;
   const defaultUserDir = getUserDir(DEFAULT_USER);
   const defaultTmpDir = getUserTmpDir(DEFAULT_USER);
 
