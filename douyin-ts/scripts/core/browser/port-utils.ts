@@ -2,7 +2,7 @@
  * Port utilities
  *
  * @module browser/port-utils
- * @description CDP port allocation and availability checking (platform-agnostic)
+ * @description Browser port allocation and availability checking
  */
 
 import { createServer } from 'net';
@@ -11,11 +11,11 @@ import { createServer } from 'net';
 // Constants
 // ============================================
 
-/** CDP port range start (after openclaw's 18800-18899) */
-export const CDP_PORT_RANGE_START = 18900;
+/** Browser port range start (after openclaw's 18800-18899) */
+export const BROWSER_PORT_RANGE_START = 18900;
 
-/** CDP port range end */
-export const CDP_PORT_RANGE_END = 18999;
+/** Browser port range end */
+export const BROWSER_PORT_RANGE_END = 18999;
 
 // ============================================
 // Port Availability Check
@@ -37,25 +37,6 @@ export async function checkPortAvailable(port: number): Promise<boolean> {
 }
 
 /**
- * Check if CDP endpoint is ready
- */
-export async function checkCDPReady(port: number, timeout = 5000): Promise<boolean> {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeout);
-
-  try {
-    const response = await fetch('http://127.0.0.1:' + port + '/json/version', {
-      signal: controller.signal,
-    });
-    clearTimeout(timeoutId);
-    return response.ok;
-  } catch {
-    clearTimeout(timeoutId);
-    return false;
-  }
-}
-
-/**
  * Calculate preferred port for identifier (hash-based)
  */
 export function calculatePreferredPort(identifier: string): number {
@@ -64,7 +45,10 @@ export function calculatePreferredPort(identifier: string): number {
     hash = (hash << 5) - hash + identifier.charCodeAt(i);
     hash |= 0;
   }
-  return CDP_PORT_RANGE_START + (Math.abs(hash) % (CDP_PORT_RANGE_END - CDP_PORT_RANGE_START + 1));
+  return (
+    BROWSER_PORT_RANGE_START +
+    (Math.abs(hash) % (BROWSER_PORT_RANGE_END - BROWSER_PORT_RANGE_START + 1))
+  );
 }
 
 /**
@@ -76,7 +60,7 @@ export async function allocateAvailablePort(preferredPort: number): Promise<numb
     return preferredPort;
   }
 
-  for (let port = CDP_PORT_RANGE_START; port <= CDP_PORT_RANGE_END; port++) {
+  for (let port = BROWSER_PORT_RANGE_START; port <= BROWSER_PORT_RANGE_END; port++) {
     if (port === preferredPort) {
       continue;
     }
@@ -87,7 +71,7 @@ export async function allocateAvailablePort(preferredPort: number): Promise<numb
   }
 
   throw new Error(
-    'No available CDP port in range ' + CDP_PORT_RANGE_START + '-' + CDP_PORT_RANGE_END
+    'No available browser port in range ' + BROWSER_PORT_RANGE_START + '-' + BROWSER_PORT_RANGE_END
   );
 }
 

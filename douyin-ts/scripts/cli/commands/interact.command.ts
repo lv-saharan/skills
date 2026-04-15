@@ -1,72 +1,97 @@
 /**
- * Interact commands (like, collect, follow)
+ * Interact Commands (like, collect, comment, follow)
  *
  * @module cli/commands/interact.command
  */
 
 import type { Command } from 'commander';
-import type { CliLikeOptions, CliCollectOptions, CliFollowOptions } from '../types';
 import { resolveUser } from '../../user';
 import { config } from '../../config';
-import { executeLike, executeCollect, executeFollow } from '../../actions/interact';
-import { outputError } from '../../core/utils/output';
-import { DouyinErrorCode } from '../../core/error';
+import { parseNumberOption, resolveHeadless, validateUrls } from '../utils';
+import type {
+  LikeCommandOptions,
+  CollectCommandOptions,
+  CommentCommandOptions,
+  FollowCommandOptions,
+} from '../types';
 
-/**
- * Register interact commands
- */
 export function registerInteractCommands(program: Command): void {
-  // Like Command
-  program
-    .command('like <urls...>')
-    .description('点赞视频')
-    .option('--headless', '无头模式')
-    .option('--user <name>', '用户名')
-    .option('--delay <ms>', '批量操作间隔')
-    .action(async (urls: string[], options: CliLikeOptions) => {
-      if (!urls || urls.length === 0) {
-        outputError('请提供至少一个视频URL', DouyinErrorCode.NOT_FOUND);
-        process.exit(1);
-      }
-      const headless = options.headless !== undefined ? options.headless : config.headless;
-      const user = resolveUser(options.user);
-      const delayBetweenLikes = options.delay ? parseInt(options.delay, 10) : 2000;
-      await executeLike({ urls, headless, user, delayBetweenLikes });
-    });
+  registerLikeCommand(program);
+  registerCollectCommand(program);
+  registerCommentCommand(program);
+  registerFollowCommand(program);
+}
 
-  // Collect Command
+function registerLikeCommand(program: Command): void {
   program
-    .command('collect <urls...>')
-    .description('收藏视频')
-    .option('--headless', '无头模式')
-    .option('--user <name>', '用户名')
-    .option('--delay <ms>', '批量操作间隔')
-    .action(async (urls: string[], options: CliCollectOptions) => {
-      if (!urls || urls.length === 0) {
-        outputError('请提供至少一个视频URL', DouyinErrorCode.NOT_FOUND);
-        process.exit(1);
-      }
-      const headless = options.headless !== undefined ? options.headless : config.headless;
-      const user = resolveUser(options.user);
-      const delayBetweenCollects = options.delay ? parseInt(options.delay, 10) : 2000;
-      await executeCollect({ urls, headless, user, delayBetweenCollects });
+    .command('like [urls...]')
+    .description('Like videos')
+    .option('--headless', 'Run in headless mode')
+    .option('--user <name>', 'User name')
+    .option('--delay <ms>', 'Delay between likes', '2000')
+    .action(async (urls: string[], options: LikeCommandOptions) => {
+      validateUrls(urls, '请提供至少一个视频 URL');
+      const { executeLike } = await import('../../actions/interact');
+      await executeLike({
+        urls,
+        headless: resolveHeadless(options.headless, config.headless),
+        user: resolveUser(options.user),
+        delayBetweenLikes: parseNumberOption(options.delay, 2000),
+      });
     });
+}
 
-  // Follow Command
+function registerCollectCommand(program: Command): void {
   program
-    .command('follow <urls...>')
-    .description('关注用户')
-    .option('--headless', '无头模式')
-    .option('--user <name>', '用户名')
-    .option('--delay <ms>', '批量操作间隔')
-    .action(async (urls: string[], options: CliFollowOptions) => {
-      if (!urls || urls.length === 0) {
-        outputError('请提供至少一个用户URL', DouyinErrorCode.NOT_FOUND);
-        process.exit(1);
-      }
-      const headless = options.headless !== undefined ? options.headless : config.headless;
-      const user = resolveUser(options.user);
-      const delayBetweenFollows = options.delay ? parseInt(options.delay, 10) : 2000;
-      await executeFollow({ urls, headless, user, delayBetweenFollows });
+    .command('collect [urls...]')
+    .description('Collect (bookmark) videos')
+    .option('--headless', 'Run in headless mode')
+    .option('--user <name>', 'User name')
+    .option('--delay <ms>', 'Delay between collects', '2000')
+    .action(async (urls: string[], options: CollectCommandOptions) => {
+      validateUrls(urls, '请提供至少一个视频 URL');
+      const { executeCollect } = await import('../../actions/interact');
+      await executeCollect({
+        urls,
+        headless: resolveHeadless(options.headless, config.headless),
+        user: resolveUser(options.user),
+        delayBetweenCollects: parseNumberOption(options.delay, 2000),
+      });
+    });
+}
+
+function registerCommentCommand(program: Command): void {
+  program
+    .command('comment <url> <text>')
+    .description('Comment on a video')
+    .option('--headless', 'Run in headless mode')
+    .option('--user <name>', 'User name')
+    .action(async (url: string, text: string, options: CommentCommandOptions) => {
+      const { executeComment } = await import('../../actions/interact');
+      await executeComment({
+        url,
+        text,
+        headless: resolveHeadless(options.headless, config.headless),
+        user: resolveUser(options.user),
+      });
+    });
+}
+
+function registerFollowCommand(program: Command): void {
+  program
+    .command('follow [urls...]')
+    .description('Follow users')
+    .option('--headless', 'Run in headless mode')
+    .option('--user <name>', 'User name')
+    .option('--delay <ms>', 'Delay between follows', '2000')
+    .action(async (urls: string[], options: FollowCommandOptions) => {
+      validateUrls(urls, '请提供至少一个用户主页 URL');
+      const { executeFollow } = await import('../../actions/interact');
+      await executeFollow({
+        urls,
+        headless: resolveHeadless(options.headless, config.headless),
+        user: resolveUser(options.user),
+        delayBetweenFollows: parseNumberOption(options.delay, 2000),
+      });
     });
 }

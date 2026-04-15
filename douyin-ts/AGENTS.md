@@ -1,332 +1,250 @@
-# AGENTS.md — douyin-ts
+# AGENTS.md - douyin-ts Project Guide
 
-抖音自动化 TypeScript 项目。使用 Playwright 实现登录、搜索、点赞、收藏、关注等功能。
+抖音（Douyin）自动化 CLI 工具开发指南。
 
 ---
 
-## Build/Lint/Test Commands
+## Build/Lint/Test
 
 ```bash
-# Type check (no emit)
-npm run typecheck
-
-# Start CLI
-npm run start
-npm run help
-
-# Specific actions
-npm run login                # QR 登录
-npm run login:headless       # 无头模式登录
-npm run user                 # 用户管理
-npm run search-video -- "keyword" [--sort-type <type>] [--publish-time <time>]
-npm run search-user -- "keyword"
-npm run like -- "<url>"
-npm run collect -- "<url>"
-npm run follow -- "<url>"
-
-# Browser setup
-npm run install:browser      # 安装 Chromium
+npm install && npm run install:browser  # Install
+npm run typecheck                       # Type check
+npm run lint                            # ESLint check
 ```
 
-**Note**: No test suite exists in this project.
+> **Pure TypeScript** - executed via `tsx`, no `dist/` output.
 
 ---
 
 ## Project Structure
 
 ```
-douyin-ts/
-├── scripts/           # Main implementation
-│   ├── browser/       # Browser launch, context, session, cleanup
-│   ├── cli/           # CLI type definitions
-│   ├── config/        # App configuration, URLs
-│   ├── cookie/        # Cookie storage, validation
-│   ├── interact/      # Search, like, collect, follow operations
-│   ├── login/         # QR login, verification
-│   ├── shared/        # Errors, constants, types (global)
-│   ├── user/          # Multi-user management, fingerprint
-│   └── utils/         # Helpers, logging, output formatting
-│   └── index.ts       # CLI entry point (Commander)
-├── users/             # User data storage (cookies, fingerprints)
-├── references/        # Reference files (empty)
-├── package.json
-├── tsconfig.json
-├── .eslintrc.json
-├── .prettierrc
-└── SKILL.md           # Skill documentation
+scripts/
+├── actions/      # 所有操作模块（统一入口）
+│   ├── shared/   # 共享基础设施（Session管理、AutoLogin、页面准备）（withSession API）
+│   ├── login/    # 登录 (qr, sms) (qr, sms, auto-login)
+│   ├── search/   # 搜索
+│   ├── publish/  # 发布
+│   ├── interact/ # 互动 (like, collect, comment, follow)
+│   └── scrape/   # 抓取 (note, user)
+├── core/         # 核心基础设施（平台无关）
+│   ├── browser/  # CDP 浏览器管理
+│   │   ├── launcher/      # 浏览器启动子模块
+│   │   │   ├── index.ts
+│   │   │   ├── browser-launcher.ts
+│   │   │   ├── executable-finder.ts
+│   │   │   └── process-manager.ts
+│   │   ├── connection/    # 连接子模块
+│   │   │   ├── browser-server-connector.ts
+│   │   │   ├── cdp-connector.ts
+│   │   │   ├── health-checker.ts
+│   │   │   └── constants.ts
+│   │   ├── stealth/       # 反检测模块（注册表模式）
+│   │   │   ├── index.ts
+│   │   │   ├── generator.ts
+│   │   │   ├── registry.ts
+│   │   │   └── modules/   # 13 个独立模块
+│   │   ├── errors.ts      # 统一错误类型
+│   │   ├── stealth-behavior.ts
+│   │   └── port-utils.ts
+│   ├── anti-detect/ # 反检测
+│   ├── fingerprint/ # 设备指纹生成
+│   ├── utils/    # 工具函数
+│   └── error/    # 错误处理
+├── config/       # 配置（URLs, selectors, timeouts）
+├── user/         # 多用户管理 (storage-v3, profile-loader, migration)
+└── cli/          # CLI 命令入口
 ```
 
 ---
 
-## Code Style Guidelines
+## 核心规范
 
-### Imports
+### 模块设计
 
-**ALWAYS use `import type` for type-only imports:**
+| 规则 | 要求 |
+|------|------|
+| 目录结构 | 独立目录，`index.ts` 为入口 |
+| 文件大小 | ≤ 500 行，超出按职责拆分 |
+| 函数长度 | ≤ 50 行 |
+| 导入数量 | ≤ 15 个 |
+
+### Import 模式
 
 ```typescript
-// Correct
-import type { Page } from 'playwright';
-import type { VideoSearchOptions, VideoSearchResult } from './types';
-
-// Wrong
-import { VideoSearchOptions } from './types';  // Only imports type
+// 类型 → types.ts | 函数 → index.ts | 常量 → constants.ts
+import type { X } from './types';
+import { fn } from '../module';
+import { CONST } from './constants';
 ```
 
-**Import order (enforced by ESLint):**
-1. Node builtins
-2. External packages (playwright, commander)
-3. Internal modules (../shared, ../config)
-4. Parent/sibling imports
-5. Type imports (last)
+### 代码复用
+
+| 工具函数 | 用途 |
+|----------|------|
+| `withSession()` | **统一认证入口** - 浏览器启动 + 导航首页 + 登录验证 |
+| `withAuthenticatedAction()` | 简化版认证（向后兼容） |
+| `preparePageForAction()` | 页面准备（导航+错误检查+模拟阅读） |
+| `waitForCondition()` | **替代所有 while 循环** |
+| `humanScroll()` | 物理滚动模拟 |
+
+---
+
+## 禁止项
 
 ```typescript
-import { chromium } from 'playwright';
-import type { Browser } from 'playwright';
+// ❌ 类型错误抑制
+as any, @ts-ignore, @ts-expect-error
 
-import { DouyinError, DouyinErrorCode } from '../shared';
-import type { BrowserLaunchOptions } from './types';
-import { config } from '../config';
-import { debugLog } from '../utils/helpers';
-```
+// ❌ 手写 while 循环
+while (Date.now() - startTime < timeout) { ... }
+// ✅ 使用 waitForCondition()
+await waitForCondition(async () => page.isVisible('#btn'), { timeout: 10000 });
 
-### Types & Interfaces
-
-- **PascalCase** for interfaces, types, classes
-- Use `interface` for object shapes, `type` for unions/aliases
-- Export types from dedicated `types.ts` files per module
-
-```typescript
-// Good
-export interface VideoSearchOptions {
-  keyword: string;
-  sortType?: VideoSortTypeValue;
-  limit?: number;
-}
-
-export type VideoSortTypeValue = 'comprehensive' | 'most-likes' | 'latest';
-
-// Enum-like pattern (prefer const object over enum)
-export const VideoSortType = {
-  COMPREHENSIVE: 'comprehensive',
-  MOST_LIKES: 'most-likes',
-  LATEST: 'latest',
-} as const;
-```
-
-### Naming Conventions
-
-| Kind | Convention | Example |
-|------|------------|---------|
-| Variables | camelCase | `videoId`, `sortType` |
-| Functions | camelCase | `executeSearchVideo`, `extractVideoId` |
-| Classes | PascalCase | `DouyinError` |
-| Interfaces | PascalCase | `VideoSearchOptions` |
-| Constants | UPPER_SNAKE_CASE | `DEFAULT_LIMIT`, `MAX_SCROLL_ATTEMPTS` |
-| Files | lowercase-dash | `search-video.ts`, `url-utils.ts` |
-| Folders | lowercase | `browser/`, `interact/` |
-
-### Functions
-
-- **Explicit return types** (ESLint warn)
-- Async functions must return `Promise<T>` or `Promise<void>`
-- Never ignore floating promises (ESLint error)
-
-```typescript
-// Good
-export async function executeSearchVideo(options: VideoSearchOptions): Promise<void> {
-  // ...
-}
-
-function buildUrl(keyword: string, sortType: VideoSortTypeValue): string {
-  return 'https://www.douyin.com/search/' + encodeURIComponent(keyword);
-}
-
-// Wrong
-async function doSomething() {  // Missing return type
-  somePromise;  // Floating promise - ESLint error
-}
-```
-
-### Error Handling
-
-Use `DouyinError` class with error codes from `shared/errors.ts`:
-
-```typescript
-import { DouyinError, DouyinErrorCode } from '../shared';
-
-// Throw custom error
-throw new DouyinError(
-  'Failed to launch browser',
-  DouyinErrorCode.BROWSER_ERROR,
-  { originalError: error }
-);
-
-// Catch and handle
-try {
-  await riskyOperation();
-} catch (error) {
-  if (error instanceof Error) {
-    outputFromError(error);
-  } else {
-    outputFromError(new Error(String(error)));
-  }
-}
-```
-
-**Error codes available:**
-- `NOT_LOGGED_IN`, `RATE_LIMITED`, `NOT_FOUND`
-- `NETWORK_ERROR`, `CAPTCHA_REQUIRED`, `COOKIE_EXPIRED`
-- `LOGIN_FAILED`, `BROWSER_ERROR`, `VALIDATION_ERROR`
-- `INTERNAL_ERROR`, `NOT_IMPLEMENTED`
-
-### Async/Await
-
-- Always use async/await (no raw Promise.then)
-- Handle rejections with try/catch
-- Use `await` for all Promise-returning calls
-
-```typescript
-// Good
-const result = await doSearch(page, options);
-await delay(SCROLL_DELAY);
-
-// Wrong
-doSearch(page, options).then(r => ...);  // Use async/await
-delay(1000);  // Missing await - ESLint error
-```
-
-### Constants
-
-Define module-level constants at file top:
-
-```typescript
-const DEFAULT_LIMIT = 10;
-const MAX_LIMIT = 50;
-const SCROLL_DELAY = 1500;
-const MAX_SCROLL_ATTEMPTS = 10;
-```
-
-### Module Exports
-
-Use index.ts for barrel exports:
-
-```typescript
-// config/index.ts
-export { config, validateConfig, DY_URLS } from './config';
-export type { AppConfig } from './types';
+// ❌ 空catch块
+catch (e) {}
 ```
 
 ---
 
-## Formatting (Prettier)
-
-```json
-{
-  "semi": true,
-  "singleQuote": true,
-  "tabWidth": 2,
-  "trailingComma": "es5",
-  "printWidth": 100,
-  "bracketSpacing": true,
-  "arrowParens": "always",
-  "endOfLine": "lf"
-}
-```
-
----
-
-## TypeScript Config
-
-```json
-{
-  "target": "ES2022",
-  "module": "ESNext",
-  "moduleResolution": "bundler",
-  "strict": true,
-  "verbatimModuleSyntax": true,
-  "allowImportingTsExtensions": true,
-  "noEmit": true
-}
-```
-
-**Key implications:**
-- ES modules only (`import/export`, no `require`)
-- Strict mode enabled
-- Type imports mandatory for pure types
-- Run with `tsx` (no build step)
-
----
-
-## ESLint Rules (Critical)
-
-| Rule | Level | Note |
-|------|-------|------|
-| `@typescript-eslint/no-explicit-any` | error | Never use `any` |
-| `@typescript-eslint/consistent-type-imports` | error | Use `import type` |
-| `@typescript-eslint/no-floating-promises` | error | Always await |
-| `@typescript-eslint/explicit-function-return-type` | warn | Add return types |
-| `import/order` | error | Alphabetized imports |
-| `prefer-const` | error | Use `const` when possible |
-| `eqeqeq` | error | Always `===`, never `==` |
-
----
-
-## Playwright Patterns
+## 关键 API
 
 ```typescript
-// Navigate with timeout
-await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
+// 统一 Session 管理（推荐）
+import { withSession, type SessionContext } from './actions/shared/session';
+await withSession(user, async (ctx) => {
+  const { page, behavior, user } = ctx;
+  // withSession 已处理：浏览器启动 → 导航首页 → 登录验证
+  // ... 执行操作
+}, { headless: true });
 
-// Wait for selector with fallback
-await page.waitForSelector(selector, { timeout: 10000 })
-  .catch(() => debugLog('Selector not found'));
+// 用户管理
+import { resolveUser, listUsers } from './user';
+const user = resolveUser(options.user);  // --user > current > default
 
-// Locator usage
-const cards = await page.locator('.search-result-card').all();
+// 反检测脚本
+import { generateStealthScript } from './core/browser/stealth';
+const script = generateStealthScript(fingerprint);
 
-// Evaluate in page context
-const title = await card.evaluate((el: Element) => 
-  el.querySelector('.VDYK8Xd7')?.textContent?.trim() || ''
-);
+// 条件等待（替代 while 循环）
+import { waitForCondition } from './core/utils';
+await waitForCondition(async () => page.isVisible('#btn'), { timeout: 10000 });
 ```
 
 ---
 
-## Debug Logging
+## 核心架构
 
-```typescript
-import { debugLog } from '../utils/helpers';
+### Browser Module (CDP)
 
-debugLog('Search URL:', url);
-debugLog('Cards found:', cards.length);
+- **进程分离**：detached mode，CLI 退出后浏览器继续运行
+- **实例复用**：跨命令共享浏览器实例
+- **端口分配**：`18900 + hash(user) % 100`（范围: 18900-18999）
+- **持久化**：`users/{user}/profile.json`
+
+### Stealth Module
+
+模块化反检测脚本（13 个模块）：navigator, screen, webgl, canvas, audio, chrome, webrtc, media, timezone, font, battery, geolocation, performance
+
+### Multi-User Management
+
+```
+users/
+├── users.json      # { current, version: 2 }
+└── {user}/
+    ├── user-data/  # Playwright context (cookies)
+    └── profile.json # meta + connection
 ```
 
 ---
 
 ## Output Format
 
-All CLI commands output JSON via `outputSuccess` or `outputError`:
-
-```typescript
-import { outputSuccess, outputFromError } from '../utils/output';
-
+```json
 // Success
-outputSuccess({ ...result, filters }, 'PARSE:search-video-results');
-
-// Relay message to user
-outputSuccess(result, 'RELAY:点赞成功');
+{ "success": true, "data": { ... }, "toAgent": "PARSE:notes" }
 
 // Error
-outputFromError(error);
+{ "error": true, "message": "...", "code": "NOT_LOGGED_IN" }
+
+// QR Code
+{ "type": "qr_login", "qrPath": "/abs/path/to/qr.png" }
+```
+
+---
+
+## Commands Reference
+
+| 命令 | 说明 |
+|------|------|
+| `npm run login` | 扫码/短信登录 |
+| `npm run search -- "<keyword>"` | 搜索视频 |
+| `npm run publish` | 发布视频 |
+| `npm run like/collect/comment/follow` | 互动操作 |
+| `npm run scrape-note/user` | 数据抓取 |
+| `npm run browser -- --start/stop/status` | 浏览器管理 |
+| `npm run user` | 用户管理 |
+
+---
+
+## Code Style
+
+| 元素 | 规范 | 示例 |
+|------|------|------|
+| Files | kebab-case | `anti-detect.ts` |
+| Interfaces | PascalCase | `LoginOptions` |
+| Functions | camelCase | `executeLogin()` |
+| Constants | SCREAMING_SNAKE_CASE | `PAGE_LOAD_TIMEOUT` |
+
+**Error Handling:**
+```typescript
+import { SkillError, SkillErrorCode } from './config/errors';
+throw new SkillError(message, SkillErrorCode.NOT_LOGGED_IN);
 ```
 
 ---
 
 ## Important Notes
 
-1. **No `any` type** — Use specific types or generics
-2. **No raw enums** — Use `const` object + `as const` + `typeof` pattern
-3. **Always await promises** — Floating promises cause ESLint errors
-4. **Comment headers** — Each file has module docstring with `@module` and `@description`
-5. **Selectors update** — Douyin DOM changes; selectors documented in `SKILL.md` with date
+1. **Rate Limiting**: `randomDelay()` 2-5 秒间隔
+2. **Headless**: Linux 服务器（无 DISPLAY）强制 true
+3. **Node.js**: >= 22.16.0 (`using` syntax)
+4. **TypeScript**: >= 5.2 (`AsyncDisposable`)
+5. **Debug Mode**: `DEBUG=true` in `.env`
+
+---
+
+## Module Dependencies
+
+模块依赖层次（严格单向）：
+
+```
+cli ──────► actions ──────► (user, config, core)
+                 │               │
+                 └───────────────┘
+                         │
+                         ▼
+                      core
+```
+
+**分层规则**：
+- `cli` → 只依赖 `actions`
+- `actions` → 可依赖 `user`, `config`, `core`
+- `user` → 只依赖 `core`
+- `config` → 只依赖 `core/error`（无业务逻辑）
+- `core` → 无外部依赖（平台无关）
+
+**关键原则**：
+- 上层可依赖下层，下层不可依赖上层
+- `config` 模块只包含配置数据，不包含业务逻辑
+- 禁止循环依赖
+
+---
+
+## References
+
+- [Browser Architecture](docs/architecture/browser.md)
+- [Stealth Module](docs/architecture/stealth.md)
+- [Multi-User Management](docs/architecture/multi-user.md)
+- [Channel Integration](references/channel-integration.md)
+- [Troubleshooting](references/troubleshooting.md)

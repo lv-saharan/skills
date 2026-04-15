@@ -1,232 +1,51 @@
 /**
- * Pure CDP Browser Launcher
+ * Browser Launcher
  *
  * @module core/browser/launcher
  * @description Pure browser launch logic with NO user/platform dependencies
  *
- * All parameters are passed explicitly. This module does NOT:
- * - Load user profiles
- * - Access config
- * - Persist connection state
+ * This module coordinates browser lifecycle:
+ * - launchBrowser(): Main entry point
+ * - tryReconnectServer(): Reuse existing browser via CDP
+ * - closeBrowser(): Graceful shutdown
  *
- * The caller is responsible for:
- * - Providing userDataDir path
- * - Providing port number
- * - Saving/loading connection state
+ * Implementation details are delegated to launcher/ subdirectory.
  */
 
-import { spawn } from 'child_process';
-import * as path from 'path';
-import * as fs from 'fs';
-import type { Browser, BrowserContext, Page } from 'playwright';
-import { connectCDPBrowser, checkCDPConnection } from './cdp/connector';
-import { checkCDPReady } from './port-utils';
-import { generateStealthScript } from './stealth';
-import type { UserFingerprint } from '../fingerprint/types';
-import type { StealthBehaviorConfig } from './stealth-behavior';
-import type { GeolocationConfig } from './stealth/types';
-import type { BrowserInstance } from './types';
-import { debugLog, waitForCondition } from '../utils';
+import type { Browser } from 'playwright';
+import { connectOverCDP, checkCDPConnection } from './connection/connector';
+import { launchBrowserServer, setupBrowserContext } from './launcher/browser-launcher';
+import { forceKillProcess, isProcessRunning, waitForProcessExit } from './launcher/process-manager';
+import type { BrowserInstance, SavedConnection, LaunchBrowserOptions } from './types';
+import { debugLog } from '../utils';
+
+// Re-export types for convenience
+export type { BrowserLaunchOptions, SavedConnection, LaunchBrowserOptions } from './types';
+
+// Re-export from launcher/ subdirectory
+export { findBrowserExecutablePath } from './launcher/executable-finder';
+export {
+  launchBrowserServer,
+  setupBrowserContext,
+  diagnoseCorruptedUserData,
+} from './launcher/browser-launcher';
+export { forceKillProcess, isProcessRunning, waitForProcessExit } from './launcher/process-manager';
 
 // ============================================
-// Types
+// Reconnection
 // ============================================
 
 /**
- * Browser launch options (all parameters explicit)
- */
-export interface CDPLaunchOptions {
-  /** Path to user data directory (e.g., users/default/user-data) */
-  userDataDir: string;
-  /** CDP debugging port */
-  port: number;
-  /** Run in headless mode */
-  headless?: boolean;
-  /** Proxy URL */
-  proxy?: string;
-  /** Custom browser executable path */
-  browserPath?: string;
-  /** Browser channel */
-  browserChannel?: string;
-}
-
-/**
- * Stealth launch options
- */
-export interface StealthLaunchOptions extends CDPLaunchOptions {
-  /** User fingerprint for stealth injection */
-  fingerprint: UserFingerprint;
-  /** Stealth behavior configuration */
-  behavior: StealthBehaviorConfig;
-  /** Geolocation config (optional, defaults to Shanghai) */
-  geolocation?: GeolocationConfig;
-}
-
-/**
- * Saved connection info (for reconnection)
- */
-export interface SavedConnection {
-  port: number;
-  pid?: number;
-  wsEndpoint?: string;
-  headless: boolean;
-}
-
-// ============================================
-// Constants
-// ============================================
-
-const DEFAULT_CDP_READY_TIMEOUT = 30000;
-
-// ============================================
-// Browser Executable Finder
-// ============================================
-
-/**
- * Find browser executable path
+ * Try to reconnect to an existing browser via CDP port
  *
- * Searches Playwright's browser cache without loading Playwright.
- */
-export async function findBrowserExecutablePath(customPath?: string): Promise<string> {
-  if (customPath && fs.existsSync(customPath)) {
-    return customPath;
-  }
-
-  const cacheDirs = [
-    path.join(process.env.LOCALAPPDATA || '', 'ms-playwright'),
-    path.join(process.env.USERPROFILE || '', '.cache', 'ms-playwright'),
-    path.join(process.env.HOME || '', '.cache', 'ms-playwright'),
-    path.join(
-      process.env.XDG_CACHE_HOME || path.join(process.env.HOME || '', '.cache'),
-      'ms-playwright'
-    ),
-    path.join(process.env.npm_config_cache || '', 'ms-playwright'),
-  ];
-
-  for (const cacheDir of cacheDirs) {
-    if (fs.existsSync(cacheDir)) {
-      try {
-        const entries = fs.readdirSync(cacheDir, { withFileTypes: true });
-        const chromiumDirs = entries
-          .filter((e) => e.isDirectory() && e.name.startsWith('chromium'))
-          .map((e) => e.name);
-
-        for (const chromiumDir of chromiumDirs) {
-          const possiblePaths = [
-            path.join(cacheDir, chromiumDir, 'chrome-win64', 'chrome.exe'),
-            path.join(cacheDir, chromiumDir, 'chrome.exe'),
-            path.join(cacheDir, chromiumDir, 'chrome-linux', 'chrome'),
-            path.join(
-              cacheDir,
-              chromiumDir,
-              'chrome-mac',
-              'Chromium.app',
-              'Contents',
-              'MacOS',
-              'Chromium'
-            ),
-          ];
-
-          for (const exePath of possiblePaths) {
-            if (fs.existsSync(exePath)) {
-              return exePath;
-            }
-          }
-        }
-      } catch {
-        // Ignore errors, try next directory
-      }
-    }
-  }
-
-  throw new Error(
-    'Chromium browser not found. Please install Playwright browsers with: npm run install:browser'
-  );
-}
-
-// ============================================
-// Spawn Browser (Detached Process)
-// ============================================
-
-/**
- * Spawn a CDP browser as a detached subprocess
- *
- * Returns connection info but does NOT connect via Playwright.
- * The browser runs as an independent process.
- */
-export async function spawnCDPBrowser(
-  options: CDPLaunchOptions
-): Promise<{ port: number; pid: number; wsEndpoint?: string }> {
-  const { userDataDir, port, headless = false, proxy, browserPath } = options;
-
-  const args = [
-    `--remote-debugging-port=${port}`,
-    `--user-data-dir=${userDataDir}`,
-    '--start-maximized',
-    '--no-first-run',
-    '--no-default-browser-check',
-    '--disable-features=SessionRestore',
-    '--restore-last-session=false',
-    '--disable-session-crashed-bubble',
-    '--disable-save-password-bubble',
-  ];
-
-  if (headless) {
-    // Use new headless mode (Chrome 109+) - shares code with headed Chrome
-    args.push('--headless=new');
-    // Disable automation control flag to avoid detection
-    args.push('--disable-blink-features=AutomationControlled');
-  }
-
-  if (proxy) {
-    args.push(`--proxy-server=${proxy}`);
-  }
-
-  const executablePath = await findBrowserExecutablePath(browserPath);
-
-  debugLog('[spawnCDPBrowser] Spawning browser', {
-    port,
-    headless,
-    hasProxy: !!proxy,
-  });
-
-  const browserProcess = spawn(executablePath, args, {
-    detached: true,
-    stdio: 'ignore',
-  });
-
-  const pid = browserProcess.pid || 0;
-  browserProcess.unref();
-
-  // Wait for CDP to be ready
-  const isReady = await waitForCDPReady(port, DEFAULT_CDP_READY_TIMEOUT);
-
-  if (!isReady) {
-    try {
-      process.kill(pid);
-    } catch {
-      // Ignore kill errors
-    }
-    throw new Error(`CDP endpoint not ready within ${DEFAULT_CDP_READY_TIMEOUT}ms on port ${port}`);
-  }
-
-  const wsEndpoint = await fetchWSEndpoint(port);
-
-  return { port, pid, wsEndpoint };
-}
-
-// ============================================
-// Connection Functions
-// ============================================
-
-/**
- * Try to reconnect to an existing CDP browser
+ * For browsers launched with launchPersistentContext + CDP port,
+ * we reconnect via CDP HTTP endpoint instead of WebSocket.
  *
  * @param savedConnection - Previously saved connection info
  * @param requestedHeadless - Requested headless mode
  * @returns Browser and port if reconnection successful, null otherwise
  */
-export async function tryReconnectCDP(
+export async function tryReconnectServer(
   savedConnection: SavedConnection | null,
   requestedHeadless: boolean
 ): Promise<{ browser: Browser; port: number } | null> {
@@ -240,17 +59,20 @@ export async function tryReconnectCDP(
     return null;
   }
 
+  // Check CDP endpoint is responsive
   const isResponsive = await checkCDPConnection(savedConnection.port);
   if (!isResponsive) {
     return null;
   }
 
-  const browser = await connectCDPBrowser(savedConnection.port);
+  // Connect via CDP
+  const cdpEndpoint = 'http://127.0.0.1:' + savedConnection.port;
+  const browser = await connectOverCDP(cdpEndpoint);
   if (!browser) {
     return null;
   }
 
-  debugLog('Reconnected to existing CDP browser', { port: savedConnection.port });
+  debugLog('Reconnected to existing browser via CDP', { port: savedConnection.port });
   return { browser, port: savedConnection.port };
 }
 
@@ -262,204 +84,141 @@ export async function tryReconnectCDP(
  * Launch a browser instance with stealth injection
  *
  * This is the main entry point for browser launch.
+ * Automatically reuses existing browser via CDP or launches new one.
  *
  * @param options - Launch options including fingerprint
  * @param savedConnection - Optional saved connection for reconnection attempt
  * @returns Browser instance with page ready for use
  */
 export async function launchBrowser(
-  options: StealthLaunchOptions,
+  options: LaunchBrowserOptions,
   savedConnection?: SavedConnection | null
 ): Promise<BrowserInstance> {
-  const { port, headless = false, fingerprint, geolocation } = options;
+  const { headless = false, fingerprint, geolocation } = options;
 
-  // First, try reconnection if we have saved connection
-  if (savedConnection) {
-    const reconnected = await tryReconnectCDP(savedConnection, headless);
+  // Try reconnection if we have saved connection
+  if (savedConnection?.port) {
+    const reconnected = await tryReconnectServer(savedConnection, headless);
     if (reconnected) {
-      // Successfully reconnected
-      const result = await setupContext(reconnected.browser, fingerprint, geolocation);
+      const result = await setupBrowserContext(reconnected.browser, fingerprint, geolocation);
       return {
         browser: reconnected.browser,
         context: result.context,
         page: result.page,
         port: reconnected.port,
         pid: savedConnection.pid || 0,
-        wsEndpoint: savedConnection.wsEndpoint,
+        wsEndpoint: 'ws://127.0.0.1:' + savedConnection.port + '/',
         isNewInstance: false,
       };
     }
   }
 
-  // No reconnection possible, spawn new browser
-  const spawned = await spawnCDPBrowser({ ...options, port });
-  const browser = await connectCDPBrowser(spawned.port);
+  // No reconnection possible, launch new browser with persistent context
+  // Pass fingerprint userAgent to override HeadlessChrome HTTP header
+  // Pass fingerprint screen dimensions to match --window-size with stealth screen spoofing
+  const launched = await launchBrowserServer({
+    ...options,
+    userAgent: fingerprint.browser.userAgent,
+    viewportWidth: fingerprint.screen.width,
+    viewportHeight: fingerprint.screen.height,
+  });
+
+  // Connect via CDP to get Browser instance
+  const cdpEndpoint = 'http://127.0.0.1:' + launched.port;
+  const browser = await connectOverCDP(cdpEndpoint);
   if (!browser) {
-    throw new Error(`Failed to connect to spawned CDP browser on port ${spawned.port}`);
+    throw new Error('Failed to connect to launched browser on CDP port ' + launched.port);
   }
 
-  const result = await setupContext(browser, fingerprint, geolocation);
+  const result = await setupBrowserContext(browser, fingerprint, geolocation);
   return {
     browser,
     context: result.context,
     page: result.page,
-    port: spawned.port,
-    pid: spawned.pid,
-    wsEndpoint: spawned.wsEndpoint,
+    port: launched.port,
+    pid: launched.pid,
+    wsEndpoint: launched.wsEndpoint,
     isNewInstance: true,
   };
 }
 
-/**
- * Setup browser context with stealth injection
- */
-async function setupContext(
-  browser: Browser,
-  fingerprint: UserFingerprint,
-  geolocation?: GeolocationConfig
-): Promise<{ context: BrowserContext; page: Page }> {
-  const contexts = browser.contexts();
-  let context: BrowserContext;
-
-  if (contexts.length > 0) {
-    context = contexts[0];
-
-    // Inject stealth script (idempotent)  不需要反复注入
-    await injectStealthToContext(context, fingerprint, geolocation);
-
-    // NOTE: Do NOT clean up existing pages!
-    // Each action manages only its own pages (create, use, close).
-    // Cleaning up here would interfere with other concurrent actions.
-  } else {
-    context = await browser.newContext();
-    await injectStealthToContext(context, fingerprint, geolocation);
-  }
-
-  // Create fresh page
-  const page = await context.newPage();
-  return { context, page };
-}
+// ============================================
+// Browser Close
+// ============================================
 
 /**
  * Close a browser instance
  *
- * @param port - CDP port
- * @param pid - Process ID (for force kill fallback)
+ * Uses graceful close via CDP connection, with PID kill fallback.
+ * Waits for process to fully exit before returning to prevent user-data-dir lock conflicts.
+ *
+ * @param wsEndpoint - WebSocket endpoint (not used for CDP, kept for compatibility)
+ * @param pid - Process ID (for kill fallback)
  */
-export async function closeBrowser(port: number, pid?: number): Promise<void> {
-  try {
-    const browser = await connectCDPBrowser(port, 5000);
-    if (browser) {
-      // Close all pages first to prevent session restore
-      const contexts = browser.contexts();
-      for (const context of contexts) {
-        const pages = context.pages();
-        for (const page of pages) {
+export async function closeBrowser(wsEndpoint?: string, pid?: number): Promise<void> {
+  // Extract port from wsEndpoint if available
+  let port: number | undefined;
+  if (wsEndpoint) {
+    const match = wsEndpoint.match(/ws:\/\/127\.0\.0\.1:(\d+)/);
+    if (match) {
+      port = parseInt(match[1], 10);
+    }
+  }
+
+  let closedViaCDP = false;
+
+  // Method 1: Try graceful close via CDP connection
+  if (port) {
+    try {
+      const browser = await connectOverCDP('http://127.0.0.1:' + port, 5000);
+      if (browser) {
+        const contexts = browser.contexts();
+        for (const context of contexts) {
+          const pages = context.pages();
+          for (const page of pages) {
+            try {
+              await page.close({ runBeforeUnload: false });
+            } catch {
+              // Page may be already closed
+            }
+          }
           try {
-            await page.close({ runBeforeUnload: false });
+            await context.close();
           } catch {
-            // Page may be already closed
+            // Context may have no pages
           }
         }
-        try {
-          await context.close();
-        } catch {
-          // Context may have no pages
-        }
+        await browser.close();
+        closedViaCDP = true;
+        debugLog('Closed browser via CDP connection');
       }
-      await browser.close();
-      debugLog('Closed CDP browser via API');
+    } catch {
+      debugLog('CDP close failed, falling back to PID kill');
     }
-  } catch {
-    debugLog('CDP close failed');
   }
 
-  // Force kill if still alive
-  const stillAlive = await checkCDPConnection(port);
-  if (stillAlive && pid) {
-    debugLog('Browser still alive, force killing PID ' + pid);
-    await forceKillProcess(pid);
-  }
-}
-
-// ============================================
-// Stealth Injection
-// ============================================
-
-/**
- * Inject stealth script into a browser context
- */
-export async function injectStealthToContext(
-  context: BrowserContext,
-  fingerprint: UserFingerprint,
-  geolocation?: GeolocationConfig
-): Promise<void> {
-  const script = generateStealthScript(fingerprint, undefined, geolocation);
-  await context.addInitScript(script);
-}
-
-// ============================================
-// Helpers
-// ============================================
-
-/**
- * Fetch CDP WebSocket endpoint
- */
-async function fetchWSEndpoint(port: number): Promise<string | undefined> {
-  try {
-    const response = await fetch(`http://127.0.0.1:${port}/json/version`);
-    if (response.ok) {
-      const data = (await response.json()) as { webSocketDebuggerUrl?: string };
-      return data.webSocketDebuggerUrl;
+  // Method 2: Force kill via PID (fallback or if CDP didn't fully terminate)
+  if (pid && pid > 0) {
+    const stillAlive = port ? await checkCDPConnection(port) : false;
+    const processAlive = isProcessRunning(pid);
+    if (stillAlive || (closedViaCDP && processAlive)) {
+      if (stillAlive) {
+        debugLog('Browser still alive, force killing PID ' + pid);
+      } else if (processAlive) {
+        debugLog('Browser process still running after CDP close, force killing PID ' + pid);
+      }
+      await forceKillProcess(pid);
     }
-  } catch {
-    // Ignore errors
   }
-  return undefined;
-}
 
-/**
- * Wait for CDP endpoint to be ready
- */
-async function waitForCDPReady(port: number, timeout: number): Promise<boolean> {
-  try {
-    await waitForCondition(async () => checkCDPReady(port, 1000), {
-      timeout,
-      interval: 500,
-      timeoutMessage: `CDP endpoint not ready on port ${port}`,
-    });
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-/**
- * Force kill a process
- */
-async function forceKillProcess(pid: number): Promise<boolean> {
-  try {
-    if (process.platform === 'win32') {
-      const { exec } = await import('child_process');
-      const { promisify } = await import('util');
-      await promisify(exec)('taskkill /F /PID ' + pid);
-    } else {
-      process.kill(pid, 'SIGKILL');
+  // Wait for process to fully exit (prevents user-data-dir lock race condition)
+  // Chromium needs time to release file locks (SingletonLock, SingletonCookie) after close
+  if (pid && pid > 0 && isProcessRunning(pid)) {
+    debugLog('Waiting for browser process to exit...');
+    const exited = await waitForProcessExit(pid, 5000);
+    if (!exited) {
+      debugLog('Browser process did not exit in time, force killing');
+      await forceKillProcess(pid);
     }
-
-    await waitForCondition(
-      async () => {
-        try {
-          process.kill(pid, 0);
-          return false;
-        } catch {
-          return true;
-        }
-      },
-      { timeout: 5000, interval: 500 }
-    );
-    return true;
-  } catch {
-    return false;
   }
 }

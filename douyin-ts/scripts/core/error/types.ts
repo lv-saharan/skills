@@ -51,21 +51,23 @@ export class PlatformError extends Error {
  *
  * @example
  * ```typescript
- * const XhsErrorCode = {
+ * const DyErrorCode = {
  *   NOT_LOGGED_IN: 'NOT_LOGGED_IN',
  *   // ...
  * } as const;
  *
- * export const XhsError = createPlatformError({
- *   name: 'XhsError',
- *   codes: XhsErrorCode,
+ * export const DyError = createPlatformError({
+ *   name: 'DyError',
+ *   codes: DyErrorCode,
  * });
  *
  * // Usage
- * throw new XhsError('Login required', XhsErrorCode.NOT_LOGGED_IN);
+ * throw new DyError('Login required', DyErrorCode.NOT_LOGGED_IN);
  * ```
  */
-export function createPlatformError<T extends StandardErrorCode>(config: PlatformErrorConfig<T>) {
+export function createPlatformError<T extends StandardErrorCode>(
+  config: PlatformErrorConfig<T>
+): typeof PlatformError {
   return class extends PlatformError {
     static readonly codes = config.codes;
 

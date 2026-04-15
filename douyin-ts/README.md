@@ -1,135 +1,182 @@
 # 抖音自动化 Skill (douyin-ts)
 
-[![Version](https://img.shields.io/badge/version-0.0.1-blue.svg)](https://github.com/lv-saharan/skills/tree/main/douyin-ts)
+[![Version](https://img.shields.io/badge/version-0.1.0-blue.svg)](https://github.com/lv-saharan/skills/tree/main/douyin-ts)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![Node](https://img.shields.io/badge/node-%3E%3D22.16.0-brightgreen.svg)](https://nodejs.org/)
 
-抖音（Douyin）自动化操作技能，支持登录、搜索视频、搜索用户、点赞、收藏、关注。
+抖音（Douyin）全功能自动化技能，支持搜索、发布、互动、数据抓取。基于 Playwright 构建，提供完整的反检测防护机制。
 
 ## 功能特性
 
-| 功能 | 命令 | 说明 |
-|------|------|------|
-| 🔐 登录 | `npm run login` | 扫码登录 |
-| 🔍 搜索视频 | `npm run search-video -- "<keyword>"` | 支持排序、时间筛选 |
-| 🔍 搜索用户 | `npm run search-user -- "<keyword>"` | 返回用户信息 |
-| 👍 点赞 | `npm run like -- "<url>"` | 支持批量 |
-| 📌 收藏 | `npm run collect -- "<url>"` | 支持批量 |
-| ➕ 关注 | `npm run follow -- "<url>"` | 支持批量 |
+| 功能 | 命令 | 状态 | 说明 |
+|------|------|------|------|
+| 🔐 登录 | `npm run login` | ✅ 已实现 | 扫码/短信登录，Cookie 管理 |
+| 🔍 搜索 | `npm run search -- "<keyword>"` | 🚧 Stub | 关键词搜索 |
+| 📝 发布 | `npm run publish -- [options]` | 🚧 Stub | 视频/图文发布 |
+| 👤 多用户 | `npm run user` | ✅ 已实现 | 多账号管理，独立 Profile |
+| 👍 点赞 | `npm run like -- "<url>" [urls...]` | 🚧 Stub | 点赞视频（支持批量） |
+| 📌 收藏 | `npm run collect -- "<url>" [urls...]` | 🚧 Stub | 收藏视频（支持批量） |
+| 💬 评论 | `npm run comment -- "<url>" "text"` | 🚧 Stub | 评论视频 |
+| 👥 关注 | `npm run follow -- "<url>" [urls...]` | 🚧 Stub | 关注用户（支持批量） |
+| 📊 抓取视频 | `npm run scrape-note -- "<url>"` | 🚧 Stub | 视频详情数据 |
+| 📊 抓取用户 | `npm run scrape-user -- "<url>"` | 🚧 Stub | 用户主页数据 |
+| 🌐 浏览器管理 | `npm run browser -- --start` | ✅ 已实现 | CDP 浏览器实例管理 |
+| 🛡️ 反检测 | 内置 | — | 模块化 stealth 脚本、人类行为模拟 |
 
 ---
 
 ## 快速开始
 
+### 前置要求
+
+- Node.js >= 22.16.0
+- npm 或 pnpm
+- 抖音账号（建议使用小号测试）
+
+### 安装步骤
+
 ```bash
-# 安装依赖
+# 1. 安装依赖
 npm install
 
-# 安装浏览器
+# 2. 安装 Playwright 浏览器
 npm run install:browser
 
-# 登录
+# 国内用户可设置镜像
+# Windows
+set PLAYWRIGHT_DOWNLOAD_HOST=https://npmmirror.com/mirrors/playwright && npm run install:browser
+
+# macOS/Linux
+PLAYWRIGHT_DOWNLOAD_HOST=https://npmmirror.com/mirrors/playwright npm run install:browser
+
+# 3. 验证安装
+npm run start -- --help
+```
+
+### 配置环境变量
+
+复制 `.env.example` 为 `.env`：
+
+```bash
+cp .env.example .env
+```
+
+编辑 `.env` 文件：
+
+```env
+# 代理设置（可选）
+PROXY=http://127.0.0.1:7890
+
+# 无头模式（留空自动检测：服务器强制 true，桌面端默认 false）
+HEADLESS=
+
+# 浏览器路径（可选，默认使用 Playwright 内置）
+BROWSER_PATH=
+
+# 调试模式
+DEBUG=false
+```
+
+---
+
+## 使用指南
+
+### 登录
+
+```bash
+# 扫码登录（默认）
 npm run login
+
+# 无头模式登录（二维码保存到文件）
+npm run login:headless
+
+# 短信验证登录
+npm run login -- --sms
+
+# 指定用户登录
+npm run login -- --user "小号"
+```
+
+### 多用户管理
+
+```bash
+# 查看用户列表
+npm run user
+
+# 设置当前用户
+npm run user:use -- "小号"
+
+# 重置为默认用户
+npm run user -- --set-default
+```
+
+### 浏览器管理
+
+```bash
+# 启动浏览器实例
+npm run browser -- --start
+npm run browser -- --start --user "小号"
+npm run browser -- --start --headless
+
+# 查看实例状态
+npm run browser -- --status
+
+# 关闭实例
+npm run browser -- --stop-user "小号"
+npm run browser -- --stop
 ```
 
 ---
 
-## 搜索视频 (语义化参数)
+## 反检测机制
 
-### 排序方式 `--sort-type`
+douyin-ts 内置多层反检测防护：
 
-| 值 | 说明 |
-|----|------|
-| `comprehensive` | 综合排序 (默认) |
-| `most-likes` | 最多点赞 |
-| `latest` | 最新发布 |
-
-### 发布时间 `--publish-time`
-
-| 值 | 说明 |
-|----|------|
-| `unlimited` | 不限 (默认) |
-| `one-day` | 一天内 |
-| `one-week` | 一周内 |
-| `six-months` | 半年内 |
-
-### 返回字段
-
-| 字段 | 说明 |
+| 技术 | 说明 |
 |------|------|
-| `url` | 视频链接 |
-| `videoId` | 视频ID |
-| `title` | 视频标题 |
-| `author` | 作者昵称 |
-| `likes` | 点赞数 (如 "3.8万") |
-| `duration` | 时长 (如 "01:09:35") |
-| `timeAgo` | 发布时间 (如 "3周前") |
-| `coverUrl` | 封面图片链接 |
+| **模块化 Stealth 脚本** | 13 个独立模块：navigator、screen、webgl、canvas、audio、chrome、webrtc 等 |
+| **设备指纹伪装** | UserAgent、Viewport、WebGL、Canvas 噪声 |
+| **人类行为模拟** | 贝塞尔曲线鼠标轨迹、物理滚动、随机延迟 |
+| **时区/语言一致性** | 确保指纹参数与行为匹配 |
+| **WebRTC 防护** | 阻止真实 IP 泄露 |
 
-### 示例
+---
 
-```bash
-# 综合搜索
-npm run search-video -- "美食"
+## 项目结构
 
-# 最多点赞 + 一周内
-npm run search-video -- "美食" --sort-type most-likes --publish-time one-week
-
-# 最新发布
-npm run search-video -- "美食" --sort-type latest --limit 20
+```
+douyin-ts/
+├── SKILL.md              # AgentSkills 技能定义
+├── README.md             # 本文档
+├── AGENTS.md             # 开发指南
+├── package.json          # 依赖配置
+├── tsconfig.json         # TypeScript 配置
+├── docs/                 # 开发文档
+│   └── architecture/     # 架构详细说明
+├── references/           # 用户文档
+├── scripts/              # 源代码（分层架构）
+│   ├── index.ts          # CLI 入口
+│   ├── cli/              # CLI 命令入口
+│   ├── actions/          # 业务操作模块
+│   │   ├── shared/       # Session 管理
+│   │   ├── login/        # 登录
+│   │   ├── search/       # 搜索
+│   │   ├── publish/      # 发布
+│   │   ├── interact/     # 互动
+│   │   └── scrape/       # 抓取
+│   ├── core/             # 核心基础设施
+│   ├── config/           # 配置
+│   └── user/             # 多用户管理
+└── users/                # 多用户目录
 ```
 
 ---
 
-## 搜索用户
+## 注意事项
 
-### 返回字段
-
-| 字段 | 说明 |
-|------|------|
-| `url` | 用户主页链接 |
-| `userId` | 用户ID |
-| `nickname` | 昵称 |
-| `signature` | 个性签名 |
-| `verified` | 是否认证 |
-| `avatarUrl` | 头像链接 |
-
-### 示例
-
-```bash
-# 基本搜索
-npm run search-user -- "抖音" --limit 10
-```
-
----
-
-## 工作流示例
-
-```bash
-# 1. 搜索最新视频
-npm run search-video -- "美食" --sort-type latest --limit 10
-
-# 2. 点赞搜索结果
-npm run like -- "url1" "url2"
-
-# 3. 搜索用户
-npm run search-user -- "抖音" --limit 5
-
-# 4. 关注用户
-npm run follow -- "user-url"
-```
-
----
-
-## 测试结果
-
-```bash
-# 搜索视频 ✅
-npm run search-video -- "美丽毒素" --sort-type latest --limit 5
-# 返回: 5条结果，包含标题、作者、点赞数、时长、发布时间
-
-# 搜索用户 ✅  
-npm run search-user -- "抖音" --limit 3
-# 返回: 3条结果，包含昵称、签名、认证状态、头像
-```
+1. **频率控制** — 操作间保持 2-5 秒间隔
+2. **账号安全** — 建议使用小号测试
+3. **Node.js 版本** — 需要 >= 22.16.0
 
 ---
 

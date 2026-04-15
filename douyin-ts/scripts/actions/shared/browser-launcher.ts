@@ -16,12 +16,18 @@ import type { StealthBehaviorConfig } from '../../core/browser/stealth-behavior'
 import {
   launchBrowser as launchBrowserCore,
   closeBrowser,
+  diagnoseCorruptedUserData,
   type SavedConnection,
 } from '../../core/browser/launcher';
-import { allocatePortForIdentifier, checkCDPReady } from '../../core/browser/port-utils';
+import {
+  isBrowserErrorCode,
+  BrowserErrorCode,
+  createUserDataCorruptedError,
+} from '../../core/browser/errors';
+import { allocatePortForIdentifier } from '../../core/browser/port-utils';
 import { getStealthBehavior } from '../../core/browser/stealth-behavior';
 import { hasProfile, createUserProfile, getUserDataDir } from '../../user/storage';
-import { loadUserProfile } from '../../user/storage';
+import { loadUserProfile } from '../../user/profile-loader';
 import {
   loadConnectionInfo,
   saveConnectionInfo,
@@ -40,7 +46,7 @@ import { debugLog } from '../../core/utils';
 export type { StealthBehaviorConfig } from '../../core/browser/stealth-behavior';
 
 // Re-export utilities needed by CLI
-export { checkCDPConnection } from '../../core/browser/cdp/connector';
+export { checkServerConnection, checkBrowserEndpointHealth } from '../../core/browser/connection';
 export { loadConnectionInfo, saveConnectionInfo, clearConnectionInfo } from '../../user/storage-v3';
 
 // ============================================
@@ -64,7 +70,7 @@ export interface ProfileBrowserResult {
   user: UserName;
   environmentType: EnvironmentType;
   behavior: StealthBehaviorConfig;
-  cdpPort: number;
+  port: number;
   isNewInstance: boolean;
 }
 
@@ -92,37 +98,59 @@ export async function randomStealthDelay(
 // ============================================
 
 /**
- * Check if a CDP instance is running for a user
+ * Check if a browser instance is running for a user
+ *
+ * Supports both CDP and BrowserServer modes.
+ * CDP browsers are launched with --remote-debugging-port, detected via HTTP endpoint.
+ * BrowserServer browsers are launched via chromium.launchServer(), detected via WebSocket.
+ *
+ * IMPORTANT: CDP endpoints should use HTTP check or connectOverCDP, not BrowserServer WebSocket.
  */
-export async function hasCDPInstance(user: UserName): Promise<boolean> {
+export async function hasBrowserInstance(user: UserName): Promise<boolean> {
   const connection = await loadConnectionInfo(user);
-  if (!connection?.cdpPort) {
+
+  if (!connection?.port) {
     return false;
   }
-  return checkCDPReady(connection.cdpPort);
+
+  // Always use HTTP endpoint check for CDP-launched browsers
+  // This is more reliable than WebSocket connection for CDP mode
+  try {
+    const response = await fetch(`http://127.0.0.1:${connection.port}/json/version`, {
+      method: 'GET',
+      signal: AbortSignal.timeout(5000),
+    });
+    return response.ok;
+  } catch {
+    return false;
+  }
 }
 
 /**
- * Get the CDP port for a user
+ * Get the port for a user's browser instance
  */
-export async function getCDPPort(user: UserName): Promise<number | undefined> {
+export async function getBrowserPort(user: UserName): Promise<number | undefined> {
   const connection = await loadConnectionInfo(user);
-  return connection?.cdpPort;
+  return connection?.port;
 }
 
 /**
- * Close a CDP instance for a user
+ * Close a browser instance for a user
+ *
+ * Supports BrowserServer (wsEndpoint) mode.
  */
-export async function closeCDPInstance(user: UserName): Promise<void> {
+export async function closeBrowserInstance(user: UserName): Promise<void> {
   const connection = await loadConnectionInfo(user);
-  if (!connection?.cdpPort) {
-    debugLog('No CDP instance to close for user: ' + user);
+
+  if (!connection) {
+    debugLog('No browser instance to close for user: ' + user);
     return;
   }
 
-  await closeBrowser(connection.cdpPort, connection.pid);
+  // Use new closeBrowser signature with wsEndpoint support
+  await closeBrowser(connection.wsEndpoint, connection.pid);
   await clearConnectionInfo(user);
-  debugLog('CDP instance closed for user: ' + user);
+  debugLog('Browser instance closed for user: ' + user);
 }
 
 // ============================================
@@ -134,8 +162,8 @@ export async function closeCDPInstance(user: UserName): Promise<void> {
  *
  * Lifecycle:
  * 1. Resolve user → load profile → get behavior config
- * 2. Try reconnecting to existing CDP instance
- * 3. If no existing instance, spawn new one
+ * 2. Try reconnecting to existing browser instance
+ * 3. If no existing instance, launch new BrowserServer
  * 4. Inject stealth script into context
  * 5. Create fresh page and return result
  */
@@ -166,7 +194,7 @@ export async function launchProfileBrowser(
 
   // Load profile
   const profile = await loadUserProfile(user);
-  const environmentType = profile.meta.environmentType as EnvironmentType;
+  const environmentType = profile.meta.environmentType;
   const behavior = getStealthBehavior(environmentType);
 
   debugLog('Profile loaded for ' + user, {
@@ -188,47 +216,80 @@ export async function launchProfileBrowser(
 
   // If headless mode mismatch, close old instance before spawning new one
   // (--headless is a launch argument, cannot change at runtime)
-  if (savedConnection?.cdpPort && savedConnection.headless !== actualHeadless) {
+  if (savedConnection?.port && savedConnection.headless !== actualHeadless) {
     debugLog('Headless mode mismatch, closing old instance', {
       saved: savedConnection.headless,
       requested: actualHeadless,
     });
-    await closeCDPInstance(user);
+    await closeBrowserInstance(user);
     // Proceed with null connection to spawn new instance
   }
 
   // Prepare connection for reconnect (only if headless matches)
   const connectionForReconnect: SavedConnection | null =
-    savedConnection?.cdpPort && savedConnection.headless === actualHeadless
+    savedConnection?.port && savedConnection.headless === actualHeadless
       ? {
-          port: savedConnection.cdpPort,
+          port: savedConnection.port,
           pid: savedConnection.pid,
           wsEndpoint: savedConnection.wsEndpoint,
           headless: savedConnection.headless ?? false,
         }
       : null;
 
-  // Launch browser using core launcher
-  const result = await launchBrowserCore(
-    {
-      userDataDir: getUserDataDir(user),
-      port,
-      headless: actualHeadless,
-      proxy: actualProxy,
-      browserPath: actualBrowserPath,
-      browserChannel: actualBrowserChannel,
-      fingerprint: profile.fingerprint,
-      behavior,
-      geolocation: undefined,
-    },
-    connectionForReconnect
-  );
+  // Launch browser using core launcher (now uses BrowserServer by default)
+  // Wrap in try-catch to detect and diagnose user data corruption
+  const userDataDir = getUserDataDir(user);
+  let result;
+  try {
+    result = await launchBrowserCore(
+      {
+        userDataDir,
+        port,
+        headless: actualHeadless,
+        proxy: actualProxy,
+        browserPath: actualBrowserPath,
+        browserChannel: actualBrowserChannel,
+        fingerprint: profile.fingerprint,
+        behavior,
+        geolocation: profile.geolocation,
+      },
+      connectionForReconnect
+    );
+  } catch (launchError) {
+    // Check if browser process died immediately - this indicates corrupted user data
+    if (isBrowserErrorCode(launchError, BrowserErrorCode.PROCESS_TERMINATION_FAILED)) {
+      debugLog('Browser process died during startup, diagnosing user data corruption...');
+
+      // Diagnose by testing with a fresh temp directory
+      const isCorrupted = await diagnoseCorruptedUserData(
+        {
+          userDataDir,
+          port,
+          headless: actualHeadless,
+          proxy: actualProxy,
+          browserPath: actualBrowserPath,
+        },
+        userDataDir
+      );
+
+      if (isCorrupted) {
+        debugLog('Diagnosis confirmed: user data directory is corrupted');
+        throw createUserDataCorruptedError(user, userDataDir);
+      }
+
+      // If not corrupted, re-throw original error
+      throw launchError;
+    }
+
+    // For other errors, just re-throw
+    throw launchError;
+  }
 
   // Save connection info
   await saveConnectionInfo(user, {
-    cdpPort: result.port!,
+    port: result.port!,
     pid: result.pid!,
-    wsEndpoint: result.wsEndpoint!,
+    wsEndpoint: result.wsEndpoint,
     headless: actualHeadless,
     startedAt: new Date().toISOString(),
     lastActivityAt: new Date().toISOString(),
@@ -244,7 +305,7 @@ export async function launchProfileBrowser(
     user,
     environmentType,
     behavior,
-    cdpPort: result.port!,
+    port: result.port!,
     isNewInstance: result.isNewInstance!,
   };
 }
@@ -272,7 +333,7 @@ export async function withProfile<T>(
       user: result.user,
       environmentType: result.environmentType,
       behavior: result.behavior,
-      cdpPort: result.cdpPort,
+      port: result.port,
       isNewInstance: result.isNewInstance,
     });
   } finally {
@@ -289,12 +350,11 @@ export async function withProfile<T>(
     if (keepAlive) {
       // Disconnect from browser but keep it running
       await result.browser.close();
-      debugLog('Disconnected from CDP browser (keeping alive) for user: ' + result.user);
+      debugLog('Disconnected from browser (keeping alive) for user: ' + result.user);
     } else {
       // Fully close the browser instance
-      await closeCDPInstance(result.user);
-      debugLog('Closed CDP instance for user: ' + result.user);
+      await closeBrowserInstance(result.user);
+      debugLog('Closed browser instance for user: ' + result.user);
     }
   }
 }
-

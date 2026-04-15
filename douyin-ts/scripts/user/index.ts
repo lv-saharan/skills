@@ -17,23 +17,20 @@ export type {
   BrowserConfig,
   ScreenConfig,
   DevicePlatform,
-  // New Profile types (Task 1)
   EnvironmentType,
   FingerprintSource,
   DeviceProfile,
   UserEnvironment,
-  UserMeta,
   UserProfile,
   ProfileStatus,
   ProfileStatusInfo,
   ProfileRef,
-  // v3 types
   ProfileMeta,
   ConnectionInfo,
   UserProfileData,
 } from './types';
 
-// Storage operations
+// Storage operations (directory and basic operations)
 export {
   getUsersDir,
   getUserDir,
@@ -47,56 +44,39 @@ export {
   getProfileStatus,
   createUserDir,
   listUsers,
-  loadUsersMeta,
-  loadUsersMetaAsync,
-  saveUsersMeta,
-  getCurrentUser,
-  getCurrentUserAsync,
-  setCurrentUser,
-  clearCurrentUser,
-  resolveUser,
-  resolveUserAsync,
-  // Profile operations
   createUserProfile,
-  loadUserProfile,
   updateLastUsed,
 } from './storage';
 
-// v3 Storage operations
+// Users metadata operations (users.json)
 export {
+  loadUsersMeta,
+  saveUsersMeta,
+  getCurrentUser,
+  setCurrentUser,
+  clearCurrentUser,
+  resolveUser,
+} from './users-meta';
+
+// Profile loading
+export { loadUserProfile } from './profile-loader';
+
+// v3 Unified Storage API (recommended for browser connections)
+export {
+  getProfilePath,
   loadUserProfileData,
   saveUserProfileData,
   createUserProfileData,
-  hasProfileData,
   loadConnectionInfo,
   saveConnectionInfo,
   clearConnectionInfo,
-  updateConnectionActivity,
-  updateProfileLastUsed,
 } from './storage-v3';
 
-// Fingerprint operations (includes getMostMainstreamPreset)
-export {
-  getUserFingerprint,
-  saveUserFingerprint,
-  hasUserFingerprint,
-  regenerateUserFingerprint,
-  getFingerprintInfo,
-  getMostMainstreamPreset,
-  getDefaultPresetInfo,
-} from './fingerprint';
+// Fingerprint operations
+export { getUserFingerprint } from './fingerprint';
 
-// Environment detection (Task 2)
-export {
-  hasDisplaySupport,
-  detectDeviceProfile,
-  detectEnvironmentType,
-  detectEnvironment,
-  selectPresetBySmartMatch,
-  getMostMainstreamPresetInfo,
-  generateEnvironmentFingerprint,
-  generateFingerprint,
-} from './environment';
+// Environment detection
+export { hasDisplaySupport, detectEnvironmentType } from './environment';
 
 // Migration
-export { isMigrationNeeded, migrateToMultiUser, ensureMigrated } from './migration';
+export { isMigrationNeeded, ensureMigrated } from './migration';

@@ -3,87 +3,148 @@
  *
  * @module actions
  * @description All Douyin automation actions
+ *
+ * This module provides a single entry point for all action modules.
+ * CLI commands should import from here for better module separation.
  */
+
+// ============================================
+// Auth - Authentication State Management
+// ============================================
+
+export {
+  detectLoginStatus,
+  isLoggedIn,
+  triggerLoginModal,
+  checkErrorPage,
+  verifySession,
+} from './auth';
+
+export type { LoginStatus, ErrorPageResult, TriggerModalResult } from './auth';
 
 // ============================================
 // Login Actions
 // ============================================
 
-export { executeLogin, checkLogin } from './login';
-export type { LoginMethod, LoginOptions, LoginResult } from './login';
+export { executeLogin, autoLogin, qrLogin, smsLogin } from './login';
 
-// ============================================
-// Interact Actions
-// ============================================
-
-export { executeLike, executeCollect, executeFollow, extractNoteId, extractUserId } from './interact';
-export type { LikeOptions, LikeResult, CollectOptions, FollowOptions } from './interact';
-
-export {
-  NOTE_SELECTORS,
-  LIKE_SELECTORS,
-  COLLECT_SELECTORS,
-  FOLLOW_SELECTORS,
-  SEARCH_SELECTORS,
-  SEARCH_URLS,
-} from './interact/selectors';
+export type {
+  LoginMethod,
+  LoginOptions,
+  LoginResult,
+  AutoLoginOptions,
+  AutoLoginResult,
+  QrCodeOutput,
+} from './login';
 
 // ============================================
 // Search Actions
 // ============================================
 
-export { executeSearchVideo, executeSearchUser } from './search';
+export { executeSearch } from './search';
+
 export type {
-  VideoSearchOptions,
-  VideoSearchResult,
-  VideoSortTypeValue,
-  PublishTimeValue,
-  UserSearchOptions,
-  UserSearchResult,
+  SearchSortType,
+  SearchNoteType,
+  SearchTimeRange,
+  SearchScope,
+  SearchLocation,
+  SearchOptions,
+  SearchResult,
+  SearchResultNote,
+  SearchResultAuthor,
+  NoteStats,
 } from './search';
 
-export { VideoSortType, PublishTimeType } from './search';
+// ============================================
+// Interact Actions
+// ============================================
+
+export { executeLike, executeCollect, executeComment, executeFollow } from './interact';
+
+export type {
+  LikeOptions,
+  LikeResult,
+  LikeManyResult,
+  CollectOptions,
+  CollectResult,
+  CollectManyResult,
+  CommentOptions,
+  CommentResult,
+  FollowOptions,
+  FollowResult,
+  FollowManyResult,
+  NoteIdExtraction,
+  UserIdExtraction,
+} from './interact';
 
 // ============================================
-// Shared Session Management
+// Scrape Actions
+// ============================================
+
+export { executeScrapeNote, executeScrapeUser } from './scrape';
+
+export type {
+  ScrapeNoteOptions,
+  ScrapeNoteResult,
+  ScrapeUserOptions,
+  ScrapeUserResult,
+} from './scrape';
+
+// ============================================
+// Selectors - Unified Export
+// ============================================
+
+// Login/Auth selectors
+export {
+  LOGIN_MODAL_SELECTOR,
+  USER_COMPONENT_SELECTOR,
+  LOGIN_BUTTON_SELECTORS,
+} from './shared/selectors';
+
+// Login-specific selectors
+export { LOGIN_SELECTORS, QR_SELECTORS, QR_TAB_SELECTOR, SMS_SELECTORS } from './login';
+export type { LoginSelectors } from './login';
+
+// ============================================
+// Shared - Session Management
+// ============================================
+
+export { withSession, withAuthenticatedAction, INTERACTION_DELAYS } from './shared/session';
+
+export type { SessionContext, SessionOptions, AuthenticatedActionOptions } from './shared/session';
+
+// ============================================
+// Shared - Page Preparation
 // ============================================
 
 export {
-  withSession,
-  withAuthenticatedAction,
-  ensureLogin,
+  preparePageForAction,
   navigateTo,
   checkPageHealth,
-  preparePageForAction,
-  executeBatch,
-  waitForStable,
-  humanScroll,
-  ensureLoginStatus,
-  checkErrorPage,
-  randomStealthDelay,
-  INTERACTION_DELAYS,
-} from './shared/session';
+  checkContentErrors,
+} from './shared/page-prep';
 
 export type {
-  SessionContext,
-  SessionOptions,
-  AuthenticatedActionOptions,
-  EnsureLoginOptions,
-  EnsureLoginResult,
-  BatchOptions,
-} from './shared/session';
+  PageHealthStatus,
+  PageErrorType,
+  PreparePageResult,
+  PreparePageOptions,
+} from './shared/page-prep';
 
 // ============================================
-// Browser Launcher
+// Shared - Browser Launcher
 // ============================================
 
 export {
   launchProfileBrowser,
   withProfile,
-  hasCDPInstance,
-  getCDPPort,
-  closeCDPInstance,
-  checkCDPConnection,
+  randomStealthDelay,
+  hasBrowserInstance,
+  getBrowserPort,
+  closeBrowserInstance,
+  checkServerConnection,
+  checkBrowserEndpointHealth,
   loadConnectionInfo,
   saveConnectionInfo,
   clearConnectionInfo,
@@ -94,18 +155,3 @@ export type {
   ProfileBrowserResult,
   StealthBehaviorConfig,
 } from './shared/browser-launcher';
-
-// ============================================
-// Selectors and Constants
-// ============================================
-
-export {
-  LOGIN_BUTTON_SELECTORS,
-  LOGIN_MODAL_SELECTOR,
-  USER_COMPONENT_SELECTOR,
-  QR_CODE_SELECTORS,
-  QR_TAB_SELECTOR,
-  DY_URLS,
-  TIMEOUTS,
-  DELAYS,
-} from './shared/selectors';

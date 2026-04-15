@@ -20,25 +20,14 @@ export default tseslint.config(
       '@typescript-eslint': tseslint.plugin,
     },
     extends: [
+      ...tseslint.configs.recommendedTypeChecked,
       eslintPluginPrettierRecommended,
     ],
-    settings: {
-      'import/resolver': {
-        typescript: {
-          alwaysTryTypes: true,
-          project: './tsconfig.json',
-        },
-      },
-    },
     rules: {
-      // Allow importing .ts files without extension (for tsx execution)
-      'import/no-unresolved': 'off',
-      'import/extensions': 'off',
-      
       // TypeScript specific
       '@typescript-eslint/explicit-function-return-type': 'warn',
       '@typescript-eslint/no-explicit-any': 'error',
-      '@typescript-eslint/no-unused-vars': ['error', { 
+      '@typescript-eslint/no-unused-vars': ['error', {
         argsIgnorePattern: '^_',
         varsIgnorePattern: '^_',
       }],
@@ -51,7 +40,7 @@ export default tseslint.config(
       '@typescript-eslint/no-unsafe-assignment': 'warn',
       '@typescript-eslint/no-unsafe-member-access': 'warn',
       '@typescript-eslint/no-unsafe-call': 'warn',
-      
+
       // Best practices
       'no-console': ['warn', { allow: ['log', 'error', 'warn'] }],
       'prefer-const': 'error',

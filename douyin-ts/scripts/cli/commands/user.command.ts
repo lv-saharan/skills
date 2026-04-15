@@ -1,43 +1,42 @@
 /**
- * User command
+ * User Command
  *
  * @module cli/commands/user.command
  */
 
 import type { Command } from 'commander';
-import type { CliUserOptions } from '../types';
-import { ensureMigrated, listUsers, setCurrentUser } from '../../user';
-import { outputSuccess, outputError } from '../../core/utils/output';
-import { DouyinErrorCode } from '../../core/error';
-import { debugLog } from '../../core/utils';
+import { listUsers, setCurrentUser, clearCurrentUser } from '../../user';
+import { outputSuccess } from '../../core/utils/output';
+import { outputFromError } from '../utils';
+import type { UserCommandOptions } from '../types';
 
-/**
- * Register user command
- */
 export function registerUserCommand(program: Command): void {
   program
     .command('user')
-    .description('用户管理')
-    .option('--set-current <name>', '设置当前用户')
-    .action(async (options: CliUserOptions) => {
+    .description('Manage users')
+    .option('--set-current <name>', 'Set current user')
+    .option('--set-default', 'Reset to default user')
+    .action(async (options: UserCommandOptions) => {
       try {
-        await ensureMigrated();
-
         if (options.setCurrent) {
           await setCurrentUser(options.setCurrent);
-          outputSuccess({ current: options.setCurrent }, 'RELAY:已切换到用户 "' + options.setCurrent + '"');
+          outputSuccess(
+            { current: options.setCurrent },
+            'RELAY:已切换到用户 "' + options.setCurrent + '"'
+          );
+          return;
+        }
+
+        if (options.setDefault) {
+          await clearCurrentUser();
+          outputSuccess({ current: 'default' }, 'RELAY:已切换到默认用户');
           return;
         }
 
         const result = await listUsers();
         outputSuccess(result, 'PARSE:users');
       } catch (error) {
-        debugLog('User command error:', error);
-        if (error instanceof Error) {
-          outputError(error.message, DouyinErrorCode.BROWSER_ERROR);
-        } else {
-          outputError(String(error), DouyinErrorCode.BROWSER_ERROR);
-        }
+        outputFromError(error);
       }
     });
 }

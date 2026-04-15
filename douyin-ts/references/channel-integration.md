@@ -1,0 +1,361 @@
+# Channel Integration Guide
+
+Agent 应根据接入的 Channel 类型，选择合适的消息发送格式。
+
+---
+
+## 核心策略
+
+| 场景 | 飞书 | 企业微信 | 微信个人号 | CLI |
+|------|------|----------|-----------|-----|
+| **本地图片** | 上传 → `image_key` | Base64 + MD5 | AES 加密 → CDN | `look_at` |
+| **网络图片** | 下载 → 上传 | `picurl` 直接用 ✅ | 下载 → CDN | 输出链接 |
+| **结构化数据** | 富文本 `post` | Markdown | 文本 | 表格 |
+
+> **企业微信最优**：`picurl` 可直接使用图片 URL，无需下载上传
+
+---
+
+## 飞书 (Feishu)
+
+### 频率限制
+
+- 100 次/分钟，5 次/秒
+- 请求体 ≤ 20 KB
+- 避免整点/半点发送（可能触发 11232 流控）
+
+### 图片发送
+
+**必须先上传获取 `image_key`**，不支持直接 URL 发送。
+
+| 限制 | 要求 |
+|------|------|
+| 大小 | ≤ 10 MB |
+| 格式 | JPG/PNG/WEBP/GIF/BMP/TIFF/HEIC |
+| GIF 分辨率 | ≤ 2000×2000 |
+| 其他分辨率 | ≤ 12000×12000 |
+
+### 富文本消息格式（推荐）
+
+**支持标签**：`text` | `a`（链接） | `at`（@提及） | `img`（图片）
+
+**关键**：链接必须用 `a` 标签，避免 URL 中的 `_` 被 markdown 解析截断。
+
+---
+
+## 抖音搜索结果输出格式
+
+### 搜索结果数据结构
+
+搜索命令返回的 `videos` 数组中每条视频包含：
+
+| 字段 | 类型 | 用途 |
+|------|------|------|
+| `id` | string | 视频 ID |
+| `title` | string | 视频标题 |
+| `author.id` | string | 作者 ID（用于关注按钮） |
+| `author.name` | string | 作者名称 |
+| `stats.likes` | number | 点赞数 |
+| `stats.comments` | number | 评论数 |
+| `stats.shares` | number | 分享数 |
+| `cover` | string | 封面图 URL |
+| `url` | string | 视频完整链接 |
+
+---
+
+## 飞书卡片交互说明
+
+> ⚠️ **重要**：飞书卡片交互功能需要**应用机器人**，自定义机器人不支持。
+
+### 自定义机器人 vs 应用机器人
+
+| 对比项 | 自定义机器人 | 应用机器人（推荐） |
+|--------|-------------|-------------------|
+| 创建方式 | 群设置中直接添加 | 开发者后台创建应用 |
+| 卡片按钮 | 仅支持跳转 URL | 支持**交互回调** ✅ |
+| 交互能力 | 无法接收按钮点击回调 | 通过长连接/Webhook接收回调 |
+| 适用场景 | 单向通知 | 交互式操作（点赞、收藏、关注） |
+| 开通复杂度 | 简单，无需审核 | 需创建应用、配置事件订阅 |
+
+### 如何开通卡片交互
+
+#### 步骤 1：创建飞书应用
+
+1. 访问 [飞书开发者后台](https://open.feishu.cn/app)
+2. 点击「创建企业自建应用」
+3. 填写应用名称（如：抖音助手）
+4. 在「应用功能」→「机器人」中启用机器人能力
+
+#### 步骤 2：配置事件订阅（长连接方式）
+
+飞书支持两种事件订阅方式，推荐使用**长连接**：
+
+| 方式 | 说明 | 适用场景 |
+|------|------|----------|
+| **长连接** | 应用主动连接飞书服务器，保持连接 | OpenClaw Agent（推荐）|
+| Webhook | 飞书推送事件到开发者服务器 | 有公网服务器的场景 |
+
+**长连接配置步骤**：
+
+1. 在开发者后台 → 「事件订阅」→ 选择「使用长连接接收事件」
+2. 添加事件：`im.message.receive_v1`（接收消息）
+3. OpenClaw 启动时会自动建立长连接
+
+#### 步骤 3：配置卡片交互回调
+
+1. 在 [飞书卡片搭建工具](https://open.feishu.cn/cardkit) 创建卡片
+2. 添加按钮，选择「回调」行为
+3. 配置回调数据（value）
+
+#### 步骤 4：发布应用
+
+1. 创建版本并发布
+2. 等待企业管理员审核（如需）
+3. 在群聊中添加应用机器人
+
+### 参考文档
+
+- [卡片交互机器人开发教程](https://open.feishu.cn/document/uAjLw4CM/uMzNwEjLzcDMx4yM3ATM/develop-a-card-interactive-bot/introduction)
+- [飞书卡片搭建工具](https://open.feishu.cn/cardkit)
+- [自定义机器人限制说明](https://open.feishu.cn/document/feishu-cards/quick-start/send-message-cards-with-custom-bot)
+
+---
+
+### 飞书：交互式卡片 + 链接预览（推荐）
+
+**发送方式**：两条消息组合，触发飞书链接预览效果。
+
+#### 第一条：交互式卡片（带三个按钮）
+
+> **注意**：
+> - 以下 JSON 是 **飞书应用机器人消息格式**（`msg_type: "interactive"`）
+> - **自定义机器人不支持交互回调**，按钮点击无法触发服务器响应
+> - 如需交互功能，请参考上方「如何开通卡片交互」
+
+```json
+{
+  "msg_type": "interactive",
+  "card": {
+    "config": {"wide_screen_mode": true},
+    "elements": [
+      {"tag": "div", "text": {"content": "**标题内容**\n\n👤 作者：作者名\n❤️ 点赞数：18 赞", "tag": "lark_md"}},
+      {"tag": "action", "actions": [
+        {"tag": "button", "text": {"tag": "plain_text", "content": "❤️ 点赞"}, "type": "primary", "value": {"action": "douyin_like", "video_id": "xxx"}},
+        {"tag": "button", "text": {"tag": "plain_text", "content": "⭐ 收藏"}, "type": "default", "value": {"action": "douyin_collect", "video_id": "xxx"}},
+        {"tag": "button", "text": {"tag": "plain_text", "content": "👤 关注"}, "type": "default", "value": {"action": "douyin_follow", "author_id": "xxx"}}
+      ]}
+    ]
+  }
+}
+```
+
+#### 第二条：纯链接（触发预览）
+
+```
+`https://www.douyin.com/video/xxx`
+```
+
+> ⚠️ **必须用反引号包裹 URL**，否则飞书会把 `_` 解析为斜体，导致预览失效
+
+#### 发送顺序
+
+1. 先发卡片 → 显示标题、作者、点赞数、三个按钮
+2. 再发链接 → 飞书自动生成链接预览（封面图 + 简介）
+3. 间隔 **600ms+** 避免飞书流控
+
+#### 按钮动作说明
+
+| 按钮 | action | 参数 |
+|------|--------|------|
+| ❤️ 点赞 | `douyin_like` | video_id |
+| ⭐ 收藏 | `douyin_collect` | video_id |
+| 👤 关注 | `douyin_follow` | author_id |
+
+#### 卡片按钮回调
+
+按钮 `value` 需包含：
+- `action`: 回调标识（`douyin_like`, `douyin_collect`, `douyin_follow`）
+- `video_id`: 视频 ID（点赞、收藏）
+- `author_id`: 作者 ID（关注）
+
+---
+
+### 飞书：富文本消息（备选）
+
+简单格式，无交互按钮。
+
+```json
+{
+  "msg_type": "post",
+  "content": {
+    "zh_cn": {
+      "title": "抖音搜索结果",
+      "content": [
+        [
+          { "tag": "text", "text": "1. 视频标题 | ❤️ 18 赞\n" },
+          { "tag": "a", "text": "作者名", "href": "https://www.douyin.com/user/xxx" },
+          { "tag": "text", "text": "\n" },
+          { "tag": "a", "text": "https://www.douyin.com/video/xxx", "href": "https://www.douyin.com/video/xxx" }
+        ]
+      ]
+    }
+  }
+}
+```
+
+> **关键**：链接必须用 `a` 标签，防止 `_` 被解析为斜体
+
+### 企业微信
+
+**方式一：图文消息（带缩略图）**
+
+```json
+{
+  "msgtype": "news",
+  "news": {
+    "articles": [{
+      "title": "1. 标题内容",
+      "description": "❤️ 18 赞 | 作者：xxx",
+      "url": "https://www.douyin.com/video/xxx",
+      "picurl": "https://p3-sign.douyinpic.com/xxx"
+    }]
+  }
+}
+```
+
+**方式二：Markdown 消息**
+
+```json
+{
+  "msgtype": "markdown",
+  "markdown": {
+    "content": "**搜索结果**\n\n1. [视频标题](https://www.douyin.com/video/xxx)\n   ❤️ 18 赞 | 作者：[xxx](https://www.douyin.com/user/xxx)"
+  }
+}
+```
+
+### 微信个人号
+
+> ⚠️ **重要：每条结果分两条消息，文字在前**
+
+**顺序**：文字1 → 图片1 → 文字2 → 图片2 → 文字3 → 图片3
+
+**关键**：每次只发一条，等待返回后再发下一条，保证顺序
+
+#### 搜索结果字段
+
+| 字段 | 用途 | 示例 |
+|------|------|------|
+| `cover` | 封面图 URL（发送图片消息） | `https://p3-sign.douyinpic.com/xxx` |
+| `url` | 视频链接（发送文字消息） | `https://www.douyin.com/video/xxx` |
+
+#### 发送流程
+
+**步骤1**：发送文字
+```json
+{
+  "action": "send",
+  "message": "视频标题 (点赞数)\nhttps://www.douyin.com/video/xxx"
+}
+```
+等待返回...
+
+**步骤2**：发送封面图
+```json
+{
+  "action": "send",
+  "media": "https://p3-sign.douyinpic.com/xxx"
+}
+```
+等待返回...
+
+**步骤3**：发送下一条结果的文字...
+**步骤4**：发送下一条结果的图片...
+
+#### 错误做法
+
+❌ 多条消息同时发送（顺序可能乱）
+❌ 图片在前，文字在后（顺序错误）
+❌ 直接回复文字（`_` 变斜体，链接失效）
+
+#### 正确做法
+
+✅ 文字在前，图片在后
+✅ 每次只发一条，等待返回
+✅ 用 message 工具发送（绕过 Markdown）
+✅ URL 保持原样（包含 `_` 和 `%3D`）
+
+---
+
+## 关键要点
+
+| 要点 | 说明 |
+|------|------|
+| **链接用 a 标签** | 飞书富文本中链接必须用 `a` 标签，防止 `_` 被解析为斜体 |
+| **URL 反引号包裹** | 飞书纯链接消息必须用反引号包裹，否则预览失效 |
+| **两条消息间隔** | 飞书交互卡片 + 链接之间间隔 600ms+ 避免流控 |
+| **微信顺序** | 文字在前，图片在后；每次只发一条，等待返回后再发下一条 |
+| **微信发送方式** | 用 message 工具发送文字（绕过 Markdown 解析），media 工具发送图片 |
+| **企业微信 picurl** | 可直接使用图片 URL，无需下载上传（最优） |
+| **批量发送间隔** | 飞书 600ms+，企业微信 3s+（20条/分钟限制），微信 逐条等待 |
+
+---
+
+## toAgent 处理策略
+
+### DISPLAY_IMAGE
+
+```
+本地文件 → 飞书: 上传 | 企业微信: Base64 | 微信个人号: CDN上传 | CLI: look_at
+网络图片 → 飞书: 下载上传 | 企业微信: picurl ✅ | 微信个人号: 下载上传 | CLI: 输出链接
+```
+
+### PARSE（搜索结果）
+
+```
+飞书: 交互式卡片 + 链接预览（推荐） | 富文本 post（备选）
+企业微信: 图文 news 或 Markdown
+微信个人号: 文字 + 图片（两条消息，逐条发送）
+CLI: 表格
+```
+
+### DOUYIN_LIKE/DOUYIN_COLLECT/DOUYIN_FOLLOW（回调处理）
+
+飞书交互卡片按钮触发时，`value` 包含：
+
+**点赞回调**：
+```json
+{
+  "action": "douyin_like",
+  "video_id": "xxx"
+}
+```
+
+**收藏回调**：
+```json
+{
+  "action": "douyin_collect",
+  "video_id": "xxx"
+}
+```
+
+**关注回调**：
+```json
+{
+  "action": "douyin_follow",
+  "author_id": "xxx"
+}
+```
+
+Agent 应调用相应的 `douyin-ts` 命令执行操作：
+- `npm run like -- "<url>"` — 点赞
+- `npm run collect -- "<url>"` — 收藏
+- `npm run follow -- "<url>"` — 关注
+
+---
+
+## 参考资料
+
+- [飞书 - 自定义机器人](https://open.feishu.cn/document/client-docs/bot-v3/add-custom-bot)
+- [企业微信 - 消息推送](https://developer.work.weixin.qq.com/document/path/91770)
+- 微信个人号插件：`@tencent-weixin/openclaw-weixin`

@@ -1,44 +1,51 @@
 /**
- * Shared actions module
+ * Shared Module - Unified utilities for all Douyin actions
  *
  * @module actions/shared
- * @description Shared session management and utilities for all Douyin actions
+ * @description This is the SINGLE source of truth for:
+ *              - Session management (withSession, withAuthenticatedAction)
+ *              - Page preparation (preparePageForAction, checkPageHealth)
+ *              - URL utilities (extractVideoIdFromUrl, extractUserIdFromUrl)
+ *              - Browser launching (withProfile, launchProfileBrowser)
+ *              - Cross-module selectors
+ *
+ * All actions should import from this module for session handling.
  */
 
-// Session management
-export {
-  withSession,
-  withAuthenticatedAction,
-  ensureLogin,
-  navigateTo,
-  checkPageHealth,
-  preparePageForAction,
-  executeBatch,
-  waitForStable,
-  humanScroll,
-  ensureLoginStatus,
-  checkErrorPage,
-  randomStealthDelay,
-  INTERACTION_DELAYS,
-} from './session';
+// ============================================
+// Session Management (Primary API)
+// ============================================
+
+export { withSession, withAuthenticatedAction, INTERACTION_DELAYS } from './session';
 
 export type {
   SessionContext,
   SessionOptions,
   AuthenticatedActionOptions,
-  EnsureLoginOptions,
-  EnsureLoginResult,
-  BatchOptions,
+  PageErrorType,
+  PreparePageResult,
 } from './session';
 
-// Browser launcher
+// ============================================
+// Page Preparation (Unified API)
+// ============================================
+
+export { preparePageForAction, navigateTo, checkPageHealth, checkContentErrors } from './page-prep';
+
+export type { PageHealthStatus, PreparePageOptions } from './page-prep';
+
+// ============================================
+// Browser Launcher
+// ============================================
+
 export {
   launchProfileBrowser,
   withProfile,
-  hasCDPInstance,
-  getCDPPort,
-  closeCDPInstance,
-  checkCDPConnection,
+  randomStealthDelay,
+  hasBrowserInstance,
+  getBrowserPort,
+  closeBrowserInstance,
+  checkServerConnection,
   loadConnectionInfo,
   saveConnectionInfo,
   clearConnectionInfo,
@@ -50,14 +57,27 @@ export type {
   StealthBehaviorConfig,
 } from './browser-launcher';
 
-// Selectors and constants
+// ============================================
+// URL Utilities (Single Source)
+// ============================================
+
 export {
-  LOGIN_BUTTON_SELECTORS,
-  LOGIN_MODAL_SELECTOR,
-  USER_COMPONENT_SELECTOR,
-  QR_CODE_SELECTORS,
-  QR_TAB_SELECTOR,
-  DY_URLS,
-  TIMEOUTS,
-  DELAYS,
-} from './selectors';
+  extractVideoId,
+  extractVideoIdFromUrl,
+  extractUserId,
+  extractUserIdFromUrl,
+} from './url-utils';
+
+// ============================================
+// Selectors (Cross-Module)
+// ============================================
+
+export { LOGIN_MODAL_SELECTOR, USER_COMPONENT_SELECTOR, LOGIN_BUTTON_SELECTORS } from './selectors';
+
+// ============================================
+// Auto Login (moved from login/auto-login.ts)
+// ============================================
+
+export { autoLogin } from './auto-login';
+
+export type { AutoLoginOptions, AutoLoginResult } from './auto-login';

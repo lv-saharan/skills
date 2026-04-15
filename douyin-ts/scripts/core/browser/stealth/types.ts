@@ -6,58 +6,46 @@
  */
 
 import type { UserFingerprint } from '../../fingerprint/types';
+import type { StealthModuleConfig } from '../types';
+
+// ============================================
+// Stealth Module Interface
+// ============================================
 
 /**
- * Stealth module configuration
+ * Stealth module generator interface
+ *
+ * All stealth modules must implement this interface
  */
-export interface StealthModuleConfig {
-  /** Enable navigator spoofing */
-  navigator?: boolean;
-  /** Enable screen spoofing */
-  screen?: boolean;
-  /** Enable WebGL fingerprint spoofing */
-  webgl?: boolean;
-  /** Enable Canvas fingerprint noise */
-  canvas?: boolean;
-  /** Enable Audio fingerprint noise */
-  audio?: boolean;
-  /** Enable Chrome API mock */
-  chrome?: boolean;
-  /** Enable WebRTC leak prevention */
-  webrtc?: boolean;
-  /** Enable Media spoofing */
-  media?: boolean;
-  /** Enable Timezone consistency */
-  timezone?: boolean;
-  /** Enable Font fingerprint protection */
-  font?: boolean;
-  /** Enable Battery API mock */
-  battery?: boolean;
-  /** Enable Geolocation mock */
-  geolocation?: boolean;
-  /** Enable Performance API spoofing */
-  performance?: boolean;
+export interface StealthModule {
+  /** Module name for configuration (must match config key) */
+  name: string;
+  /** Default enabled state */
+  enabledByDefault: boolean;
+  /** Generate stealth injection script */
+  generate(fingerprint: UserFingerprint, config?: unknown): string;
 }
 
 /**
- * Geolocation configuration
+ * Stealth module registry interface
  */
-export interface GeolocationConfig {
-  /** Latitude */
-  latitude: number;
-  /** Longitude */
-  longitude: number;
-  /** Accuracy in meters */
-  accuracy: number;
-  /** Altitude in meters (optional) */
-  altitude?: number | null;
-  /** Altitude accuracy in meters (optional) */
-  altitudeAccuracy?: number | null;
-  /** Heading in degrees (optional) */
-  heading?: number | null;
-  /** Speed in m/s (optional) */
-  speed?: number | null;
+export interface StealthModuleRegistry {
+  /** Register a stealth module */
+  register(module: StealthModule): void;
+  /** Get module by name */
+  get(name: string): StealthModule | undefined;
+  /** Get all registered modules */
+  getAll(): StealthModule[];
+  /** Get enabled modules based on config */
+  getEnabled(config: StealthModuleConfig): StealthModule[];
 }
+
+// ============================================
+// Re-exports (from unified types)
+// ============================================
+
+// Re-export shared types from parent types.ts
+export type { StealthModuleConfig, GeolocationConfig } from '../types';
 
 // Re-export UserFingerprint for convenience
 export type { UserFingerprint };

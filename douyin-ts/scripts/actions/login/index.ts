@@ -1,75 +1,28 @@
 /**
- * Login actions
+ * Login module
  *
- * @module actions/login
- * @description Login functionality for Douyin
+ * @module login
+ * @description Handle user authentication via QR code or SMS
  */
 
-import type { Page } from 'playwright';
-import type { UserName } from '../../user/types';
-import { withSession, type SessionContext } from '../shared/session';
-import { outputSuccess, outputError } from '../../core/utils/output';
-import { DouyinErrorCode } from '../../core/error';
-import { debugLog, delay } from '../../core/utils';
+// Main function
+export { executeLogin } from './execute';
 
-// ============================================
+// Auto login (re-exported from shared)
+export { autoLogin } from '../shared/auto-login';
+export type { AutoLoginOptions, AutoLoginResult } from '../shared/auto-login';
+
+// Individual login methods (internal helpers also exported for auto-login)
+export { qrLogin, waitForQrScan, triggerLoginModal } from './qr';
+export { smsLogin } from './sms';
+export { cookieLogin, parseCookieString, injectCookies } from './cookie';
+
+// Selectors
+export { LOGIN_SELECTORS, QR_SELECTORS, QR_TAB_SELECTOR, SMS_SELECTORS } from './selectors';
+export type { LoginSelectors } from './selectors';
+
 // Types
-// ============================================
+export type { LoginMethod, LoginOptions, LoginResult } from './types';
 
-export type LoginMethod = 'qr' | 'sms';
-
-export interface LoginOptions {
-  method?: LoginMethod;
-  headless?: boolean;
-  timeout?: number;
-  user?: UserName;
-}
-
-export interface LoginResult {
-  success: boolean;
-  message?: string;
-}
-
-// ============================================
-// Login Implementation
-// ============================================
-
-/**
- * Execute login
- *
- * Uses withSession which handles browser launch, navigation, and auto-login.
- */
-export async function executeLogin(options: LoginOptions): Promise<void> {
-  const { headless = false, timeout = 120000, user } = options;
-
-  try {
-    await withSession(
-      user,
-      async (ctx: SessionContext) => {
-        const { page } = ctx;
-
-        // withSession already handles login verification
-        // If we reach here, we're logged in
-        debugLog('Login successful');
-
-        outputSuccess({ success: true }, 'RELAY:登录成功');
-      },
-      { headless, autoCreate: true }
-    );
-  } catch (error) {
-    if (error instanceof Error) {
-      outputError(error.message, DouyinErrorCode.LOGIN_FAILED);
-    } else {
-      outputError(String(error), DouyinErrorCode.LOGIN_FAILED);
-    }
-  }
-}
-
-/**
- * Check login status
- */
-export async function checkLogin(page: Page): Promise<boolean> {
-  // Check for user avatar or profile element
-  const userElement = await page.locator('[class*="user"]').first().isVisible().catch(() => false);
-  return userElement;
-}
+// Re-export QrCodeOutput
+export type { QrCodeOutput } from '../../core/utils/output';

@@ -5,7 +5,7 @@
  * @module index
  * @description Command-line interface for Douyin automation
  *
- * This file is now a thin entry point:
+ * This file is a thin entry point:
  * 1. Ensure migration
  * 2. Validate config
  * 3. Register commands
@@ -18,7 +18,7 @@ import { validateConfig } from './config';
 import { registerAllCommands } from './cli';
 import { debugLog } from './core/utils';
 import { outputError } from './core/utils/output';
-import { DouyinErrorCode } from './core/error';
+import { SkillErrorCode } from './config';
 
 // ============================================
 // Startup
@@ -32,7 +32,7 @@ validateConfig();
 // ============================================
 
 const program = new Command();
-program.name('douyin').description('抖音自动化 CLI 工具').version('0.0.2');
+program.name('douyin').description('Douyin automation CLI').version('0.1.0');
 
 // Register all commands (each in its own file under cli/commands/)
 registerAllCommands(program);
@@ -53,13 +53,13 @@ process.on('uncaughtException', (error) => {
   }
 
   debugLog('Uncaught exception:', error);
-  outputError(error.message || 'Unknown error', DouyinErrorCode.BROWSER_ERROR);
+  outputError(error.message || 'Unknown error', SkillErrorCode.BROWSER_ERROR);
   process.exit(1);
 });
 
 process.on('unhandledRejection', (reason) => {
   debugLog('Unhandled rejection:', reason);
-  outputError(String(reason), DouyinErrorCode.BROWSER_ERROR);
+  outputError(String(reason), SkillErrorCode.BROWSER_ERROR);
   process.exit(1);
 });
 

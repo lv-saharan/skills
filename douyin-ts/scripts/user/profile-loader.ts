@@ -14,6 +14,7 @@ import type {
   ProfileMeta,
   UserEnvironment,
   UserFingerprint,
+  GeolocationConfig,
 } from './types';
 import { getUserDir, getUserDataDir, validateUserName } from './storage';
 import { getProfilePath, getLegacyMetaPath } from './storage-v3';
@@ -33,7 +34,7 @@ function createDefaultFingerprint(): UserFingerprint {
     browser: {
       userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
       vendor: 'Google Inc.',
-      languages: ['zh-CN', 'zh', 'en-US', 'en'],
+      languages: ['zh-CN', 'en', 'en-GB', 'en-US'],
     },
     webgl: {
       vendor: 'Google Inc.',
@@ -58,7 +59,7 @@ function createDefaultFingerprint(): UserFingerprint {
  * @returns User profile data
  * @throws Error if profile doesn't exist
  */
-export async function loadUserProfile(user: UserName): Promise<Omit<UserProfile, 'meta'> & { meta: ProfileMeta }> {
+export async function loadUserProfile(user: UserName): Promise<UserProfile> {
   validateUserName(user);
 
   const userDir = getUserDir(user);
@@ -68,17 +69,20 @@ export async function loadUserProfile(user: UserName): Promise<Omit<UserProfile,
   const fingerprintPath = path.join(userDir, 'fingerprint.json');
 
   let meta: ProfileMeta;
+  let userGeolocation: GeolocationConfig | undefined;
 
   // Try v3 format first (profile.json)
   if (existsSync(profilePath)) {
     const content = await readFile(profilePath, 'utf-8');
-    const data = JSON.parse(content) as { meta: ProfileMeta };
+    const data = JSON.parse(content) as { meta: ProfileMeta; geolocation?: GeolocationConfig };
     meta = data.meta;
+    userGeolocation = data.geolocation;
   }
   // Fall back to legacy format (meta.json)
   else if (existsSync(legacyMetaPath)) {
     const content = await readFile(legacyMetaPath, 'utf-8');
-    const data = JSON.parse(content) as ProfileMeta;
+    const data = JSON.parse(content) as ProfileMeta & { version?: number };
+    // Extract meta without version field (if present)
     meta = {
       createdAt: data.createdAt,
       lastUsedAt: data.lastUsedAt,
@@ -116,5 +120,6 @@ export async function loadUserProfile(user: UserName): Promise<Omit<UserProfile,
     fingerprint,
     environment,
     userDataDir,
+    geolocation: userGeolocation,
   };
 }

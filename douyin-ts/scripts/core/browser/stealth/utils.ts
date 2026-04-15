@@ -19,10 +19,10 @@
 export function getInjectionGuardScript(): string {
   return `
 // Injection guard - prevent duplicate execution
-if (window.__XHS_STEALTH_INJECTED__) {
+if (window.__DY_STEALTH_INJECTED__) {
   // Already injected, skip
 } else {
-  window.__XHS_STEALTH_INJECTED__ = true;
+  window.__DY_STEALTH_INJECTED__ = true;
 `;
 }
 
@@ -39,16 +39,16 @@ export function getInjectionGuardCloseScript(): string {
  * Polyfill script for __name
  *
  * CRITICAL: This must be placed OUTSIDE injection guard to ensure it always runs.
- * Reason: When CDP context is reused, the injection guard flag (__XHS_STEALTH_INJECTED__)
+ * Reason: When CDP context is reused, the injection guard flag (__DY_STEALTH_INJECTED__)
  * may already be set from a previous page, causing the guard to skip the entire script.
  * But __name polyfill must always be available for tsx/esbuild compiled page.evaluate code.
  *
- * Uses Object.defineProperty to prevent XHS page scripts from overwriting.
+ * Uses Object.defineProperty to prevent Douyin page scripts from overwriting.
  */
 export function getPolyfillScript(): string {
   return `
 // __name polyfill - always executes (outside injection guard)
-// Use Object.defineProperty to prevent XHS from overwriting
+// Use Object.defineProperty to prevent Douyin from overwriting
 if (typeof window.__name === 'undefined') {
   try {
     Object.defineProperty(window, '__name', {

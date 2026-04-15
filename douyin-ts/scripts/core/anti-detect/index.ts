@@ -14,20 +14,6 @@ import { debugLog } from '../utils/logging';
 // ============================================
 
 /**
- * Login selectors configuration (platform-specific)
- */
-export interface LoginSelectors {
-  /** Login modal container */
-  modal: string;
-  /** Login button(s) */
-  button: string | string[];
-  /** User component (logged in indicator) */
-  userComponent: string;
-  /** User avatar (optional, alternative logged in indicator) */
-  avatar?: string | string[];
-}
-
-/**
  * Options for humanType function
  */
 export interface HumanTypeOptions {
@@ -55,18 +41,6 @@ export interface HumanScrollOptions {
   withAcceleration?: boolean;
   /** Scroll speed preset (default: 'normal') - for backward compatibility */
   speed?: 'slow' | 'normal' | 'fast';
-}
-
-/**
- * Options for retryWithHesitation function
- */
-export interface RetryOptions {
-  /** Maximum number of retry attempts (default: 3) */
-  maxRetries?: number;
-  /** Base delay before first retry in ms (default: 2000) */
-  baseDelay?: number;
-  /** Maximum delay cap in ms (default: 10000) */
-  maxDelay?: number;
 }
 
 // ============================================
@@ -278,44 +252,6 @@ export async function humanScroll(page: Page, options: HumanScrollOptions = {}):
   }
 }
 
-/**
- * Retry an action with human-like hesitation between attempts
- *
- * @param action - Async function to retry
- * @param options - Retry options
- * @returns Result of the action
- */
-export async function retryWithHesitation<T>(
-  action: () => Promise<T>,
-  options: RetryOptions = {}
-): Promise<T> {
-  const { maxRetries = 3, baseDelay = 2000, maxDelay = 10000 } = options;
-
-  let lastError: Error | undefined;
-
-  for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    try {
-      return await action();
-    } catch (error) {
-      lastError = error instanceof Error ? error : new Error(String(error));
-
-      if (attempt === maxRetries) {
-        break;
-      }
-
-      // Exponential backoff with jitter (simulates human hesitation)
-      const hesitation = Math.min(
-        baseDelay * Math.pow(1.5, attempt) + Math.random() * 1000,
-        maxDelay
-      );
-      debugLog(`Retry ${attempt + 1}/${maxRetries}, waiting ${Math.round(hesitation)}ms`);
-      await delay(hesitation);
-    }
-  }
-
-  throw lastError;
-}
-
 // ============================================
 // Captcha Detection
 // ============================================
@@ -341,54 +277,6 @@ export async function checkCaptcha(page: Page): Promise<boolean> {
     }
   }
   return false;
-}
-
-// ============================================
-// Login Status Detection
-// ============================================
-
-/**
- * Check login status (platform-agnostic)
- *
- * @param page - Playwright page
- * @param selectors - Platform-specific login selectors (optional, uses common defaults)
- * @returns Whether user is logged in
- */
-export async function checkLoginStatus(page: Page, selectors?: LoginSelectors): Promise<boolean> {
-  try {
-    // Use provided selectors or common defaults
-    const userComponent = selectors?.userComponent ?? '.user.side-bar-component';
-    const avatar = selectors?.avatar;
-    const modal = selectors?.modal ?? '.login-container';
-
-    const userSelectors = [
-      userComponent,
-      ...(avatar ? (Array.isArray(avatar) ? avatar : [avatar]) : []),
-    ].join(', ');
-
-    // Check login modal first - if visible, definitely not logged in
-    const modalVisible = await page
-      .locator(modal)
-      .first()
-      .isVisible({ timeout: 2000 })
-      .catch(() => false);
-
-    if (modalVisible) {
-      return false;
-    }
-
-    // Modal not visible - check user component to confirm login
-    const userVisible = await page
-      .locator(userSelectors)
-      .first()
-      .isVisible({ timeout: 2000 })
-      .catch(() => false);
-
-    return userVisible;
-  } catch (error) {
-    debugLog('Error checking login status:', error);
-    return false;
-  }
 }
 
 /**

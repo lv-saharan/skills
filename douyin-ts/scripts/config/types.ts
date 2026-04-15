@@ -1,11 +1,63 @@
 /**
- * Config module types
+ * Configuration types
  *
  * @module config/types
  * @description Type definitions for configuration
  */
 
-import type { LoginMethod } from '../shared';
+// ============================================
+// Platform Configuration
+// ============================================
+
+export interface DelayConfig {
+  mean: number;
+  stdDev: number;
+}
+
+export interface RangeConfig {
+  min: number;
+  max: number;
+}
+
+export interface PlatformConfig {
+  name: string;
+  domain: string;
+  urls: {
+    home: string;
+    login: string;
+    explore?: string;
+    creator?: string;
+    creatorPublish?: string;
+  };
+  timeouts: {
+    networkIdle: number;
+    pageLoad: number;
+    upload?: number;
+    login: number;
+    selector: number;
+    qrCheckInterval: number;
+  };
+  delays: {
+    afterNavigation: DelayConfig;
+    afterClick: DelayConfig;
+    batchInterval: DelayConfig;
+  };
+  stealthDelays: {
+    'gui-native': { action: RangeConfig; read: RangeConfig };
+    headless: { action: RangeConfig; read: RangeConfig };
+  };
+}
+
+// ============================================
+// Login Method
+// ============================================
+
+/** Login method type */
+export type LoginMethod = 'qr' | 'sms' | 'cookie';
+
+// ============================================
+// Application Configuration
+// ============================================
 
 /**
  * Application configuration from environment
@@ -16,8 +68,6 @@ import type { LoginMethod } from '../shared';
  * - BROWSER_PATH: Custom browser executable path (optional)
  * - BROWSER_CHANNEL: Browser channel (e.g., 'chrome', 'msedge')
  * - DEBUG: Enable debug logging (default: false)
- * - LOGIN_TIMEOUT: Login timeout in milliseconds (default: 120000)
- * - LOGIN_METHOD: Login method 'qr' or 'sms' (default: 'qr')
  */
 export interface AppConfig {
   /** Proxy URL */
@@ -30,8 +80,4 @@ export interface AppConfig {
   browserChannel: string | undefined;
   /** Debug logging enabled */
   debug: boolean;
-  /** Login timeout in milliseconds */
-  loginTimeout: number;
-  /** Default login method */
-  loginMethod: LoginMethod;
 }

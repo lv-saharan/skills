@@ -5,6 +5,28 @@
  * @description Type definitions for multi-user management and Profile architecture
  */
 
+import type {
+  DevicePlatform,
+  ScreenConfig,
+  DeviceConfig,
+  WebGLConfig,
+  BrowserConfig,
+  UserFingerprint,
+} from '../core/fingerprint/types';
+import type { GeolocationConfig, EnvironmentType } from '../core/browser/types';
+
+// Re-export types for backward compatibility
+export type {
+  DevicePlatform,
+  ScreenConfig,
+  DeviceConfig,
+  WebGLConfig,
+  BrowserConfig,
+  UserFingerprint,
+  GeolocationConfig,
+  EnvironmentType,
+};
+
 // ============================================
 // User Name
 // ============================================
@@ -13,18 +35,8 @@
 export type UserName = string;
 
 // ============================================
-// Environment Types (Task 1)
+// Fingerprint Source
 // ============================================
-
-/**
- * Environment detection type
- *
- * - gui-native: Real GUI environment with display
- * - gui-virtual: Virtual GUI (e.g., Xvfb, WSLg)
- * - headless-smart: Headless with smart preset matching
- * - headless-custom: Headless with custom configuration
- */
-export type EnvironmentType = 'gui-native' | 'gui-virtual' | 'headless-smart' | 'headless-custom';
 
 /**
  * Fingerprint source type
@@ -64,75 +76,6 @@ export interface UserEnvironment {
 }
 
 // ============================================
-// Device Fingerprint Types
-// ============================================
-
-/** Device platform type */
-export type DevicePlatform = 'Windows' | 'MacIntel' | 'Linux x86_64';
-
-/** Screen configuration */
-export interface ScreenConfig {
-  width: number;
-  height: number;
-  colorDepth: 24 | 32;
-}
-
-/** Device hardware configuration */
-export interface DeviceConfig {
-  platform: DevicePlatform;
-  hardwareConcurrency: number;
-  deviceMemory: number;
-}
-
-/** WebGL configuration */
-export interface WebGLConfig {
-  vendor: string;
-  renderer: string;
-}
-
-/** Browser configuration */
-export interface BrowserConfig {
-  userAgent: string;
-  vendor: string;
-  languages: string[];
-}
-
-/**
- * User device fingerprint configuration
- *
- * Binds device characteristics to a user account.
- * Same user always has the same fingerprint across sessions.
- */
-export interface UserFingerprint {
-  /** Fingerprint schema version */
-  version: 1;
-
-  /** Creation timestamp (ISO 8601) */
-  createdAt: string;
-
-  /** Device hardware configuration */
-  device: DeviceConfig;
-
-  /** Browser configuration */
-  browser: BrowserConfig;
-
-  /** WebGL configuration */
-  webgl: WebGLConfig;
-
-  /** Screen configuration */
-  screen: ScreenConfig;
-
-  /** Canvas noise seed for consistent canvas fingerprint noise */
-  canvasNoiseSeed: number;
-
-  /** Audio noise seed for consistent audio fingerprint noise */
-  audioNoiseSeed: number;
-
-  /** Optional: Description of the preset used */
-  description?: string;
-}
-
-// ============================================
 // User Information
 // ============================================
 
@@ -159,15 +102,41 @@ export interface UserListResult {
 }
 
 // ============================================
-// User Meta (Task 1 - Profile Architecture)
+// Connection Info - NEW
 // ============================================
 
 /**
- * User metadata stored in meta.json within each user's profile directory
+ * Browser connection information
+ *
+ * Stored within UserProfileData.connection field.
+ * Only present when browser instance is running.
  */
-export interface UserMeta {
-  /** Meta schema version */
-  version: 1;
+export interface ConnectionInfo {
+  /** Browser debugging port */
+  port: number;
+  /** Browser process ID (0 on Windows due to 'start' command limitation) */
+  pid?: number;
+  /** WebSocket endpoint URL */
+  wsEndpoint?: string;
+  /** Headless mode the browser was started with */
+  headless?: boolean;
+  /** Browser start timestamp (ISO 8601) */
+  startedAt: string;
+  /** Last activity timestamp (ISO 8601) */
+  lastActivityAt: string;
+}
+
+// ============================================
+// Profile Meta (New Unified Structure) - NEW
+// ============================================
+
+/**
+ * Profile metadata - unified structure
+ *
+ * Stores user profile information including creation time,
+ * environment type, and fingerprint source.
+ */
+export interface ProfileMeta {
   /** User creation timestamp (ISO 8601) */
   createdAt: string;
   /** Last used timestamp (ISO 8601) */
@@ -181,6 +150,32 @@ export interface UserMeta {
 }
 
 /**
+ * User Profile Data - unified storage structure (v3) - NEW
+ *
+ * Single file storage for all user profile data.
+ * Stored at: users/{user}/profile.json
+ *
+ * Replaces the previous two-file structure:
+ * - users/{user}/meta.json (Profile metadata)
+ * - users/{user}/connections/meta.json (browser connection info)
+ */
+export interface UserProfileData {
+  /** Schema version */
+  version: 1;
+  /** Profile metadata */
+  meta: ProfileMeta;
+  /** Browser connection info (optional, only when browser is running) */
+  connection?: ConnectionInfo;
+  /** User geolocation config (optional, defaults to Shanghai) */
+  geolocation?: GeolocationConfig;
+}
+
+// ============================================
+// User Meta (Legacy - removed, was kept for backward compatibility)
+// ============================================
+// UserMeta interface has been removed. Use ProfileMeta instead.
+
+/**
  * User Profile - complete profile data for a user
  *
  * Represents a user's complete profile including metadata, fingerprint,
@@ -188,13 +183,15 @@ export interface UserMeta {
  */
 export interface UserProfile {
   /** User metadata */
-  meta: UserMeta;
+  meta: ProfileMeta;
   /** User fingerprint configuration */
   fingerprint: UserFingerprint;
   /** Environment information at time of profile creation */
   environment: UserEnvironment;
   /** Path to user's user-data directory (Playwright persistent context) */
   userDataDir: string;
+  /** User geolocation config (optional) */
+  geolocation?: GeolocationConfig;
 }
 
 // ============================================
@@ -219,11 +216,14 @@ export interface ProfileStatusInfo {
 }
 
 // ============================================
-// Users Metadata (Version 2 - Profile Architecture)
+// Users Metadata (Version 3 - Simplified)
 // ============================================
 
 /**
- * Profile reference in users.json
+ * Profile reference in users.json (legacy - for migration only)
+ *
+ * @deprecated In v3, profiles are no longer stored in users.json.
+ * This type is kept for migration compatibility.
  */
 export interface ProfileRef {
   /** Profile creation timestamp */
@@ -235,67 +235,16 @@ export interface ProfileRef {
 }
 
 /**
- * users.json content (version 2)
+ * users.json content (version 3 - simplified)
  *
- * Version 2 adds profile references for the new Profile architecture.
+ * Version 3 removes the profiles field - all profile data
+ * is now stored in users/{user}/profile.json.
  */
 export interface UsersMeta {
   /** Current user name */
   current: UserName;
-  /** Data version for future migrations (now 2) */
+  /** Data version for future migrations (now 3) */
   version: number;
-  /** Profile references for each user */
+  /** Profile references for each user (deprecated, migration only) */
   profiles?: Record<UserName, ProfileRef>;
-}
-
-// ============================================
-// Profile Storage v3 Types
-// ============================================
-
-/**
- * Profile metadata (stored in profile.json)
- */
-export interface ProfileMeta {
-  /** Profile creation timestamp */
-  createdAt: string;
-  /** Last access timestamp */
-  lastUsedAt: string;
-  /** Environment type */
-  environmentType: EnvironmentType;
-  /** Fingerprint source */
-  fingerprintSource: FingerprintSource;
-  /** Description of preset used */
-  presetDescription?: string;
-}
-
-/**
- * CDP connection info (stored in profile.json)
- */
-export interface ConnectionInfo {
-  /** CDP port */
-  cdpPort: number;
-  /** Browser process ID */
-  pid: number;
-  /** WebSocket endpoint */
-  wsEndpoint: string;
-  /** Whether running in headless mode */
-  headless?: boolean;
-  /** Connection start timestamp */
-  startedAt: string;
-  /** Last activity timestamp */
-  lastActivityAt: string;
-}
-
-/**
- * Unified user profile data (v3 structure)
- *
- * Stored in users/{user}/profile.json
- */
-export interface UserProfileData {
-  /** Data version */
-  version: number;
-  /** Profile metadata */
-  meta: ProfileMeta;
-  /** CDP connection info (if browser is running) */
-  connection?: ConnectionInfo;
 }

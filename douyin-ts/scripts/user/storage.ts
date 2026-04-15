@@ -5,22 +5,21 @@
  * @description Directory operations, users.json management, and Profile architecture
  */
 
-import { readdir, writeFile, mkdir, stat, readFile, rename, unlink } from 'fs/promises';
-import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from 'fs';
+import { readdir, writeFile, mkdir, stat, readFile } from 'fs/promises';
+import { existsSync } from 'fs';
 import path from 'path';
 import type {
   UserName,
   UserInfo,
   UserListResult,
-  UsersMeta,
-  UserProfile,
-  UserMeta,
+  ProfileMeta,
   ProfileStatus,
   ProfileStatusInfo,
 } from './types';
-import { hasDisplaySupport, detectEnvironmentType } from './environment';
+import { hasDisplaySupport } from './environment';
 import { getUserFingerprint } from './fingerprint';
 import { debugLog } from '../core/utils';
+import { buildPath } from '../core/utils/path';
 
 // ============================================
 // Constants
@@ -30,21 +29,13 @@ import { debugLog } from '../core/utils';
 const USERS_DIR = 'users';
 
 /** Users metadata file name */
-const USERS_META_FILE = 'users.json';
-
 /** Profile metadata file name */
 const PROFILE_META_FILE = 'meta.json';
 
 /** Invalid characters for user name (Windows incompatible) */
 const INVALID_CHARS = /[\\/:\*?"<>|]/;
 
-/** Default users metadata (version 2 - Profile architecture) */
-const DEFAULT_USERS_META_V2: UsersMeta = {
-  current: 'default',
-  version: 2,
-  profiles: {},
-};
-
+/** Default users metadata (version 3 - simplified, no profiles) */
 // ============================================
 // Path Helpers
 // ============================================
@@ -53,7 +44,7 @@ const DEFAULT_USERS_META_V2: UsersMeta = {
  * Get users directory path
  */
 export function getUsersDir(): string {
-  return path.resolve(process.cwd(), USERS_DIR);
+  return buildPath(USERS_DIR);
 }
 
 /**
@@ -80,14 +71,10 @@ export function getUserDataDir(user: UserName): string {
 /**
  * Get users.json path
  */
-function getUsersMetaPath(): string {
-  return path.resolve(getUsersDir(), USERS_META_FILE);
-}
-
 /**
  * Get profile meta.json path
  */
-function getProfileMetaPath(user: UserName): string {
+export function getProfileMetaPath(user: UserName): string {
   return path.resolve(getUserDir(user), PROFILE_META_FILE);
 }
 
@@ -234,7 +221,7 @@ export async function listUsers(): Promise<UserListResult> {
     });
   }
 
-  const current = getCurrentUser();
+  const current = (await import('./users-meta')).getCurrentUser();
 
   return {
     users,
@@ -244,239 +231,6 @@ export async function listUsers(): Promise<UserListResult> {
 
 // ============================================
 // Users Metadata Operations (Version 2)
-// ============================================
-
-/**
- * Load users metadata with version migration support
- *
- * Automatically migrates from version 1 to version 2 if needed.
- */
-export function loadUsersMeta(): UsersMeta {
-  const metaPath = getUsersMetaPath();
-
-  if (!existsSync(metaPath)) {
-    return { ...DEFAULT_USERS_META_V2 };
-  }
-
-  try {
-    const content = readFileSync(metaPath, 'utf-8');
-    const meta = JSON.parse(content) as { version?: number; [key: string]: unknown };
-
-    // Version 1 -> 2 migration
-    if (meta.version === 1) {
-      debugLog('Migrating users.json from version 1 to version 2...');
-
-      const migratedMeta: UsersMeta = {
-        ...DEFAULT_USERS_META_V2,
-        current: (meta.current as UserName) || 'default',
-        profiles: {}, // Initialize empty profiles
-      };
-
-      // Scan existing users and add profile refs
-      if (existsSync(getUsersDir())) {
-        const entries = readdirSync(getUsersDir());
-        for (const entry of entries) {
-          const entryPath = path.join(getUsersDir(), entry);
-          const entryStat = statSync(entryPath);
-          if (entryStat.isDirectory() && !entry.startsWith('.')) {
-            migratedMeta.profiles![entry] = {
-              createdAt: new Date().toISOString(),
-              lastUsedAt: new Date().toISOString(),
-              environmentType: detectEnvironmentType(),
-            };
-          }
-        }
-      }
-
-      // Save migrated version synchronously
-      try {
-        writeFileSync(metaPath, JSON.stringify(migratedMeta, null, 2), 'utf-8');
-        debugLog('Migrated users.json to version 2');
-      } catch (writeError) {
-        debugLog('Failed to save migrated users.json:', writeError);
-      }
-
-      return migratedMeta;
-    }
-
-    // Already version 2 or higher
-    return {
-      ...DEFAULT_USERS_META_V2,
-      ...meta,
-    };
-  } catch (error) {
-    debugLog('Failed to load users.json, using default:', error);
-    return { ...DEFAULT_USERS_META_V2 };
-  }
-}
-
-/**
- * Load users metadata asynchronously with version migration support
- *
- * Automatically migrates from version 1 to version 2 if needed.
- * Use this instead of loadUsersMeta() to avoid race conditions.
- */
-export async function loadUsersMetaAsync(): Promise<UsersMeta> {
-  const metaPath = getUsersMetaPath();
-
-  if (!existsSync(metaPath)) {
-    return { ...DEFAULT_USERS_META_V2 };
-  }
-
-  try {
-    const content = await readFile(metaPath, 'utf-8');
-    const meta = JSON.parse(content) as { version?: number; [key: string]: unknown };
-
-    if (meta.version === 1) {
-      debugLog('Migrating users.json from version 1 to version 2...');
-
-      const migratedMeta: UsersMeta = {
-        ...DEFAULT_USERS_META_V2,
-        current: (meta.current as UserName) || 'default',
-        profiles: {},
-      };
-
-      if (existsSync(getUsersDir())) {
-        const entries = await readdir(getUsersDir());
-        for (const entry of entries) {
-          const entryPath = path.join(getUsersDir(), entry);
-          const entryStat = await stat(entryPath);
-          if (entryStat.isDirectory() && !entry.startsWith('.')) {
-            migratedMeta.profiles![entry] = {
-              createdAt: new Date().toISOString(),
-              lastUsedAt: new Date().toISOString(),
-              environmentType: detectEnvironmentType(),
-            };
-          }
-        }
-      }
-
-      await saveUsersMeta(migratedMeta);
-      debugLog('Migrated users.json to version 2');
-
-      return migratedMeta;
-    }
-
-    return { ...DEFAULT_USERS_META_V2, ...meta };
-  } catch (error) {
-    debugLog('Failed to load users.json, using default:', error);
-    return { ...DEFAULT_USERS_META_V2 };
-  }
-}
-
-/**
- * Save users metadata with atomic write
- *
- * Uses atomic write pattern: write to temp file, then rename.
- * This prevents data corruption from concurrent writes.
- */
-export async function saveUsersMeta(meta: UsersMeta): Promise<void> {
-  const usersDir = getUsersDir();
-
-  if (!existsSync(usersDir)) {
-    await mkdir(usersDir, { recursive: true });
-  }
-
-  const metaPath = getUsersMetaPath();
-  const tempPath = metaPath + '.tmp';
-
-  await writeFile(tempPath, JSON.stringify(meta, null, 2), 'utf-8');
-
-  try {
-    await rename(tempPath, metaPath);
-    debugLog('Saved users metadata to ' + metaPath);
-  } catch {
-    try {
-      await unlink(metaPath);
-      await rename(tempPath, metaPath);
-      debugLog('Saved users metadata to ' + metaPath);
-    } catch (fallbackError) {
-      try {
-        await unlink(tempPath);
-      } catch {}
-      throw fallbackError;
-    }
-  }
-}
-
-/**
- * Get current user name
- */
-export function getCurrentUser(): UserName {
-  const meta = loadUsersMeta();
-  return meta.current || 'default';
-}
-
-/**
- * Get current user name asynchronously
- */
-export async function getCurrentUserAsync(): Promise<UserName> {
-  const meta = await loadUsersMetaAsync();
-  return meta.current || 'default';
-}
-
-/**
- * Set current user
- */
-export async function setCurrentUser(name: UserName): Promise<void> {
-  validateUserName(name);
-
-  // Create user directory if not exists
-  if (!userExists(name)) {
-    await createUserDir(name);
-  }
-
-  const meta = loadUsersMeta();
-  meta.current = name;
-
-  // Ensure profiles record exists
-  if (!meta.profiles) {
-    meta.profiles = {};
-  }
-
-  await saveUsersMeta(meta);
-
-  debugLog(`Set current user to: ${name}`);
-}
-
-/**
- * Clear current user (reset to default)
- */
-export async function clearCurrentUser(): Promise<void> {
-  const meta = loadUsersMeta();
-  meta.current = 'default';
-  await saveUsersMeta(meta);
-
-  debugLog('Cleared current user, reset to default');
-}
-
-// ============================================
-// User Resolution
-// ============================================
-
-/**
- * Resolve user name with priority:
- * 1. Explicit user parameter (from --user option)
- * 2. Current user from users.json
- * 3. Default user
- */
-export function resolveUser(explicitUser?: UserName): UserName {
-  if (explicitUser) {
-    return explicitUser;
-  }
-  return getCurrentUser();
-}
-
-/**
- * Resolve user name asynchronously
- */
-export async function resolveUserAsync(explicitUser?: UserName): Promise<UserName> {
-  if (explicitUser) {
-    return explicitUser;
-  }
-  return getCurrentUserAsync();
-}
-
 // ============================================
 // Profile Operations (Task 3)
 // ============================================
@@ -516,8 +270,7 @@ export async function createUserProfile(
   await getUserFingerprint(user);
 
   // Create profile metadata
-  const meta: UserMeta = {
-    version: 1,
+  const meta: ProfileMeta = {
     createdAt: now,
     lastUsedAt: now,
     environmentType: environmentType as
@@ -532,107 +285,15 @@ export async function createUserProfile(
   await writeFile(metaPath, JSON.stringify(meta, null, 2), 'utf-8');
   debugLog(`Created profile for user: ${user}`);
 
-  // Update users.json profiles reference
-  const usersMeta = loadUsersMeta();
-  if (!usersMeta.profiles) {
-    usersMeta.profiles = {};
-  }
-  usersMeta.profiles[user] = {
-    createdAt: now,
-    lastUsedAt: now,
-    environmentType: environmentType as
-      | 'gui-native'
-      | 'gui-virtual'
-      | 'headless-smart'
-      | 'headless-custom',
-  };
-  await saveUsersMeta(usersMeta);
-}
-
-/**
- * Load user Profile
- *
- * Loads complete profile data including metadata and fingerprint.
- *
- * @param user - User name
- * @returns User profile data
- * @throws Error if profile doesn't exist
- */
-export async function loadUserProfile(user: UserName): Promise<UserProfile> {
-  validateUserName(user);
-
-  const userDir = getUserDir(user);
-  const userDataDir = getUserDataDir(user);
-  const metaPath = getProfileMetaPath(user);
-  const fingerprintPath = path.join(userDir, 'fingerprint.json');
-
-  // Check if profile exists
-  if (!existsSync(metaPath)) {
-    throw new Error(`Profile does not exist for user: ${user}`);
-  }
-
-  // Load profile metadata
-  const metaContent = await readFile(metaPath, 'utf-8');
-  const meta: UserMeta = JSON.parse(metaContent);
-
-  // Load fingerprint (optional - may not exist for legacy users)
-  let fingerprint;
-  if (existsSync(fingerprintPath)) {
-    const fingerprintContent = await readFile(fingerprintPath, 'utf-8');
-    fingerprint = JSON.parse(fingerprintContent);
-  } else {
-    // Generate default fingerprint for legacy users
-    fingerprint = {
-      version: 1,
-      createdAt: new Date().toISOString(),
-      device: {
-        platform: 'Windows',
-        hardwareConcurrency: 8,
-        deviceMemory: 8,
-      },
-      browser: {
-        userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        vendor: 'Google Inc.',
-        languages: ['zh-CN', 'zh', 'en-US', 'en'],
-      },
-      webgl: {
-        vendor: 'Google Inc.',
-        renderer: 'ANGLE (Intel, Intel(R) UHD Graphics 630)',
-      },
-      screen: {
-        width: 1920,
-        height: 1080,
-        colorDepth: 24 as const,
-      },
-      canvasNoiseSeed: Math.floor(Math.random() * 10000000),
-      audioNoiseSeed: Math.floor(Math.random() * 10000000),
-    };
-  }
-
-  // Determine environment from meta
-  const environment = {
-    type: meta.environmentType,
-    fingerprintSource: meta.fingerprintSource,
-    device: {
-      platform: fingerprint.device.platform,
-      hardwareConcurrency: fingerprint.device.hardwareConcurrency,
-      deviceMemory: fingerprint.device.deviceMemory,
-    },
-    presetDescription: meta.presetDescription,
-  };
-
-  return {
-    meta,
-    fingerprint,
-    environment,
-    userDataDir,
-  };
+  // Note: users.json no longer stores profile data (v3)
+  // All profile data is in users/{user}/profile.json
 }
 
 /**
  * Update last used timestamp for a user
  *
- * Updates both the profile's meta.json and the users.json profiles reference.
+ * Updates the profile's meta.json only.
+ * Note: users.json no longer stores profile data (v3)
  *
  * @param user - User name
  */
@@ -646,7 +307,7 @@ export async function updateLastUsed(user: UserName): Promise<void> {
   if (existsSync(metaPath)) {
     try {
       const metaContent = await readFile(metaPath, 'utf-8');
-      const meta: UserMeta = JSON.parse(metaContent);
+      const meta: ProfileMeta = JSON.parse(metaContent);
       meta.lastUsedAt = now;
       await writeFile(metaPath, JSON.stringify(meta, null, 2), 'utf-8');
       debugLog(`Updated lastUsedAt for user: ${user}`);
@@ -654,12 +315,68 @@ export async function updateLastUsed(user: UserName): Promise<void> {
       debugLog(`Failed to update lastUsedAt for user: ${user}`, error);
     }
   }
-
-  // Update users.json profiles reference
-  const usersMeta = loadUsersMeta();
-  if (usersMeta.profiles && usersMeta.profiles[user]) {
-    usersMeta.profiles[user].lastUsedAt = now;
-    await saveUsersMeta(usersMeta);
-  }
 }
 
+// ============================================
+// Cleanup Operations
+// ============================================
+
+/**
+ * Clean up corrupted user data directory
+ *
+ * Removes the user-data directory (Playwright persistent context).
+ * This forces a fresh login on next launch.
+ *
+ * @param user - User name
+ * @param fullCleanup - If true, also removes entire user directory (including fingerprint, profile)
+ * @returns Path that was cleaned up
+ */
+export async function cleanupUserData(user: UserName, fullCleanup = false): Promise<string> {
+  validateUserName(user);
+
+  const userDataDir = getUserDataDir(user);
+  const userDir = getUserDir(user);
+
+  const targetPath = fullCleanup ? userDir : userDataDir;
+
+  if (!existsSync(targetPath)) {
+    debugLog('No directory to clean up for user: ' + user);
+    return targetPath;
+  }
+
+  // Use fs/promises rm for recursive deletion
+  const { rm } = await import('fs/promises');
+  await rm(targetPath, { recursive: true, force: true });
+
+  debugLog('Cleaned up user data for user: ' + user + ' at ' + targetPath);
+
+  return targetPath;
+}
+
+/**
+ * Check if user data cleanup is safe to perform
+ *
+ * Verifies that:
+ * - User directory exists
+ * - No browser process is running for this user
+ *
+ * @param user - User name
+ * @returns true if cleanup is safe, false otherwise
+ */
+export async function canCleanupUserData(user: UserName): Promise<boolean> {
+  if (!userExists(user)) {
+    return false;
+  }
+
+  // Check if browser is running for this user
+  // Import dynamically to avoid circular dependency
+  const { hasBrowserInstance } = await import('../actions/shared/browser-launcher');
+  const isRunning = await hasBrowserInstance(user);
+
+  if (isRunning) {
+    debugLog('Browser is running for user: ' + user + ', cleanup not safe');
+    return false;
+  }
+
+  return true;
+}
