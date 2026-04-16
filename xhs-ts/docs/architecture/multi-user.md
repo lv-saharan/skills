@@ -1,6 +1,17 @@
 # Multi-User Management Architecture
 
-xhs-ts 支持多个小红书账号，每个用户拥有独立的 Cookie、指纹和临时文件。
+## Overview
+
+xhs-ts 支持多个小红书账号，每个用户拥有独立的 Cookie、指纹和临时文件。通过 `users/{user}/` 目录隔离，`profile.json` 统一管理元数据和连接信息，支持运行时切换当前用户。
+
+## Design Decisions
+
+| Decision | Rationale |
+|----------|-----------|
+| 目录隔离 | 每个用户独立 `user-data/` 目录，Cookie 和 localStorage 互不干扰 |
+| profile.json 统一存储 | V3 将 `meta.json` 合并入 `profile.json`，减少文件数量 |
+| 三级用户选择 | `--user` > `users.json current` > `default`，灵活且可预测 |
+| 自动迁移 | 首次启动自动从旧格式迁移至 V3，无需手动操作 |
 
 ---
 

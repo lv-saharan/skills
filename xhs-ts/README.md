@@ -4,7 +4,7 @@
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Node](https://img.shields.io/badge/node-%3E%3D22.16.0-brightgreen.svg)](https://nodejs.org/)
 
-小红书（Xiaohongshu）全功能自动化技能，支持搜索、发布、互动、数据抓取。基于 Playwright 构建，提供完整的反检测防护机制。
+小红书（Xiaohongshu/RedNote）全功能自动化 CLI 工具，基于 Playwright + CDP 构建。支持扫码/短信登录、多维度搜索、图文/视频发布、批量互动（点赞/收藏/评论/关注）、数据抓取，内置 13 模块反检测脚本和多账号隔离管理。
 
 ## 功能特性
 

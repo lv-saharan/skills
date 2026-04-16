@@ -1,6 +1,17 @@
 # Stealth Module Architecture
 
-反检测模块采用模块化架构，每个指纹维度独立生成脚本。
+## Overview
+
+反检测模块采用模块化架构，位于 `scripts/core/browser/stealth/`。13 个独立模块覆盖浏览器指纹的各个维度，通过注册表模式管理，支持动态启用/禁用。平台无关，不依赖业务逻辑。
+
+## Design Decisions
+
+| Decision | Rationale |
+|----------|-----------|
+| 模块化设计 | 每个指纹维度独立文件，便于维护和测试 |
+| 注册表模式 | `stealthRegistry` 统一管理，支持动态启用/禁用 |
+| 平台无关 | 位于 `core/` 目录，不依赖业务逻辑 |
+| 指纹一致性 | 时区、语言、地理位置等参数与 fingerprint.json 保持一致 |
 
 ---
 

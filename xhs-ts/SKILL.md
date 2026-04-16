@@ -1,9 +1,11 @@
 ---name: xhs-ts
 description: |
-  Automate Xiaohongshu (小红书/Red) operations — search notes, publish content,
-  interact (like/collect/comment/follow), scrape data, manage multiple accounts.
-  Use when user mentions 小红书, xhs, Xiaohongshu, Red, 红书, RedNote, or wants
-  to login, search, publish, interact, scrape, or manage multiple Xiaohongshu accounts.
+  Automate Xiaohongshu (小红书/RedNote) operations via Playwright CLI — search notes,
+  publish image/video posts, interact (like/collect/comment/follow), scrape data,
+  manage multiple accounts with isolated cookies and anti-detection.
+  Use when user mentions 小红书, xhs, Xiaohongshu, RedNote, 红书, 小红书运营,
+  or works with xhs-ts/ directory, or wants to login, search, publish, interact,
+  scrape, or manage multiple Xiaohongshu accounts.
 license: MIT
 compatibility: opencode
 metadata:
@@ -50,13 +52,19 @@ metadata:
 
 ## Gotchas
 
-1. **Headless auto-detection** — Linux servers (no DISPLAY) automatically force headless mode
-2. **QR code file path** — In headless mode, QR code saved to `users/{user}/tmp/qr_login_*.png`
-3. **Rate limiting** — Keep 2-5 second intervals between operations to avoid detection
-4. **URL must include xsec_token** — Note URLs from search results include this token; direct URLs may not work
-5. **Comment requires phone binding** — Accounts without phone number cannot comment
-6. **Multi-user support** — Use `--user <name>` to operate with different accounts
-7. **Short links not supported** — xhslink.com URLs are not supported, use full URLs
+### Authentication
+1. **Cookie expiry** — Session cookies expire after ~30 days; `NOT_LOGGED_IN` → run `npm run login`
+2. **Comment requires phone binding** — Unbound accounts get `评论受限: 绑定手机`
+3. **URL must include xsec_token** — Direct URLs may not work; use `npm run search` to get complete URLs
+
+### Anti-Detection
+4. **Rate limiting** — Keep 2-5 second intervals between operations
+5. **Headless auto-detection** — Linux servers (no DISPLAY) automatically force headless mode
+6. **QR code file path** — Headless mode: QR saved to `users/{user}/tmp/qr_login_*.png`
+
+### Platform Limits
+7. **Short links not supported** — xhslink.com URLs will fail; use full URLs
+8. **Publish detection risk** — Xiaohongshu may block automated publishing; test with secondary account
 
 ---
 
@@ -75,12 +83,11 @@ xhs-ts/
 │   │   ├── profile.json      # Unified Profile data (meta + connection)
 │   │   ├── fingerprint.json  # Device fingerprint
 │   │   └── tmp/              # Temporary files (QR codes)
-│   ├── 小号/                 # User "小号"
-│   │   ├── user-data/
-│   │   ├── profile.json
-│   │   ├── fingerprint.json
-│   │   └── tmp/
-│   └── ...
+│   └── {username}/           # Same structure as default/
+│       ├── user-data/
+│       ├── profile.json
+│       ├── fingerprint.json
+│       └── tmp/
 ```
 
 > **Version 3 Changes**: `meta.json` merged into `profile.json` with `meta` and `connection` fields.
@@ -157,22 +164,16 @@ ACTION[:TARGET][:HINT]
 
 ### Channel-Specific Formatting
 
-> **详细格式和发送流程见 [references/channel-integration.md](references/channel-integration.md)**
+When `toAgent` is `PARSE:notes`, format output based on channel type:
 
-| 渠道 | 格式 | 关键要点 |
-|------|------|----------|
-| **飞书** | 交互卡片 + 链接（两条消息） | URL 用反引号包裹；间隔 600ms+ |
-| **微信个人号** | 文字 + 图片（逐条发送） | 文字在前；每次只发一条，等待返回 |
-| **企业微信** | 图文 news 或 Markdown | `picurl` 可直接用图片 URL |
+| Channel | Format | Key Rule |
+|---------|--------|----------|
+| **飞书** | 交互卡片 + 反引号URL（逐条循环） | 每条 2 条消息；间隔 600ms+ |
+| **微信个人号** | 文字 + 图片（逐条发送） | 文字在前；每次一条，等待返回 |
+| **企业微信** | 图文 news 或 Markdown | `picurl` 直接用 |
+| **CLI** | 表格 | 标准输出 |
 
-**飞书卡片交互**：
-- ⚠️ **自定义机器人不支持交互回调**，按钮只能跳转 URL
-- 需要**应用机器人** + **长连接事件订阅**才能实现点赞/收藏/关注交互
-- 开通步骤：[开发者后台](https://open.feishu.cn/app) 创建应用 → 启用机器人 → 配置事件订阅
-
-**通用要点**：
-- URL **必须**包含 `xsec_token` 参数（否则提示"内容不存在")
-- 交互按钮回调：`xhs_like`, `xhs_collect`, `xhs_follow`
+> **完整格式规范、JSON 模板、回调处理见 [references/channel-integration.md](references/channel-integration.md)**
 
 ---
 
@@ -381,30 +382,26 @@ npm run browser -- --stop              # Stop all instances
 
 ---
 
-## Error Codes
+## Agent Workflow
 
-| Code | Description | Action |
-|------|-------------|--------|
-| `NOT_LOGGED_IN` | Not logged in or cookie expired | Run `npm run login` |
-| `RATE_LIMITED` | Rate limit triggered | Wait and retry |
-| `NOT_FOUND` | Resource not found | Check URL format |
-| `CAPTCHA_REQUIRED` | Captcha detected | Handle manually |
-| `LOGIN_FAILED` | Login failed | Retry or manual cookie import |
+### Typical User Requests
 
----
+| User says | Agent should |
+|-----------|-------------|
+| "搜索 XX" | `npm run search -- "XX"` → 根据 Channel 格式化输出 |
+| "帮我点赞这个笔记" | 验证 URL 含 `xsec_token` → `npm run like -- "<url>"` |
+| "发布一篇笔记" | `npm run publish -- --title ... --content ... --images ...` |
+| "抓取这个笔记的数据" | `npm run scrape-note -- "<url>"` |
+| "切换账号" | `npm run user:use -- "<name>"` 或 `npm run login -- --user "<name>"` |
 
-## Anti-Detection
+### Error Handling Flow
 
-Built-in protection:
-- Random delays (1-3s between actions)
-- Mouse trajectory randomization
-- Rate limiting prevention
-- Captcha detection
+1. 命令返回 `NOT_LOGGED_IN` → `npm run login`
+2. 命令返回 `USER_DATA_CORRUPTED` → 询问用户 → `npm run user -- --cleanup`
+3. 命令返回 `RATE_LIMITED` → 等待 30s → 重试
+4. 浏览器空闲 20+ 分钟 → `npm run browser -- --stop`
 
-**Best practices:**
-- Keep 2-5 second intervals between operations
-- Use proxy IP for high-frequency operations
-- Test with secondary account
+> Full error code reference: [references/troubleshooting.md](references/troubleshooting.md)
 
 ---
 

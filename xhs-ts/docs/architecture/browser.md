@@ -1,6 +1,17 @@
 # Browser Module Architecture
 
-Browser 模块采用 **CDP (Chrome DevTools Protocol)** 架构。
+## Overview
+
+Browser 模块采用 **CDP (Chrome DevTools Protocol)** 架构，实现浏览器进程与 CLI 的分离。浏览器实例独立运行、跨命令复用、状态持久化，支持多用户独立端口分配。
+
+## Design Decisions
+
+| Decision | Rationale |
+|----------|-----------|
+| CDP 连接替代 Launch | CLI 退出后浏览器继续运行，支持实例复用 |
+| 确定性端口分配 | 基于用户名 hash 计算（`18900 + hash(user) % 100`），保证同一用户始终使用相同端口 |
+| profile.json 持久化 | CLI 重启后自动恢复连接，无需重新登录 |
+| 三级关闭机制 | CDP → taskkill → 状态清理，确保进程彻底终止 |
 
 ---
 
