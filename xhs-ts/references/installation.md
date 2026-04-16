@@ -5,6 +5,17 @@
 - Node.js >= 22.16.0 (required for `using` syntax)
 - npm or pnpm
 
+### Pre-Installation Check
+
+```bash
+# Verify Node.js version (requires >= 22.16.0)
+node -v
+
+# If version is too low, upgrade:
+# macOS: brew install node@22
+# Windows: download from nodejs.org
+```
+
 ## Install Steps
 
 ### Step 1: Install Dependencies
@@ -34,6 +45,16 @@ PLAYWRIGHT_DOWNLOAD_HOST=https://npmmirror.com/mirrors/playwright npm run instal
 
 ```bash
 npm run start -- --help
+```
+
+### Post-Installation Verification
+
+```bash
+# Verify all commands are available
+npm run start -- --help
+
+# Verify browser installation
+npx playwright install --dry-run
 ```
 
 ## Login
