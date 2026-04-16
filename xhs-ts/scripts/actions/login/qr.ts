@@ -6,7 +6,7 @@
  */
 
 import type { Page } from 'playwright';
-import { SkillError, SkillErrorCode, urls } from '../../config';
+import { SkillError, SkillErrorCode, urls, timeouts } from '../../config';
 import { getTmpFilePath } from '../../core/utils';
 import { QR_SELECTORS } from './selectors';
 import { LOGIN_MODAL_SELECTOR, LOGIN_BUTTON_SELECTORS } from '../shared/selectors';
@@ -16,7 +16,7 @@ import { debugLog, delay, randomDelay, waitForCondition } from '../../core/utils
 import { humanClick, checkCaptcha } from '../../core/anti-detect';
 import { isLoggedIn } from '../auth/status';
 import { checkErrorPage } from '../auth';
-import { outputQrCode } from '../../core/utils/output';
+import { outputQrCode, outputCaptcha } from '../../core/utils/output';
 import { writeFile } from 'fs/promises';
 import type { LoginResult } from './types';
 
@@ -95,13 +95,16 @@ async function isQrCodeExpired(page: Page): Promise<boolean> {
  * We use waitForCondition with proper element checks instead of page.isClosed()
  * to avoid false positives during page refresh.
  */
-export async function waitForQrScan(page: Page, timeout: number): Promise<void> {
+export async function waitForQrScan(page: Page, timeout: number, user?: UserName): Promise<void> {
   debugLog('Waiting for QR code scan...');
   debugLog('Detection: QR + modal disappeared, then verify login status');
 
   const startTime = Date.now();
   let loggedQrGone = false;
   let loggedModalGone = false;
+  let loggedCaptcha = false;
+  let captchaDetectedAt: number | null = null;
+  const captchaTimeout = timeouts.captcha ?? 60000;
 
   await waitForCondition(
     async () => {
@@ -126,10 +129,24 @@ export async function waitForQrScan(page: Page, timeout: number): Promise<void> 
       // Check for CAPTCHA
       const hasCaptcha = await checkCaptcha(page);
       if (hasCaptcha) {
-        throw new SkillError(
-          'CAPTCHA detected. Please complete it manually.',
-          SkillErrorCode.CAPTCHA_REQUIRED
-        );
+        if (!loggedCaptcha) {
+          debugLog('[' + elapsed + 's] CAPTCHA detected, capturing screenshot...');
+          captchaDetectedAt = Date.now();
+          const captchaPath = getTmpFilePath('captcha', 'png', user);
+          await page.screenshot({ path: captchaPath, fullPage: false });
+          debugLog('CAPTCHA screenshot saved to: ' + captchaPath);
+          outputCaptcha(captchaPath, '检测到验证码，请手动完成');
+          loggedCaptcha = true;
+        }
+
+        // Check if captcha timeout exceeded
+        const captchaElapsed = Math.floor((Date.now() - (captchaDetectedAt ?? Date.now())) / 1000);
+        if (captchaElapsed * 1000 >= captchaTimeout) {
+          throw new SkillError(
+            '验证码处理超时（' + Math.floor(captchaTimeout / 1000) + '秒），请重试。',
+            SkillErrorCode.CAPTCHA_REQUIRED
+          );
+        }
       }
 
       const qrVisible = await isAnyVisible(page, QR_SELECTORS);
@@ -277,7 +294,7 @@ export async function qrLogin(
     console.error('Please scan the QR code with Xiaohongshu app to login.');
   }
 
-  await waitForQrScan(page, timeout);
+  await waitForQrScan(page, timeout, user);
 
   // CRITICAL: Final login verification before returning success
   debugLog('Final login verification...');

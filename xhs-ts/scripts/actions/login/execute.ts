@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Login command implementation
  */
 
@@ -110,7 +110,7 @@ export async function executeLogin(options: LoginOptions): Promise<void> {
         suggestCleanup: true,
         canCleanup,
         hint: canCleanup
-          ? '用户数据可能已损坏。请运行 "npm run login -- --reset-user-data" 清理并重新登录。'
+          ? '用户数据可能已损坏。请运行 "npm run user -- --cleanup <用户名>" 清理后重新登录。'
           : '用户数据可能已损坏，但浏览器正在运行。请先关闭浏览器后再尝试清理。',
       });
       return;

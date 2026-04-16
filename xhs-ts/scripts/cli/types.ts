@@ -179,4 +179,6 @@ export interface UserCommandOptions {
   setCurrent?: string;
   /** Reset to default user (--set-default flag) */
   setDefault?: boolean;
+  /** Clean up corrupted user data (--cleanup <name>) */
+  cleanup?: string;
 }

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Configuration types
  *
  * @module config/types
@@ -36,6 +36,7 @@ export interface PlatformConfig {
     login: number;
     selector: number;
     qrCheckInterval: number;
+    captcha?: number;
   };
   delays: {
     afterNavigation: DelayConfig;

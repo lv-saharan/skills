@@ -76,7 +76,15 @@ export {
 export { getUserFingerprint } from './fingerprint';
 
 // Environment detection
-export { hasDisplaySupport, detectEnvironmentType } from './environment';
+export {
+  hasDisplaySupport,
+  detectEnvironmentType,
+  isLinux,
+  isRootUser,
+  isContainerEnvironment,
+  needsNoSandbox,
+  needsDisableDevShm,
+} from './environment';
 
 // Migration
 export { isMigrationNeeded, ensureMigrated } from './migration';

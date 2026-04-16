@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Utils module entry
  *
  * @module core/utils
@@ -18,5 +18,11 @@ export { debugLog } from './logging';
 export { generateTimestamp, getTmpDir, getTmpFilePath, SKILL_ROOT, buildPath } from './path';
 
 // Output
-export { outputSuccess, outputError, outputQrCode, outputFromError } from './output';
-export type { SuccessResponse, ErrorResponse, CliOutput, QrCodeOutput } from './output/types';
+export { outputSuccess, outputError, outputQrCode, outputCaptcha, outputFromError } from './output';
+export type {
+  SuccessResponse,
+  ErrorResponse,
+  CliOutput,
+  QrCodeOutput,
+  CaptchaOutput,
+} from './output/types';

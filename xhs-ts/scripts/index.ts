@@ -32,7 +32,7 @@ validateConfig();
 // ============================================
 
 const program = new Command();
-program.name('xhs').description('Xiaohongshu automation CLI').version('0.1.0');
+program.name('xhs').description('Xiaohongshu automation CLI').version('0.1.1');
 
 // Register all commands (each in its own file under cli/commands/)
 registerAllCommands(program);

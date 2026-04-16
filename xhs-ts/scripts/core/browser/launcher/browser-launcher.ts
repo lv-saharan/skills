@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Browser Launcher - Spawn Independent Process + CDP Mode
  *
  * @module core/browser/launcher/browser-launcher
@@ -18,6 +18,8 @@ import type { BrowserLaunchOptions } from '../types';
 import { findBrowserExecutablePath } from './executable-finder';
 import { generateStealthScript } from '../stealth';
 import { createBrowserError, BrowserErrorCode } from '../errors';
+import { debugLog } from '../../utils';
+import { isLinux, needsNoSandbox, needsDisableDevShm } from '../../../user/environment';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
@@ -94,6 +96,8 @@ export async function launchBrowserServer(
     viewportHeight
   );
 
+  debugLog('Browser args:', args);
+
   // Spawn browser process (detached, independent)
   const browserProcess = spawn(executablePath, args, {
     detached: true, // Browser survives parent (CLI) exit
@@ -132,22 +136,33 @@ function buildBrowserArgs(
     '--no-default-browser-check',
     '--disable-extensions',
     '--disable-default-apps',
-    '--disable-translate',
     '--disable-sync',
     '--disable-background-networking',
     '--metrics-recording-only',
     '--disable-component-extensions-with-background-pages',
-    '--disable-features=SessionRestore',
+    '--disable-features=SessionRestore,Translate',
     '--restore-last-session=false',
-    '--disable-session-crashed-bubble',
-    '--disable-save-password-bubble',
     '--enable-features=NetworkService,NetworkServiceInProcess',
   ];
+
+  // Linux server environment: conditionally inject sandbox-related flags
+  if (isLinux()) {
+    if (needsNoSandbox()) {
+      args.push('--no-sandbox');
+    }
+    if (needsDisableDevShm()) {
+      args.push('--disable-dev-shm-usage');
+    }
+    // Linux desktop: avoid Gnome Keyring/KDE wallet instability
+    if (process.env.XDG_SESSION_TYPE) {
+      args.push('--password-store=basic');
+    }
+  }
 
   if (!headless) {
     args.push('--start-maximized');
   } else {
-    args.push('--headless=new');
+    args.push('--headless');
     // Use fingerprint screen dimensions to avoid JS/screen size mismatch detection
     const w = viewportWidth ?? 1280;
     const h = viewportHeight ?? 720;

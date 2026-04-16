@@ -47,10 +47,7 @@ export interface LoginSelectors {
  * @param selectors - Platform-specific login selectors (optional, uses Xiaohongshu defaults)
  * @returns Whether user is logged in
  */
-export async function checkLoginStatus(
-  page: Page,
-  selectors?: LoginSelectors
-): Promise<boolean> {
+export async function checkLoginStatus(page: Page, selectors?: LoginSelectors): Promise<boolean> {
   try {
     const userComponent = selectors?.userComponent ?? '.user.side-bar-component';
     const avatar = selectors?.avatar;

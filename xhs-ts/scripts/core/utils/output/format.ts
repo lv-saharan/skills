@@ -5,7 +5,7 @@
  * @description Standardized JSON output formatting for all CLI commands (platform-agnostic)
  */
 
-import type { SuccessResponse, ErrorResponse, QrCodeOutput } from './types';
+import type { SuccessResponse, ErrorResponse, QrCodeOutput, CaptchaOutput } from './types';
 
 /**
  * Output success response as JSON to stdout
@@ -31,6 +31,23 @@ export function outputQrCode(qrPath: string, message = '请扫描二维码登录
     status: 'waiting_scan',
     qrPath,
     toAgent: 'DISPLAY_IMAGE:qrPath:WAIT:扫码',
+    message,
+  };
+  console.log(JSON.stringify(response, null, 2));
+}
+
+/**
+ * Output captcha screenshot for headless mode (consumed by OpenClaw)
+ *
+ * @param captchaPath - Absolute path to captcha screenshot image
+ * @param message - Platform-specific message to display
+ */
+export function outputCaptcha(captchaPath: string, message = '检测到验证码，请手动完成'): void {
+  const response: CaptchaOutput = {
+    type: 'captcha_required',
+    status: 'waiting_completion',
+    captchaPath,
+    toAgent: 'DISPLAY_IMAGE:captchaPath:WAIT:请手动完成验证码',
     message,
   };
   console.log(JSON.stringify(response, null, 2));

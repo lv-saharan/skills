@@ -1,6 +1,6 @@
 # 小红书自动化 Skill (xhs-ts)
 
-[![Version](https://img.shields.io/badge/version-0.1.0-blue.svg)](https://github.com/lv-saharan/skills/tree/main/xhs-ts)
+[![Version](https://img.shields.io/badge/version-0.1.1-blue.svg)](https://github.com/lv-saharan/skills/tree/main/xhs-ts)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Node](https://img.shields.io/badge/node-%3E%3D22.16.0-brightgreen.svg)](https://nodejs.org/)
 
@@ -104,6 +104,15 @@ npm run login -- --sms
 
 # 指定用户登录
 npm run login -- --user "小号"
+
+# 短信登录 + 手机号
+npm run login -- --sms --phone "13800138000"
+
+# Cookie 字符串直接登录
+npm run login -- --cookie-string "a1=xxx; webId=xxx; ..."
+
+# 清理损坏的用户数据
+npm run login -- --reset-user-data
 ```
 
 **登录参数：**
@@ -112,9 +121,12 @@ npm run login -- --user "小号"
 |------|------|--------|
 | `--qr` | 二维码登录 | ✅ 默认方式 |
 | `--sms` | 短信登录 | — |
+| `--phone` | 短信登录手机号 | — |
+| `--cookie-string` | Cookie 字符串直接登录 | — |
 | `--headless` | 无头模式运行 | `false` |
 | `--timeout` | 登录超时时间（毫秒） | `120000` |
 | `--user` | 指定用户 | 当前用户 |
+| `--reset-user-data` | 清理损坏的用户数据 | — |
 
 ### 多用户管理
 
@@ -282,6 +294,11 @@ npm run scrape-note -- "url" --comments --max-comments 50
 
 **输出字段**：`noteId`, `title`, `content`, `images`, `video`, `author`, `stats`, `tags`, `publishTime`, `location`
 
+| 参数 | 说明 | 默认值 |
+|------|------|--------|
+| `--comments` | 包含评论 | `false` |
+| `--max-comments` | 最大评论数 | `20` |
+
 ### 抓取用户主页
 
 ```bash
@@ -293,6 +310,11 @@ npm run scrape-user -- "url" --notes --max-notes 24
 ```
 
 **输出字段**：`userId`, `name`, `avatar`, `bio`, `stats`, `tags`, `recentNotes`
+
+| 参数 | 说明 | 默认值 |
+|------|------|--------|
+| `--notes` | 包含最近笔记 | `false` |
+| `--max-notes` | 最大笔记数 | `12` |
 
 ## 浏览器管理
 

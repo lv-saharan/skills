@@ -72,11 +72,7 @@ export {
 // Selectors (Cross-Module)
 // ============================================
 
-export {
-  LOGIN_MODAL_SELECTOR,
-  USER_COMPONENT_SELECTOR,
-  LOGIN_BUTTON_SELECTORS,
-} from './selectors';
+export { LOGIN_MODAL_SELECTOR, USER_COMPONENT_SELECTOR, LOGIN_BUTTON_SELECTORS } from './selectors';
 
 // ============================================
 // Auto Login (moved from login/auto-login.ts)

@@ -14,7 +14,8 @@
     "upload": 120000,
     "login": 120000,
     "selector": 15000,
-    "qrCheckInterval": 1000
+    "qrCheckInterval": 1000,
+    "captcha": 60000
   },
   "delays": {
     "afterNavigation": { "mean": 2000, "stdDev": 400 },

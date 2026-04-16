@@ -60,3 +60,20 @@ export interface QrCodeOutput {
   toAgent?: string;
   message: string;
 }
+
+// ============================================
+// Captcha Output
+// ============================================
+
+/**
+ * Captcha output for headless mode
+ */
+export interface CaptchaOutput {
+  type: 'captcha_required';
+  status: 'waiting_completion';
+  /** Absolute path to captcha screenshot image file */
+  captchaPath: string;
+  /** Optional message for agent to relay to user */
+  toAgent?: string;
+  message: string;
+}

@@ -1,5 +1,4 @@
----
-name: xhs-ts
+---name: xhs-ts
 description: |
   Automate Xiaohongshu (小红书/Red) operations — search notes, publish content,
   interact (like/collect/comment/follow), scrape data, manage multiple accounts.
@@ -8,7 +7,7 @@ description: |
 license: MIT
 compatibility: opencode
 metadata:
-  version: "0.1.0"
+  version: "0.1.1"
   homepage: "https://github.com/lv-saharan/skills/tree/main/xhs-ts"
   openclaw:
     emoji: "📕"
@@ -100,6 +99,13 @@ npm run user
 
 # Set current user
 npm run user:use -- "小号"
+# Or: npm run user -- --set-current "小号"
+
+# Reset to default user
+npm run user -- --set-default
+
+# Clean up corrupted user data (when login fails with USER_DATA_CORRUPTED)
+npm run user -- --cleanup '<用户名>'
 
 # Login with specific user
 npm run login -- --user "小号"
@@ -107,6 +113,28 @@ npm run login -- --user "小号"
 # Search with specific user
 npm run search -- "美食" --user "小号"
 ```
+
+### Error Recovery: Corrupted User Data
+
+When login fails with `USER_DATA_CORRUPTED` error, the output includes `suggestCleanup: true`:
+
+```json
+{
+  "error": true,
+  "code": "USER_DATA_CORRUPTED",
+  "suggestCleanup": true,
+  "canCleanup": true,
+  "hint": "用户数据可能已损坏。请运行 npm run user -- --cleanup <用户名> 清理后重新登录。"
+}
+```
+
+**Agent workflow:**
+1. Detect `suggestCleanup: true` in error output
+2. Ask user: "用户数据可能已损坏，是否执行清理？"
+3. If user confirms: run `npm run user -- --cleanup <用户名>`
+4. After cleanup succeeds: run `npm run login -- --user <用户名>`
+
+> **Safety check**: Cleanup is blocked (`canCleanup: false`) if browser is running for that user. Close browser first with `npm run browser -- --stop-user <用户名>`.
 
 ---
 
@@ -162,9 +190,26 @@ npm run login -- --headless
 # SMS login
 npm run login -- --sms
 
+# SMS login with phone number
+npm run login -- --sms --phone "13800138000"
+
+# Cookie string login (direct import)
+npm run login -- --cookie-string "a1=xxx; webId=xxx; ..."
+
 # Login with specific user
 npm run login -- --user "小号"
+
 ```
+
+| Parameter | Values | Default |
+|-----------|--------|---------|
+| `--qr` | QR code login | ✅ Default |
+| `--sms` | SMS login | — |
+| `--phone` | Phone number for SMS | — |
+| `--cookie-string` | Cookie string for direct login | — |
+| `--headless` | Run in headless mode | `false` |
+| `--timeout` | Login timeout (ms) | `120000` |
+| `--user` | User name | current user |
 
 ### Search
 
@@ -183,7 +228,8 @@ npm run search -- "美食探店" --scope following
 
 | Parameter | Values | Default |
 |-----------|--------|---------|
-| `--limit` | Any positive integer | `20` |
+| `--limit` | Any positive integer | `10` |
+| `--skip` | Non-negative integer | `0` |
 | `--sort` | `general`, `time_descending`, `hot` | `general` |
 | `--note-type` | `all`, `image`, `video` | `all` |
 | `--time-range` | `all`, `day`, `week`, `month` | `all` |
@@ -234,6 +280,9 @@ npm run collect -- "https://www.xiaohongshu.com/explore/noteId?xsec_token=xxx"
 
 # Multiple notes (batch)
 npm run collect -- "url1" "url2"
+
+# Custom delay between collects (default: 2000ms)
+npm run collect -- "url1" "url2" --delay 3000
 ```
 
 #### Comment
@@ -255,6 +304,9 @@ npm run comment -- "url" "评论内容" --user "小号"
 npm run follow -- "https://www.xiaohongshu.com/user/profile/userId"
 
 # Follow multiple users (batch)
+npm run follow -- "url1" "url2"
+
+# Custom delay between follows (default: 2000ms)
 npm run follow -- "url1" "url2" --delay 3000
 ```
 
@@ -270,6 +322,11 @@ npm run scrape-note -- "https://www.xiaohongshu.com/explore/noteId?xsec_token=xx
 npm run scrape-note -- "url" --comments --max-comments 50
 ```
 
+| Parameter | Values | Default |
+|-----------|--------|---------|
+| `--comments` | Include comments in output | `false` |
+| `--max-comments` | Max comments to fetch | `20` |
+
 **Output**: `noteId`, `title`, `content`, `images`, `video`, `author`, `stats`, `tags`, `publishTime`, `location`
 
 #### Scrape User
@@ -281,6 +338,11 @@ npm run scrape-user -- "https://www.xiaohongshu.com/user/profile/userId"
 # Include recent notes
 npm run scrape-user -- "url" --notes --max-notes 24
 ```
+
+| Parameter | Values | Default |
+|-----------|--------|---------|
+| `--notes` | Include recent notes in output | `false` |
+| `--max-notes` | Max notes to fetch | `12` |
 
 **Output**: `userId`, `name`, `avatar`, `bio`, `stats`, `tags`, `recentNotes`
 
@@ -304,6 +366,16 @@ npm run browser -- --list
 npm run browser -- --stop-user "小号"  # Stop specific user
 npm run browser -- --stop              # Stop all instances
 ```
+
+| Parameter | Description |
+|-----------|-------------|
+| `--start` | Start a browser instance |
+| `--stop` | Stop all browser instances |
+| `--stop-user <name>` | Stop browser for specific user |
+| `--status` | Show browser status (includes `lastActivityAt`) |
+| `--list` | List saved CDP connections |
+| `--user <name>` | User name (for `--start`) |
+| `--headless` | Run in headless mode |
 
 > **Agent Responsibility**: Check `lastActivityAt` from `--status` output. Close idle browsers (e.g., inactive for 20+ minutes) to free resources.
 
